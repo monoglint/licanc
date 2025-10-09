@@ -226,6 +226,8 @@ namespace core {
             t_node_id expression;
         };
 
+        // quirk - holds statements and items depending on context.
+        // based on parser design, if it holds an item, then the rest of the nodes will be items too
         struct item_body : node {
             item_body(const core::lisel& selection, t_node_list&& item_list)
                 : node(selection, node_type::ITEM_BODY), item_list(std::move(item_list)) {}

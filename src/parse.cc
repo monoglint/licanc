@@ -43,59 +43,12 @@ ctor can be an identifier
 
 */
 
-#include <unordered_set>
-#include <unordered_map>
-
 #include "core.hh"
 #include "ast.hh"
 #include "token.hh"
+#include "parse.hh"
 
 using namespace core::ast;
-
-/*
-
-====================================================
-
-Constants
-Here at Lican, we present half-softcoded files.
-
-====================================================
-
-*/
-
-// Delimits arguments, tables, etc.
-constexpr auto LIST_DELIMITER_TOKEN = core::token_type::COMMA;
-
-constexpr auto L_EXPR_DELIMITER_TOKEN = core::token_type::LPAREN;
-constexpr auto R_EXPR_DELIMITER_TOKEN = core::token_type::RPAREN;
-
-// Used by function parameters and arguments.
-constexpr auto L_FUNC_DELIMITER_TOKEN = core::token_type::LPAREN;
-constexpr auto R_FUNC_DELIMITER_TOKEN = core::token_type::RPAREN;
-
-// Used by type parameters and arguments.
-constexpr auto L_TEMPLATE_DELIMITER_TOKEN = core::token_type::LSQUARE;
-constexpr auto R_TEMPLATE_DELIMITER_TOKEN = core::token_type::RSQUARE;
-
-// Like C-style braces.
-constexpr auto L_BODY_DELIMITER_TOKEN = core::token_type::LBRACE;
-constexpr auto R_BODY_DELIMITER_TOKEN = core::token_type::RBRACE;
-
-constexpr auto TYPE_DENOTER_TOKEN = core::token_type::COLON;
-constexpr auto TYPE_POINTER_TOKEN = core::token_type::AT;
-constexpr auto TYPE_LVALUE_REFERENCE_TOKEN = core::token_type::AMPERSAND;
-constexpr auto TYPE_RVALUE_REFERENCE_TOKEN = core::token_type::DOUBLE_AMPERSAND;
-
-// dec x = 5
-constexpr auto ASSIGNMENT_TOKEN = core::token_type::EQUAL;
-
-// x ? 5 : 2
-constexpr auto TERNARY_CONDITION_TOKEN = core::token_type::QUESTION;
-constexpr auto TERNARY_ELSE_TOKEN = core::token_type::COLON;
-
-constexpr auto INITIALIZER_LIST_START_TOKEN = core::token_type::RPTR;
-constexpr auto L_INITIALIZER_SET_DELIMITER_TOKEN = core::token_type::LPAREN;
-constexpr auto R_INITIALIZER_SET_DELIMITER_TOKEN = core::token_type::RPAREN;
 
 // Forward declarations
 struct parse_state;
@@ -110,85 +63,6 @@ static t_node_id parse_expr_type(parse_state& state);
 
 template <typename T_NODE, typename PARSE_FUNC>
 static t_node_id parse_item_body(parse_state& state, PARSE_FUNC& parse_func);
-
-/*
-
-====================================================
-
-Basic sets for the binary expression segment of the parser
-
-====================================================
-
-*/
-
-using t_token_set = std::unordered_set<core::token_type>;
-
-static const t_token_set binary_scope_resolution_set = {
-    core::token_type::DOUBLE_DOT,
-};
-
-static const t_token_set binary_member_access_set = {
-    core::token_type::DOT,
-};
-
-static const t_token_set unary_post_set = {
-    core::token_type::DOUBLE_PLUS,
-    core::token_type::DOUBLE_MINUS
-};
-
-static const t_token_set unary_pre_set = {
-    core::token_type::MINUS, // negate
-    core::token_type::BANG, // not
-    core::token_type::DOUBLE_PLUS,
-    core::token_type::DOUBLE_MINUS,
-    core::token_type::AT, // address of
-    core::token_type::ASTERISK, // derference
-};
-
-static const t_token_set binary_exponential_set = {
-    core::token_type::CARET,
-};
-
-static const t_token_set binary_multiplicative_set = {
-    core::token_type::ASTERISK,
-    core::token_type::SLASH,
-    core::token_type::PERCENT,
-};
-
-static const t_token_set binary_additive_set = {
-    core::token_type::PLUS,
-    core::token_type::MINUS,
-};
-
-static const t_token_set binary_numeric_comparison_set = {
-    core::token_type::LARROW,
-    core::token_type::LESS_EQUAL,
-    core::token_type::RARROW,
-    core::token_type::GREATER_EQUAL,
-};
-
-static const t_token_set binary_direct_comparison_set = {
-    core::token_type::DOUBLE_EQUAL,
-    core::token_type::BANG_EQUAL,
-};
-
-static const t_token_set binary_and_set = {
-    core::token_type::DOUBLE_AMPERSAND,
-};
-
-static const t_token_set binary_or_set = {
-    core::token_type::DOUBLE_PIPE,
-};
-
-static const t_token_set binary_assignment_set = {
-    core::token_type::EQUAL,
-    core::token_type::PLUS_EQUAL,
-    core::token_type::MINUS_EQUAL,
-    core::token_type::ASTERISK_EQUAL,
-    core::token_type::SLASH_EQUAL,
-    core::token_type::PERCENT_EQUAL,
-    core::token_type::CARET_EQUAL,
-};
 
 struct parse_state {
     parse_state(core::liprocess& process, const core::t_file_id file_id)
@@ -692,8 +566,10 @@ static t_node_id parse_expr_operator(parse_state& state) {
 
     const core::token& opr_token = state.consume();
 
-    // !FIX
-    // Ensure the opr token is double checked to be a valid operator.
+    if (!is_overridable_operator(opr_token.type)) {
+        state.log_and_pause_errors(core::lilog::log_level::ERROR, opr_token.selection, "The given token is a not an overridable operator.");
+        return state.arena.insert(expr_invalid(core::lisel(start_token.selection, opr_token.selection)));
+    }
 
     const t_node_id function = parse_expr_function(state);
 

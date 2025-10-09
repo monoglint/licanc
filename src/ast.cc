@@ -1,4 +1,5 @@
 #include "ast.hh"
+#include "parse.hh"
 
 bool core::ast::ast_arena::is_expression_wrappable(const t_node_id id) {
     const node* base = get_base_ptr(id);
@@ -11,7 +12,7 @@ bool core::ast::ast_arena::is_expression_wrappable(const t_node_id id) {
         case node_type::EXPR_BINARY: {
             const token_type opr_type = ((expr_binary*)base)->opr.type;
 
-            return opr_type == token_type::EQUAL;
+            return opr_type == ASSIGNMENT_TOKEN;
         }
         case node_type::EXPR_CALL:
         case node_type::VARIANT_DECLARATION:

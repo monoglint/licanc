@@ -3,7 +3,7 @@
 ====================================================
 
 External API usage for the compiler.
-The symbols in this file are useful to main.cpp and any project integrating this compiler.
+The symbols in this file are useful to main.cc and any project integrating this compiler.
 
 CONTAINS liconfig_init and liconfig
 
