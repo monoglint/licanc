@@ -12,12 +12,12 @@ namespace core {
         enum class symbol_type : uint8_t {
             ROOT,
 
-            INFO_TYPE,
             INFO_TEMPLATE_INSERTION,
 
+            DECL_PRIMITIVE, // TYPE
             DECL_VARIABLE,
             DECL_FUNCTION,
-            DECL_STRUCT,
+            DECL_STRUCT, // TYPE
             DECL_ENUM,
             DECL_MODULE,
             DECL_TYPEDEC,
@@ -34,19 +34,27 @@ namespace core {
             symbol_type type;
         };
 
+        struct decl_primitive : symbol {
+            decl_primitive(const size_t size, const size_t alignment)
+                : symbol(symbol_type::DECL_PRIMITIVE), size(size), alignment(alignment) {}
+
+            size_t size;
+            size_t alignment;
+        };
+        
         struct decl_variable : symbol {
-            decl_variable(const core::ast::t_node_id value_type)
+            decl_variable(const ast::t_node_id value_type)
                 : symbol(symbol_type::DECL_VARIABLE), value_type(value_type) {}
 
-            core::ast::t_node_id value_type; // expr_type
+            ast::t_node_id value_type; // expr_type
         };
 
         struct decl_function : symbol {
-            inline core::ast::t_node_list _make_parameter_type_list(const core::ast::ast_arena& arena, const core::ast::t_node_list& parameter_list) {
-                core::ast::t_node_list _paramter_type_list = {};
+            inline ast::t_node_list _make_parameter_type_list(const ast::ast_arena& arena, const ast::t_node_list& parameter_list) {
+                ast::t_node_list _paramter_type_list = {};
 
-                for (core::ast::t_node_id param_id : parameter_list) {
-                    _paramter_type_list.push_back(arena.get_as<expr_parameter>(param_id).value_type);
+                for (ast::t_node_id param_id : parameter_list) {
+                    _paramter_type_list.push_back(arena.get_as<ast::expr_parameter>(param_id).value_type);
                 }
 
                 return _paramter_type_list;
@@ -54,19 +62,15 @@ namespace core {
 
             // parameter_type_list isn't natively part of expr_function, so it will be generated during semantic analysis.
             // therefore, we can make it an rvalue reference to be moved in
-            decl_function(const core::ast::t_node_id return_type, core::ast::t_node_list&& parameter_type_list, core::ast::t_node_list template_list)
+            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, ast::t_node_list template_list)
                 : symbol(symbol_type::DECL_FUNCTION), return_type(return_type), parameter_type_list(std::move(parameter_type_list)), template_parameter_list(template_list) {}
 
-            decl_function(const core::ast::ast_arena& arena, const core::ast::expr_function& function)
+            decl_function(const ast::ast_arena& arena, const ast::expr_function& function)
                 : decl_function(function.return_type, _make_parameter_type_list(arena, function.parameter_list), template_parameter_list) {}
 
-            // just makes sense for this to be here since we're passing the arena through
-            decl_function(const core::ast::ast_arena& arena, const core::ast::t_node_id function_id)
-                : decl_function(arena, arena.get_as<core::ast::expr_function>(function_id)) {}
-
-            core::ast::t_node_id return_type; // expr_type
-            core::ast::t_node_list parameter_type_list; // expr_type
-            core::ast::t_node_list &template_parameter_list; // expr_identifier
+            ast::t_node_id return_type; // expr_type
+            ast::t_node_list parameter_type_list; // expr_type
+            ast::t_node_list &template_parameter_list; // expr_identifier
         };
 
         struct decl_module : symbol { 

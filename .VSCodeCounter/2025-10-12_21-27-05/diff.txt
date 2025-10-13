@@ -1,0 +1,38 @@
+Date : 2025-10-12 21:27:05
+Directory : c:\Users\jghig\cxxprojects\licanc
+Total : 12 files,  632 codes, 43 comments, 199 blanks, all 874 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C++      |         12 |        632 |         43 |        199 |        874 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                   |         12 |        632 |         43 |        199 |        874 |
+| include                                             |          6 |        282 |         18 |         77 |        377 |
+| src                                                 |          6 |        350 |         25 |        122 |        497 |
++-----------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                            | language | code       | comment    | blank      | total      |
++-----------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\jghig\cxxprojects\licanc\include\arena.hh  | C++      |         39 |          3 |         10 |         52 |
+| c:\Users\jghig\cxxprojects\licanc\include\ast.hh    | C++      |         38 |         -4 |         10 |         44 |
+| c:\Users\jghig\cxxprojects\licanc\include\core.hh   | C++      |         22 |          1 |          8 |         31 |
+| c:\Users\jghig\cxxprojects\licanc\include\parse.hh  | C++      |        102 |         15 |         26 |        143 |
+| c:\Users\jghig\cxxprojects\licanc\include\symbol.hh | C++      |         72 |          3 |         23 |         98 |
+| c:\Users\jghig\cxxprojects\licanc\include\token.hh  | C++      |          9 |          0 |          0 |          9 |
+| c:\Users\jghig\cxxprojects\licanc\src\ast.cc        | C++      |         70 |         -3 |         30 |         97 |
+| c:\Users\jghig\cxxprojects\licanc\src\lex.cc        | C++      |         13 |          0 |          4 |         17 |
+| c:\Users\jghig\cxxprojects\licanc\src\licanapi.cc   | C++      |          3 |          0 |          0 |          3 |
+| c:\Users\jghig\cxxprojects\licanc\src\main.cc       | C++      |         -6 |         -5 |         -4 |        -15 |
+| c:\Users\jghig\cxxprojects\licanc\src\parse.cc      | C++      |        140 |          1 |         45 |        186 |
+| c:\Users\jghig\cxxprojects\licanc\src\semantic.cc   | C++      |        130 |         32 |         47 |        209 |
+| Total                                               |          |        632 |         43 |        199 |        874 |
++-----------------------------------------------------+----------+------------+------------+------------+------------+

@@ -164,18 +164,18 @@ static t_node_id parse_optional_type(parse_state& state) {
 
 template <bool RIGHT_ASSOCIATION, typename FUNC>
 static t_node_id binary_expression_associative(parse_state& state, const FUNC& lower, const t_token_set& set) {
-    t_node_id left = lower(state);
+    t_node_id left_id = lower(state);
 
     // Braces are required for outer if-constexpr so the else doesn't get captured by the inner if statement.
     if constexpr (RIGHT_ASSOCIATION) {
         if (!state.at_eof() && set.find(state.now().type) != set.end()) {
             const core::token& opr = state.consume();
-            const t_node_id right = binary_expression_associative<true>(state, lower, set);
+            const t_node_id right_id = binary_expression_associative<true>(state, lower, set);
         
             return state.arena.insert(expr_binary(
-                core::lisel(state.arena.get_base_ptr(left)->selection, state.arena.get_base_ptr(right)->selection),
-                left,
-                right,
+                core::lisel(state.arena.get_base_ptr(left_id)->selection, state.arena.get_base_ptr(right_id)->selection),
+                left_id,
+                right_id,
                 opr
             ));
         }
@@ -183,17 +183,17 @@ static t_node_id binary_expression_associative(parse_state& state, const FUNC& l
     else
         while (!state.at_eof() && set.find(state.now().type) != set.end()) {
             const core::token& opr = state.consume();
-            const t_node_id right = lower(state);
+            const t_node_id right_id = lower(state);
 
-            left = state.arena.insert(expr_binary(
-                core::lisel(state.arena.get_base_ptr(left)->selection, state.arena.get_base_ptr(right)->selection),
-                left,
-                right,
+            left_id = state.arena.insert(expr_binary(
+                core::lisel(state.arena.get_base_ptr(left_id)->selection, state.arena.get_base_ptr(right_id)->selection),
+                left_id,
+                right_id,
                 opr
             ));
         }
 
-    return left;
+    return left_id;
 }
 
 template <bool IS_OPTIONAL, bool USE_LIST_DELIMITER, typename FUNC>
@@ -238,7 +238,7 @@ static t_node_id parse_expr_type(parse_state& state) {
     const bool is_pointer = state.now().type == TYPE_POINTER_TOKEN;
     if (is_pointer) state.pos++;
 
-    const t_node_id source = parse_scope_resolution(state);
+    const t_node_id source_id = parse_scope_resolution(state);
 
     t_node_list argument_list = parse_list<true, true>(state, parse_expr_type, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
 
@@ -256,25 +256,25 @@ static t_node_id parse_expr_type(parse_state& state) {
             reference_type = expr_type::e_reference_type::NONE;
     }
 
-    return state.arena.insert(expr_type(core::lisel(state.arena.get_base_ptr(source)->selection, state.now().selection), source, std::move(argument_list), is_const, is_pointer, reference_type));
+    return state.arena.insert(expr_type(core::lisel(state.arena.get_base_ptr(source_id)->selection, state.now().selection), source_id, std::move(argument_list), is_const, is_pointer, reference_type));
 }
 
 static t_node_id parse_expr_parameter(parse_state& state) {
     const core::token& start_token = state.now();
    
-    const t_node_id name = state.arena.insert(expr_identifier(state.expect(core::token_type::IDENTIFIER, "Expected an identifier.").selection, state.process));
-    const t_node_id value_type = parse_optional_type(state);
+    const t_node_id name_id = state.arena.insert(expr_identifier(state.expect(core::token_type::IDENTIFIER, "Expected an identifier.").selection, state.process));
+    const t_node_id value_type_id = parse_optional_type(state);
    
-    t_node_id default_value;
+    t_node_id default_value_id;
 
     if (state.now().type == ASSIGNMENT_TOKEN) {
         state.pos++;
-        default_value = parse_expression(state);
+        default_value_id = parse_expression(state);
     }
     else
-        default_value = state.arena.insert(expr_none(state.now().selection));
+        default_value_id = state.arena.insert(expr_none(state.now().selection));
 
-    return state.arena.insert(expr_parameter(core::lisel(start_token.selection, state.now().selection), name, default_value, value_type));
+    return state.arena.insert(expr_parameter(core::lisel(start_token.selection, state.now().selection), name_id, default_value_id, value_type_id));
 }
 
 template <bool IS_OPTIONAL>
@@ -303,11 +303,11 @@ static t_node_id parse_expr_function(parse_state& state) {
 
     t_node_list template_parameter_list = parse_list<true, true>(state, parse_expr_identifier<false>, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
     t_node_list parameter_list = parse_list<false, true>(state, parse_expr_parameter, L_FUNC_DELIMITER_TOKEN, R_FUNC_DELIMITER_TOKEN);
-    const t_node_id return_type = parse_optional_type(state);
+    const t_node_id return_type_id = parse_optional_type(state);
 
-    const t_node_id body = parse_statement(state);
+    const t_node_id body_id = parse_statement(state);
 
-    return state.arena.insert(expr_function(core::lisel(start_token.selection, state.now().selection), std::move(template_parameter_list), std::move(parameter_list), body, return_type));
+    return state.arena.insert(expr_function(core::lisel(start_token.selection, state.now().selection), std::move(template_parameter_list), std::move(parameter_list), body_id, return_type_id));
 }
 
 #define CASE_LITERAL(type) \
@@ -328,14 +328,11 @@ static t_node_id parse_primary_expression(parse_state& state) {
         case core::token_type::FALSE: [[fallthrough]];
         case core::token_type::TRUE:
             return state.arena.insert(expr_literal(state.consume().selection, expr_literal::e_literal_type::BOOL));
-            
-        case core::token_type::DEC:
-            return parse_declaration<true>(state);
         case L_EXPR_DELIMITER_TOKEN: {
             state.pos++;
-            t_node_id expr = parse_expression(state);
+            t_node_id expression_id = parse_expression(state);
             state.expect(R_EXPR_DELIMITER_TOKEN, "Expected closing delimiter after expression.");
-            return expr;
+            return expression_id;
         }
         default:
             break;
@@ -357,23 +354,23 @@ static t_node_id parse_member_access(parse_state& state) {
 }
 
 static t_node_id parse_expr_call(parse_state& state) {
-    t_node_id expression;
+    t_node_id expression_id;
 
     // Allow 'ctor' to be called. This should only be done in the context of constructor delegation.
     if (state.now().type == core::token_type::CTOR)
-        expression = state.arena.insert(expr_identifier(state.consume().selection, state.process));
+        expression_id = state.arena.insert(expr_identifier(state.consume().selection, state.process));
     else {
-        expression = parse_member_access(state);
-        const node_type expr_type = state.arena.get_base_ptr(expression)->type;
+        expression_id = parse_member_access(state);
+        const node_type expr_type = state.arena.get_base_ptr(expression_id)->type;
 
         if ((expr_type != node_type::EXPR_BINARY && expr_type != node_type::EXPR_IDENTIFIER) || (state.now().type != L_FUNC_DELIMITER_TOKEN && state.now().type != L_TEMPLATE_DELIMITER_TOKEN))
-            return expression;
+            return expression_id;
     }
 
     t_node_list type_argument_list = parse_list<true, true>(state, parse_expr_type, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
     t_node_list argument_list = parse_list<false, true>(state, parse_expression, L_FUNC_DELIMITER_TOKEN, R_FUNC_DELIMITER_TOKEN);
 
-    return state.arena.insert(expr_call(core::lisel(state.arena.get_base_ptr(expression)->selection, state.now().selection), expression, std::move(type_argument_list), std::move(argument_list)));
+    return state.arena.insert(expr_call(core::lisel(state.arena.get_base_ptr(expression_id)->selection, state.now().selection), expression_id, std::move(type_argument_list), std::move(argument_list)));
 }
 
 static t_node_id parse_expr_unary(parse_state& state) {
@@ -381,18 +378,18 @@ static t_node_id parse_expr_unary(parse_state& state) {
 
     if (unary_pre_set.find(state.now().type) != unary_pre_set.end()) {
         const core::token& opr = state.consume();
-        t_node_id operand = parse_expr_unary(state);
-        return state.arena.insert(expr_unary(core::lisel(start_token.selection, state.arena.get_base_ptr(operand)->selection), operand, opr, false));
+        t_node_id operand_id = parse_expr_unary(state);
+        return state.arena.insert(expr_unary(core::lisel(start_token.selection, state.arena.get_base_ptr(operand_id)->selection), operand_id, opr, false));
     }
 
-    const t_node_id expression = parse_expr_call(state);
+    const t_node_id expression_id = parse_expr_call(state);
 
     if (unary_post_set.find(state.now().type) != unary_post_set.end()) {
         const core::token& opr = state.consume();
-        return state.arena.insert(expr_unary(core::lisel(start_token.selection, opr.selection), expression, opr, true));
+        return state.arena.insert(expr_unary(core::lisel(start_token.selection, opr.selection), expression_id, opr, true));
     }
    
-    return expression;
+    return expression_id;
 }
 
 static t_node_id parse_exponential(parse_state& state) {
@@ -424,16 +421,16 @@ static t_node_id parse_or(parse_state& state) {
 }
 
 static t_node_id parse_expr_ternary(parse_state& state) {
-    const t_node_id first = parse_or(state);
+    const t_node_id first_id = parse_or(state);
     if (state.now().type != TERNARY_CONDITION_TOKEN)
-        return first;
+        return first_id;
    
     state.pos++;
-    const t_node_id second = parse_expression(state);
+    const t_node_id second_id = parse_expression(state);
     state.expect(TERNARY_ELSE_TOKEN, "Expected a ternary-else-symbol.");
-    const t_node_id third = parse_expression(state);
+    const t_node_id third_id = parse_expression(state);
    
-    return state.arena.insert(expr_ternary(core::lisel(state.arena.get_base_ptr(first)->selection, state.arena.get_base_ptr(third)->selection), first, second, third));
+    return state.arena.insert(expr_ternary(core::lisel(state.arena.get_base_ptr(first_id)->selection, state.arena.get_base_ptr(third_id)->selection), first_id, second_id, third_id));
 }
 
 static t_node_id parse_assignment(parse_state& state) {
@@ -447,35 +444,35 @@ static t_node_id parse_expression(parse_state& state) {
 
 static t_node_id parse_stmt_if(parse_state& state) {
     const core::token& start_token = state.consume();
-    const t_node_id condition = parse_expression(state);
-    const t_node_id consequent = parse_statement(state);
-    t_node_id alternate;
+    const t_node_id condition_id = parse_expression(state);
+    const t_node_id consequent_id = parse_statement(state);
+    t_node_id alternate_id;
 
     if (state.now().type == core::token_type::ELSE) {
         state.pos++; // Skip else
-        alternate = parse_statement(state);
+        alternate_id = parse_statement(state);
     }
     else
-        alternate = state.arena.insert(stmt_none(state.now().selection));
+        alternate_id = state.arena.insert(stmt_none(state.now().selection));
 
-    return state.arena.insert(stmt_if(core::lisel(start_token.selection, state.now().selection), condition, consequent, alternate));
+    return state.arena.insert(stmt_if(core::lisel(start_token.selection, state.now().selection), condition_id, consequent_id, alternate_id));
 }
 
 static t_node_id parse_stmt_while(parse_state& state) {
     const core::token& start_token = state.consume();
-    const t_node_id condition = parse_expression(state);
-    const t_node_id consequent = parse_statement(state);
-    t_node_id alternate;
+    const t_node_id condition_id = parse_expression(state);
+    const t_node_id consequent_id = parse_statement(state);
+    t_node_id alternate_id;
 
     // In while loops, else's run if the condition fails on the first time.
     if (state.now().type == core::token_type::ELSE) {
         state.pos++; // Skip else
-        alternate = parse_statement(state);
+        alternate_id = parse_statement(state);
     }
     else
-        alternate = state.arena.insert(stmt_none(state.now().selection));
+        alternate_id = state.arena.insert(stmt_none(state.now().selection));
 
-    return state.arena.insert(stmt_while(core::lisel(start_token.selection, state.now().selection), condition, consequent, alternate));
+    return state.arena.insert(stmt_while(core::lisel(start_token.selection, state.now().selection), condition_id, consequent_id, alternate_id));
 }
 
 template <typename T_NODE, typename PARSE_FUNC>
@@ -489,14 +486,14 @@ static t_node_id parse_list_node(parse_state& state, PARSE_FUNC& parse_func) {
 static t_node_id parse_stmt_return(parse_state& state) {
     const core::token& start_token = state.consume();
 
-    t_node_id expression;
+    t_node_id expression_id;
 
     if (state.now().type == R_BODY_DELIMITER_TOKEN)
-        expression = state.arena.insert(expr_none(state.now().selection));
+        expression_id = state.arena.insert(expr_none(state.now().selection));
     else
-        expression = parse_expression(state);
+        expression_id = parse_expression(state);
    
-    return state.arena.insert(stmt_return(core::lisel(start_token.selection, state.arena.get_base_ptr(expression)->selection), expression));
+    return state.arena.insert(stmt_return(core::lisel(start_token.selection, state.arena.get_base_ptr(expression_id)->selection), expression_id));
 }
 
 static t_node_id parse_item_use(parse_state& state) {
@@ -512,25 +509,25 @@ static t_node_id parse_item_module(parse_state& state) {
     const core::token& start_token = state.consume();
     const core::token& value_token = state.expect(core::token_type::IDENTIFIER, "Expected an identifier.");
 
-    const t_node_id name_node_id = state.arena.insert(expr_identifier(value_token.selection, state.process));
+    const t_node_id source_id = state.arena.insert(expr_identifier(value_token.selection, state.process));
     const t_node_id content_id = parse_item(state);
    
-    return state.arena.insert(item_module(core::lisel(start_token.selection, state.arena.get_base_ptr(content_id)->selection), name_node_id, content_id));
+    return state.arena.insert(item_module(core::lisel(start_token.selection, state.arena.get_base_ptr(content_id)->selection), source_id, content_id));
 }
 
-template <bool IS_EXPR>
+template <bool IS_STMT>
 static t_node_id parse_declaration(parse_state& state) {
     const core::token& start_token = state.consume();
    
-    const t_node_id name = IS_EXPR ? parse_expr_identifier<false>(state) : parse_scope_resolution(state);
-    const t_node_id value_type = parse_optional_type(state);
+    const t_node_id source_id = IS_STMT ? parse_expr_identifier<false>(state) : parse_scope_resolution(state);
+    const t_node_id value_type_id = parse_optional_type(state);
 
-    t_node_id value;
+    t_node_id value_id;
 
     const core::token_type assignment_token_type = state.now().type;
 
     if (assignment_token_type == L_TEMPLATE_DELIMITER_TOKEN || assignment_token_type == L_FUNC_DELIMITER_TOKEN) {
-        if constexpr (IS_EXPR) {
+        if constexpr (IS_STMT) {
             state.add_log(
                 core::lilog::log_level::ERROR,
                 state.now().selection,
@@ -543,69 +540,69 @@ static t_node_id parse_declaration(parse_state& state) {
             return state.arena.insert(
                 item_function_declaration(
                     core::lisel(start_token.selection, state.now().selection),
-                    name,
+                    source_id,
                     parse_expr_function(state)
                 )
             );
     }
     else if (assignment_token_type != ASSIGNMENT_TOKEN) {
-        if (state.arena.get_base_ptr(value_type)->type == node_type::EXPR_NONE) {
+        if (state.arena.get_base_ptr(value_type_id)->type == node_type::EXPR_NONE) {
             state.add_log(
                 core::lilog::log_level::ERROR,
                 state.now().selection,
                 "A declaration must have at least a type or a value."
             );
-            value = state.arena.insert(expr_invalid(state.now().selection));
+            value_id = state.arena.insert(expr_invalid(state.now().selection));
         }
         else
-            value = state.arena.insert(expr_none(state.now().selection));
+            value_id = state.arena.insert(expr_none(state.now().selection));
     }
     
     state.pos++;
-    value = parse_expression(state);
+    value_id = parse_expression(state);
 
-    if constexpr (IS_EXPR)
-        return state.arena.insert(expr_declaration(core::lisel(start_token.selection, state.now().selection), name, value_type, value));
+    if constexpr (IS_STMT)
+        return state.arena.insert(stmt_declaration(core::lisel(start_token.selection, state.now().selection), source_id, value_type_id, value_id));
     else
-        return state.arena.insert(item_declaration(core::lisel(start_token.selection, state.now().selection), name, value_type, value));
+        return state.arena.insert(item_declaration(core::lisel(start_token.selection, state.now().selection), source_id, value_type_id, value_id));
 }
 
 static t_node_id parse_item_type_declaration(parse_state& state) {
     const core::token& start_token = state.consume();
    
-    const t_node_id name = parse_scope_resolution(state);
+    const t_node_id source_id = parse_scope_resolution(state);
     t_node_list template_parameter_list = parse_list<true, true>(state, parse_expr_identifier<false>, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
 
     state.expect(ASSIGNMENT_TOKEN, "Expected an assignment symbol.");
 
-    const t_node_id type_value = parse_expr_type(state);
+    const t_node_id type_value_id = parse_expr_type(state);
 
-    return state.arena.insert(item_type_declaration(core::lisel(start_token.selection, state.now().selection), name, type_value, std::move(template_parameter_list)));
+    return state.arena.insert(item_type_declaration(core::lisel(start_token.selection, state.now().selection), source_id, type_value_id, std::move(template_parameter_list)));
 }
 
 static t_node_id parse_expr_enum_set(parse_state& state) {
-    const t_node_id name = parse_expr_identifier<false>(state);
-    t_node_id value;
+    const t_node_id name_id = parse_expr_identifier<false>(state);
+    t_node_id value_id;
 
     if (state.now().type == ASSIGNMENT_TOKEN) {
         state.pos++;
-        value = parse_expr_int_literal(state);
+        value_id = parse_expr_int_literal(state);
     }
     else
-        value = state.arena.insert(expr_none(state.now().selection));
+        value_id = state.arena.insert(expr_none(state.now().selection));
 
-    return state.arena.insert(expr_enum_set(core::lisel(state.arena.get_base_ptr(name)->selection, state.now().selection), name, value));
+    return state.arena.insert(expr_enum_set(core::lisel(state.arena.get_base_ptr(name_id)->selection, state.now().selection), name_id, value_id));
 }
 
-static t_node_id parse_item_enum(parse_state& state) {
+static t_node_id parse_item_enum_declaration(parse_state& state) {
     const core::token& start_token = state.consume();
 
-    const t_node_id name = parse_scope_resolution(state);
+    const t_node_id source_id = parse_scope_resolution(state);
     state.expect(ASSIGNMENT_TOKEN, "Expected an assignment symbol.");
 
     t_node_list set_list = parse_list<false, false>(state, parse_expr_enum_set, L_BODY_DELIMITER_TOKEN, R_BODY_DELIMITER_TOKEN);
 
-    return state.arena.insert(item_enum(core::lisel(start_token.selection, state.now().selection), name, std::move(set_list)));
+    return state.arena.insert(item_enum_declaration(core::lisel(start_token.selection, state.now().selection), source_id, std::move(set_list)));
 }
 
 static t_node_id parse_expr_operator(parse_state& state) {
@@ -618,13 +615,13 @@ static t_node_id parse_expr_operator(parse_state& state) {
         return state.arena.insert(expr_invalid(core::lisel(start_token.selection, opr_token.selection)));
     }
 
-    const t_node_id function = parse_expr_function(state);
+    const t_node_id function_id = parse_expr_function(state);
 
     const bool is_const = state.now().type == core::token_type::CONST;
     if (is_const)
         state.pos++;
 
-    return state.arena.insert(expr_operator(core::lisel(start_token.selection, state.now().selection), opr_token.type, function, is_const));
+    return state.arena.insert(expr_operator(core::lisel(start_token.selection, state.now().selection), opr_token.type, function_id, is_const));
 }
 
 // There will never be a condition in which this is not optional which is why there is no template.
@@ -638,17 +635,17 @@ static t_node_list parse_initializer_list(parse_state& state) {
 
     do {
         state.pos++;
-        const t_node_id property_name = parse_expr_identifier<false>(state);
+        const t_node_id property_name_id = parse_expr_identifier<false>(state);
         state.expect(L_INITIALIZER_SET_DELIMITER_TOKEN, "Expected a left delimiter.");
-        const t_node_id value = parse_expression(state);
+        const t_node_id value_id = parse_expression(state);
         state.expect(R_INITIALIZER_SET_DELIMITER_TOKEN, "Expected a right delimiter.");
 
         initializer_list.emplace_back(
             state.arena.insert(
                 expr_initializer_set(
-                    core::lisel(state.arena.get_base_ptr(property_name)->selection, state.now().selection),
-                    property_name,
-                    value
+                    core::lisel(state.arena.get_base_ptr(property_name_id)->selection, state.now().selection),
+                    property_name_id,
+                    value_id
                 )
             )
         );
@@ -663,11 +660,11 @@ static std::pair<t_node_id, t_node_list> parse_constructor_function(parse_state&
 
     t_node_list template_parameter_list = parse_list<true, true>(state, parse_expr_identifier<false>, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
     t_node_list parameter_list = parse_list<false, true>(state, parse_expr_parameter, L_FUNC_DELIMITER_TOKEN, R_FUNC_DELIMITER_TOKEN);
-    const t_node_id return_type = parse_optional_type(state);
+    const t_node_id return_type_id = parse_optional_type(state);
 
     t_node_list initializer_list = parse_initializer_list(state);
 
-    const t_node_id body = parse_statement(state);
+    const t_node_id body_id = parse_statement(state);
 
     return std::make_pair(
         state.arena.insert(
@@ -675,8 +672,8 @@ static std::pair<t_node_id, t_node_list> parse_constructor_function(parse_state&
                 core::lisel(start_token.selection, state.now().selection), 
                 std::move(template_parameter_list), 
                 std::move(parameter_list), 
-                body, 
-                return_type
+                body_id, 
+                return_type_id
             )
         ),
         std::move(initializer_list)
@@ -685,19 +682,19 @@ static std::pair<t_node_id, t_node_list> parse_constructor_function(parse_state&
 
 static t_node_id parse_expr_constructor(parse_state& state) {
     const core::token& start_token = state.consume();
-    const t_node_id name = parse_expr_identifier<true>(state);
+    const t_node_id name_id = parse_expr_identifier<true>(state);
 
     auto pair = parse_constructor_function(state);
     
-    return state.arena.insert(expr_constructor(core::lisel(start_token.selection, state.now().selection), name, pair.first, std::move(pair.second)));
+    return state.arena.insert(expr_constructor(core::lisel(start_token.selection, state.now().selection), name_id, pair.first, std::move(pair.second)));
 }
 
 static t_node_id parse_expr_destructor(parse_state& state) {
     const core::token& start_token = state.consume();
 
-    const t_node_id body = parse_statement(state);
+    const t_node_id body_id = parse_statement(state);
 
-    return state.arena.insert(expr_destructor(core::lisel(start_token.selection, state.arena.get_base_ptr(body)->selection), body));
+    return state.arena.insert(expr_destructor(core::lisel(start_token.selection, state.arena.get_base_ptr(body_id)->selection), body_id));
 }
 
 static t_node_id parse_expr_struct_member(parse_state& state) {
@@ -719,48 +716,48 @@ static t_node_id parse_expr_struct_member(parse_state& state) {
     if (is_private)
         state.pos++;
 
-    const t_node_id name = parse_expr_identifier<false>(state);
+    const t_node_id name_id = parse_expr_identifier<false>(state);
 
-    if (state.arena.get_base_ptr(name)->type == node_type::ITEM_INVALID)
-        return name;
+    if (state.arena.get_base_ptr(name_id)->type == node_type::ITEM_INVALID)
+        return name_id;
 
     switch (state.now().type) {
         case L_TEMPLATE_DELIMITER_TOKEN:
         case L_FUNC_DELIMITER_TOKEN: {
-            const t_node_id function = parse_expr_function(state);
+            const t_node_id function_id = parse_expr_function(state);
 
             const bool is_const = state.now().type == core::token_type::CONST;
             if (is_const)
                 state.pos++;
                     
-            return state.arena.insert(expr_method(core::lisel(start_token.selection, state.now().selection), name, function, is_private, is_const));
+            return state.arena.insert(expr_method(core::lisel(start_token.selection, state.now().selection), name_id, function_id, is_private, is_const));
         }
         case TYPE_DENOTER_TOKEN: {
             state.pos++;
 
-            const t_node_id value_type = parse_expr_type(state);
+            const t_node_id value_type_id = parse_expr_type(state);
 
-            t_node_id default_value;
+            t_node_id default_value_id;
             if (state.now().type == ASSIGNMENT_TOKEN) {
                 state.pos++;
-                default_value = parse_expression(state);
+                default_value_id = parse_expression(state);
             }
             else
-                default_value = state.arena.insert(expr_none(state.now().selection));
+                default_value_id = state.arena.insert(expr_none(state.now().selection));
 
-            return state.arena.insert(expr_property(core::lisel(start_token.selection, state.now().selection), name, value_type, default_value, is_private));
+            return state.arena.insert(expr_property(core::lisel(start_token.selection, state.now().selection), name_id, value_type_id, default_value_id, is_private));
         }
         case ASSIGNMENT_TOKEN: {
             state.pos++;
 
-            const t_node_id default_value = parse_expression(state);
+            const t_node_id default_value_id = parse_expression(state);
 
             return state.arena.insert(
                 expr_property(
                     core::lisel(start_token.selection, state.now().selection), 
-                    name, 
+                    name_id, 
                     state.arena.insert(expr_none(state.now().selection)), 
-                    default_value, 
+                    default_value_id, 
                     is_private
                 )
             );
@@ -769,7 +766,7 @@ static t_node_id parse_expr_struct_member(parse_state& state) {
             state.add_log(
                 core::lilog::log_level::ERROR,
                 state.now().selection,
-                "Unexpected token. Either set \"" + state.process.sub_source_code(state.arena.get_base_ptr(name)->selection) + "\" to a property or method."
+                "Unexpected token. Either set \"" + state.process.sub_source_code(state.arena.get_base_ptr(name_id)->selection) + "\" to a property or method."
             );
     }
 
@@ -779,12 +776,12 @@ static t_node_id parse_expr_struct_member(parse_state& state) {
 static t_node_id parse_item_struct(parse_state& state) {
     const core::token& start_token = state.consume();
 
-    const t_node_id name = parse_scope_resolution(state);
+    const t_node_id source_id = parse_scope_resolution(state);
 
     t_node_list template_parameter_list = parse_list<true, true>(state, parse_expr_identifier<false>, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
     t_node_list member_list = parse_list<false, false>(state, parse_expr_struct_member, L_BODY_DELIMITER_TOKEN, R_BODY_DELIMITER_TOKEN);
 
-    return state.arena.insert(item_struct_declaration(core::lisel(start_token.selection, state.now().selection), name, std::move(template_parameter_list), std::move(member_list)));
+    return state.arena.insert(item_struct_declaration(core::lisel(start_token.selection, state.now().selection), source_id, std::move(template_parameter_list), std::move(member_list)));
 }
 
 // Find statements expected in a module or a struct.
@@ -798,7 +795,7 @@ static t_node_id parse_item(parse_state& state) {
         case core::token_type::MODULE: return parse_item_module(state);
         case core::token_type::DEC: return parse_declaration<false>(state);
         case core::token_type::TYPEDEC: return parse_item_type_declaration(state);
-        case core::token_type::ENUM: return parse_item_enum(state);
+        case core::token_type::ENUM: return parse_item_enum_declaration(state);
         case core::token_type::STRUCT: return parse_item_struct(state);
         case L_BODY_DELIMITER_TOKEN: return parse_list_node<item_compound>(state, parse_item);
         default: {
@@ -820,6 +817,7 @@ static t_node_id parse_statement(parse_state& state) {
         case core::token_type::WHILE: return parse_stmt_while(state);
         case L_BODY_DELIMITER_TOKEN: return parse_list_node<stmt_compound>(state, parse_statement);
         case core::token_type::RETURN: return parse_stmt_return(state);
+        case core::token_type::DEC: return parse_declaration<true>(state);
         case core::token_type::TYPEDEC: return parse_item_type_declaration(state);
         case core::token_type::BREAK: return state.arena.insert(stmt_break(state.consume().selection));
         case core::token_type::CONTINUE: return state.arena.insert(stmt_continue(state.consume().selection));

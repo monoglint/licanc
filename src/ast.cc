@@ -15,7 +15,6 @@ bool core::ast::ast_arena::is_expression_wrappable(const t_node_id id) {
             return opr_type == ASSIGNMENT_TOKEN;
         }
         case node_type::EXPR_CALL:
-        case node_type::EXPR_DECLARATION:
             return true;
         default:
             return false;
@@ -215,16 +214,16 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_COMPOUND: {
             const auto& v = std::get<item_compound>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_compound\n";
-            buffer += liutil::indent_repeat(indent+1) + "items:\n";
-            for (const t_node_id& s : v.list) pretty_debug(process, s, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "item list:\n";
+            for (const t_node_id& s : v.item_list) pretty_debug(process, s, buffer, indent+2);
             break;
         }
 
         case node_type::STMT_COMPOUND: {
             const auto& v = std::get<stmt_compound>(an._raw);
             buffer += liutil::indent_repeat(indent) + "stmt_compound\n";
-            buffer += liutil::indent_repeat(indent+1) + "items:\n";
-            for (const t_node_id& s : v.list) pretty_debug(process, s, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "statement list:\n";
+            for (const t_node_id& s : v.stmt_list) pretty_debug(process, s, buffer, indent+2);
             break;
         }
 
@@ -247,8 +246,8 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_MODULE: {
             const auto& v = std::get<item_module>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_module\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "content:\n";
             pretty_debug(process, v.content, buffer, indent+2);
             break;
@@ -257,8 +256,8 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_DECLARATION: {
             const auto& v = std::get<item_declaration>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "type:\n";
             pretty_debug(process, v.value_type, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "value:\n";
@@ -266,11 +265,11 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
             break;
         }
 
-        case node_type::EXPR_DECLARATION: {
-            const auto& v = std::get<expr_declaration>(an._raw);
-            buffer += liutil::indent_repeat(indent) + "expr_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+        case node_type::STMT_DECLARATION: {
+            const auto& v = std::get<stmt_declaration>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "stmt_declaration\n";
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "type:\n";
             pretty_debug(process, v.value_type, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "value:\n";
@@ -281,8 +280,8 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_FUNCTION_DECLARATION: {
             const auto& v = std::get<item_function_declaration>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_function_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "function:\n";
             pretty_debug(process, v.function, buffer, indent+2);
             break;
@@ -291,10 +290,10 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_TYPE_DECLARATION: {
             const auto& v = std::get<item_type_declaration>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_type_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
-            buffer += liutil::indent_repeat(indent+1) + "parameters:\n";
-            for (const t_node_id& a : v.parameter_list) pretty_debug(process, a, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "template parameter list:\n";
+            for (const t_node_id& a : v.template_parameter_list) pretty_debug(process, a, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "type:\n";
             pretty_debug(process, v.type_value, buffer, indent+2);
             break;
@@ -366,8 +365,8 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::ITEM_STRUCT_DECLARATION: {
             const auto& v = std::get<item_struct_declaration>(an._raw);
             buffer += liutil::indent_repeat(indent) + "item_struct_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "template_parameters:\n";
             for (const t_node_id& p : v.template_parameter_list) pretty_debug(process, p, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "members:\n";
@@ -385,11 +384,11 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
             break;
         }
 
-        case node_type::ITEM_ENUM: {
-            const auto& v = std::get<item_enum>(an._raw);
-            buffer += liutil::indent_repeat(indent) + "item_enum\n";
-            buffer += liutil::indent_repeat(indent+1) + "name:\n";
-            pretty_debug(process, v.name, buffer, indent+2);
+        case node_type::ITEM_ENUM_DECLARATION: {
+            const auto& v = std::get<item_enum_declaration>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "item_enum_declaration\n";
+            buffer += liutil::indent_repeat(indent+1) + "source:\n";
+            pretty_debug(process, v.source, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "set_list:\n";
             for (const t_node_id& s : v.set_list) pretty_debug(process, s, buffer, indent+2);
             break;
