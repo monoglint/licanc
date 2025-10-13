@@ -2,9 +2,8 @@
 
 ====================================================
 
-⚠️⚠️⚠️ MEMORY ALERT ⚠️⚠️⚠️
+⚠️⚠️⚠️ MEMORY NOTE ⚠️⚠️⚠️
 Vectors are moved into the ast nodes which means the the arena block isn't holding 100% of all of the ast data.
-FIX!!!!
 
 ====================================================
 
@@ -32,6 +31,8 @@ STYLE NOTE
 
 All functions in the parser are coded to assume that the first token has already been processed or taken care of.
 
+All variables that are equal to ids should have _id in their name. That needs to be added sooner or later.
+
 ====================================================
 
 Inside of the parser, always invoke logs using state.log_and_pause errors if you want every other error
@@ -50,23 +51,13 @@ ctor can be an identifier
 
 using namespace core::ast;
 
-// Forward declarations
-struct parse_state;
-
-static t_node_id parse_expression(parse_state& state);
-static t_node_id parse_scope_resolution(parse_state& state);
-static t_node_id parse_statement(parse_state& state);
-static t_node_id parse_item(parse_state& state);
-static t_node_id parse_variant_declaration(parse_state& state, const bool local_declaration);
-
-static t_node_id parse_expr_type(parse_state& state);
-
-template <typename T_NODE, typename PARSE_FUNC>
-static t_node_id parse_item_body(parse_state& state, PARSE_FUNC& parse_func);
-
 struct parse_state {
     parse_state(core::liprocess& process, const core::t_file_id file_id)
-        : process(process), file_id(file_id), file(process.file_list[file_id]), token_list(std::any_cast<const std::vector<core::token>&>(process.file_list[file_id].dump_token_list)) {}
+        : process(process),
+          file_id(file_id),
+          file(process.file_list[file_id]),
+          token_list(std::any_cast<const std::vector<core::token>&>(process.file_list[file_id].dump_token_list))
+          {}
 
     core::liprocess& process;
 
@@ -79,8 +70,11 @@ struct parse_state {
 
     core::t_pos pos = 0;
 
+    bool parse_success = true;
+
     // When true, all logs will be set as cascaded. They still get sent to the core, but with lower priority.
     bool f_pause_errors = false;
+    
 
     inline const core::token& now() const {
         return token_list[pos];
@@ -112,23 +106,52 @@ struct parse_state {
     inline const core::token& expect(const core::token_type type, const std::string& error_message = "[No Info]") {
         const core::token& now = consume();
         if (now.type != type)
-            log_and_pause_errors(core::lilog::log_level::ERROR, now.selection, "Unexpected token - " + error_message);
+            add_log(core::lilog::log_level::ERROR, now.selection, "Unexpected token - " + error_message);
        
         // We expect to return an incorrect token.
         // Since the parser handles tokens by reference, it is not a good idea to make new temporary ones.
         return now;
     }
 
-    inline void log_and_pause_errors(const core::lilog::log_level log_level, const core::lisel& selection, const std::string& message) {
+    inline void add_log(const core::lilog::log_level log_level, const core::lisel& selection, const std::string& message) {
         if (f_pause_errors)
             return;
 
         process.add_log(log_level, selection, message);
 
-        if (!process.config._show_cascading_logs)
-            f_pause_errors = true;        
+        if (log_level == core::lilog::log_level::ERROR || log_level == core::lilog::log_level::COMPILER_ERROR) {
+            parse_success = false;
+
+            if (!process.config._show_cascading_logs)
+                f_pause_errors = true;
+        }        
     }
 };
+
+/*
+
+====================================================
+
+*/
+
+static t_node_id parse_expression(parse_state& state);
+static t_node_id parse_scope_resolution(parse_state& state);
+static t_node_id parse_statement(parse_state& state);
+static t_node_id parse_item(parse_state& state);
+
+template <bool IS_EXPR>
+static t_node_id parse_declaration(parse_state& state);
+
+static t_node_id parse_expr_type(parse_state& state);
+
+template <typename T_NODE, typename PARSE_FUNC>
+static t_node_id parse_list_node(parse_state& state, PARSE_FUNC& parse_func);
+
+/*
+
+====================================================
+
+*/
 
 static t_node_id parse_optional_type(parse_state& state) {
     if (state.now().type == TYPE_DENOTER_TOKEN) {
@@ -175,11 +198,12 @@ static t_node_id binary_expression_associative(parse_state& state, const FUNC& l
 
 template <bool IS_OPTIONAL, bool USE_LIST_DELIMITER, typename FUNC>
 static t_node_list parse_list(parse_state& state, FUNC func, const core::token_type left_delim, const core::token_type right_delim) {
-    if (state.now().type != left_delim)
+    if (state.now().type != left_delim) {
         if constexpr (IS_OPTIONAL) 
             return {};
         else
-            state.log_and_pause_errors(core::lilog::log_level::ERROR, state.now().selection, "Expected an opening delimiter.");
+            state.add_log(core::lilog::log_level::ERROR, state.now().selection, "Expected an opening delimiter.");
+    }
 
     if (state.peek(1).type == right_delim) {
         state.pos += 2;
@@ -238,7 +262,7 @@ static t_node_id parse_expr_type(parse_state& state) {
 static t_node_id parse_expr_parameter(parse_state& state) {
     const core::token& start_token = state.now();
    
-    const t_node_id name = state.arena.insert(expr_identifier(state.expect(core::token_type::IDENTIFIER, "Expected an identifier.").selection));
+    const t_node_id name = state.arena.insert(expr_identifier(state.expect(core::token_type::IDENTIFIER, "Expected an identifier.").selection, state.process));
     const t_node_id value_type = parse_optional_type(state);
    
     t_node_id default_value;
@@ -255,18 +279,19 @@ static t_node_id parse_expr_parameter(parse_state& state) {
 
 template <bool IS_OPTIONAL>
 static t_node_id parse_expr_identifier(parse_state& state) {
-    if constexpr (IS_OPTIONAL)
+    if constexpr (IS_OPTIONAL) {
         if (state.now().type == core::token_type::IDENTIFIER)
-            return state.arena.insert(expr_identifier(state.consume().selection));
+            return state.arena.insert(expr_identifier(state.consume().selection, state.process));
         else
             return state.arena.insert(expr_none(state.now().selection));
+    }
     
     const core::token& token = state.expect(core::token_type::IDENTIFIER, "Expected an identifier.");
     
     if (token.type != core::token_type::IDENTIFIER)
         return state.arena.insert(expr_invalid(token.selection));    
     
-    return state.arena.insert(expr_identifier(token.selection));
+    return state.arena.insert(expr_identifier(token.selection, state.process));
 }
 
 static t_node_id parse_expr_int_literal(parse_state& state) {
@@ -292,7 +317,7 @@ static t_node_id parse_expr_function(parse_state& state) {
 static t_node_id parse_primary_expression(parse_state& state) {
     switch (state.now().type) {
         case core::token_type::IDENTIFIER:
-            return state.arena.insert(expr_identifier(state.consume().selection));
+            return state.arena.insert(expr_identifier(state.consume().selection, state.process));
     
         CASE_LITERAL(INT)
         CASE_LITERAL(FLOAT)
@@ -305,7 +330,7 @@ static t_node_id parse_primary_expression(parse_state& state) {
             return state.arena.insert(expr_literal(state.consume().selection, expr_literal::e_literal_type::BOOL));
             
         case core::token_type::DEC:
-            return parse_variant_declaration(state, true);
+            return parse_declaration<true>(state);
         case L_EXPR_DELIMITER_TOKEN: {
             state.pos++;
             t_node_id expr = parse_expression(state);
@@ -316,7 +341,7 @@ static t_node_id parse_primary_expression(parse_state& state) {
             break;
     }
 
-    state.log_and_pause_errors(core::lilog::log_level::ERROR, state.now().selection, "Unexpected token.");
+    state.add_log(core::lilog::log_level::ERROR, state.now().selection, "Unexpected token.");
 
     return state.arena.insert(expr_invalid(state.consume().selection));
 }
@@ -336,12 +361,12 @@ static t_node_id parse_expr_call(parse_state& state) {
 
     // Allow 'ctor' to be called. This should only be done in the context of constructor delegation.
     if (state.now().type == core::token_type::CTOR)
-        expression = state.arena.insert(expr_identifier(state.consume().selection));
+        expression = state.arena.insert(expr_identifier(state.consume().selection, state.process));
     else {
         expression = parse_member_access(state);
         const node_type expr_type = state.arena.get_base_ptr(expression)->type;
 
-        if (expr_type != node_type::EXPR_BINARY && expr_type != node_type::EXPR_IDENTIFIER || state.now().type != L_FUNC_DELIMITER_TOKEN && state.now().type != L_TEMPLATE_DELIMITER_TOKEN)
+        if ((expr_type != node_type::EXPR_BINARY && expr_type != node_type::EXPR_IDENTIFIER) || (state.now().type != L_FUNC_DELIMITER_TOKEN && state.now().type != L_TEMPLATE_DELIMITER_TOKEN))
             return expression;
     }
 
@@ -454,7 +479,7 @@ static t_node_id parse_stmt_while(parse_state& state) {
 }
 
 template <typename T_NODE, typename PARSE_FUNC>
-static t_node_id parse_item_body(parse_state& state, PARSE_FUNC& parse_func) {
+static t_node_id parse_list_node(parse_state& state, PARSE_FUNC& parse_func) {
     const core::token& brace_token = state.now();
     t_node_list item_list = parse_list<false, false>(state, parse_func, L_BODY_DELIMITER_TOKEN, R_BODY_DELIMITER_TOKEN);
        
@@ -487,40 +512,62 @@ static t_node_id parse_item_module(parse_state& state) {
     const core::token& start_token = state.consume();
     const core::token& value_token = state.expect(core::token_type::IDENTIFIER, "Expected an identifier.");
 
-    const t_node_id name_node = state.arena.insert(expr_identifier(value_token.selection));
-    const t_node_id content = parse_item(state);
+    const t_node_id name_node_id = state.arena.insert(expr_identifier(value_token.selection, state.process));
+    const t_node_id content_id = parse_item(state);
    
-    return state.arena.insert(item_module(core::lisel(start_token.selection, state.arena.get_base_ptr(content)->selection), name_node, content));
+    return state.arena.insert(item_module(core::lisel(start_token.selection, state.arena.get_base_ptr(content_id)->selection), name_node_id, content_id));
 }
 
-static t_node_id parse_variant_declaration(parse_state& state, const bool local_declaration) {
+template <bool IS_EXPR>
+static t_node_id parse_declaration(parse_state& state) {
     const core::token& start_token = state.consume();
    
-    const t_node_id name = parse_scope_resolution(state);
+    const t_node_id name = IS_EXPR ? parse_expr_identifier<false>(state) : parse_scope_resolution(state);
     const t_node_id value_type = parse_optional_type(state);
 
     t_node_id value;
 
-    switch (state.now().type) {
-        case L_TEMPLATE_DELIMITER_TOKEN: // for potential type parameters
-        case L_FUNC_DELIMITER_TOKEN:
-            if (!local_declaration) {
-                value = parse_expr_function(state);
-                break;
-            }
+    const core::token_type assignment_token_type = state.now().type;
+
+    if (assignment_token_type == L_TEMPLATE_DELIMITER_TOKEN || assignment_token_type == L_FUNC_DELIMITER_TOKEN) {
+        if constexpr (IS_EXPR) {
+            state.add_log(
+                core::lilog::log_level::ERROR,
+                state.now().selection,
+                "Functions can not be declared in function bodies. Declare a closure instead."
+            );
+
+            return state.arena.insert(expr_invalid(state.now().selection));
+        }
+        else
+            return state.arena.insert(
+                item_function_declaration(
+                    core::lisel(start_token.selection, state.now().selection),
+                    name,
+                    parse_expr_function(state)
+                )
+            );
+    }
+    else if (assignment_token_type != ASSIGNMENT_TOKEN) {
+        if (state.arena.get_base_ptr(value_type)->type == node_type::EXPR_NONE) {
+            state.add_log(
+                core::lilog::log_level::ERROR,
+                state.now().selection,
+                "A declaration must have at least a type or a value."
+            );
             value = state.arena.insert(expr_invalid(state.now().selection));
-            state.log_and_pause_errors(core::lilog::log_level::ERROR, state.consume().selection, "Functions can not be declared in function bodies. Declare a closure instead.");
-            value = state.arena.insert(expr_invalid(state.now().selection));
-            break;
-        case ASSIGNMENT_TOKEN:
-            state.pos++;
-            value = parse_expression(state);
-            break;
-        default:
+        }
+        else
             value = state.arena.insert(expr_none(state.now().selection));
     }
+    
+    state.pos++;
+    value = parse_expression(state);
 
-    return state.arena.insert(variant_declaration(core::lisel(start_token.selection, state.now().selection), name, value, value_type));
+    if constexpr (IS_EXPR)
+        return state.arena.insert(expr_declaration(core::lisel(start_token.selection, state.now().selection), name, value_type, value));
+    else
+        return state.arena.insert(item_declaration(core::lisel(start_token.selection, state.now().selection), name, value_type, value));
 }
 
 static t_node_id parse_item_type_declaration(parse_state& state) {
@@ -567,7 +614,7 @@ static t_node_id parse_expr_operator(parse_state& state) {
     const core::token& opr_token = state.consume();
 
     if (!is_overridable_operator(opr_token.type)) {
-        state.log_and_pause_errors(core::lilog::log_level::ERROR, opr_token.selection, "The given token is a not an overridable operator.");
+        state.add_log(core::lilog::log_level::ERROR, opr_token.selection, "The given token is a not an overridable operator.");
         return state.arena.insert(expr_invalid(core::lisel(start_token.selection, opr_token.selection)));
     }
 
@@ -661,6 +708,8 @@ static t_node_id parse_expr_struct_member(parse_state& state) {
             return parse_expr_destructor(state);
         case core::token_type::OPR:
             return parse_expr_operator(state);
+        default:
+            break;
     }
 
     const core::token& start_token = state.now();
@@ -717,7 +766,7 @@ static t_node_id parse_expr_struct_member(parse_state& state) {
             );
         }
         default:
-            state.log_and_pause_errors(
+            state.add_log(
                 core::lilog::log_level::ERROR,
                 state.now().selection,
                 "Unexpected token. Either set \"" + state.process.sub_source_code(state.arena.get_base_ptr(name)->selection) + "\" to a property or method."
@@ -747,14 +796,14 @@ static t_node_id parse_item(parse_state& state) {
     switch (tok.type) {
         case core::token_type::USE: return parse_item_use(state);
         case core::token_type::MODULE: return parse_item_module(state);
-        case core::token_type::DEC: return parse_variant_declaration(state, false);
+        case core::token_type::DEC: return parse_declaration<false>(state);
         case core::token_type::TYPEDEC: return parse_item_type_declaration(state);
         case core::token_type::ENUM: return parse_item_enum(state);
         case core::token_type::STRUCT: return parse_item_struct(state);
-        case L_BODY_DELIMITER_TOKEN: return parse_item_body<item_body>(state, parse_item);
+        case L_BODY_DELIMITER_TOKEN: return parse_list_node<item_compound>(state, parse_item);
         default: {
             const node* statement = state.arena.get_base_ptr(parse_statement(state));
-            state.log_and_pause_errors(core::lilog::log_level::ERROR, statement->selection, "The given item can only be used in a function body.");
+            state.add_log(core::lilog::log_level::ERROR, statement->selection, "The given item can only be used in a function body.");
             return state.arena.insert(item_invalid(statement->selection));
         }
     }
@@ -769,7 +818,7 @@ static t_node_id parse_statement(parse_state& state) {
     switch (tok.type) {
         case core::token_type::IF: return parse_stmt_if(state);
         case core::token_type::WHILE: return parse_stmt_while(state);
-        case L_BODY_DELIMITER_TOKEN: return parse_item_body<item_body>(state, parse_statement);
+        case L_BODY_DELIMITER_TOKEN: return parse_list_node<stmt_compound>(state, parse_statement);
         case core::token_type::RETURN: return parse_stmt_return(state);
         case core::token_type::TYPEDEC: return parse_item_type_declaration(state);
         case core::token_type::BREAK: return state.arena.insert(stmt_break(state.consume().selection));
@@ -778,7 +827,10 @@ static t_node_id parse_statement(parse_state& state) {
         // Capture this for items that are not statement compatible
         case core::token_type::USE:
         case core::token_type::MODULE:
-            state.log_and_pause_errors(core::lilog::log_level::ERROR, tok.selection, "The given item can not be used in a function body.");
+        case core::token_type::ENUM:
+        case core::token_type::STRUCT:
+
+            state.add_log(core::lilog::log_level::ERROR, tok.selection, "The given item can not be used in a function body.");
             return state.arena.insert(stmt_invalid(state.consume().selection));
 
         // Reserve the default case for expression wrapping.
@@ -787,7 +839,7 @@ static t_node_id parse_statement(parse_state& state) {
            
             if (!state.arena.is_expression_wrappable(expr_id)) {
                 const node* as_node = state.arena.get_base_ptr(expr_id);
-                state.log_and_pause_errors(core::lilog::log_level::ERROR, as_node->selection, "Unexpected expression.");
+                state.add_log(core::lilog::log_level::ERROR, as_node->selection, "Unexpected expression.");
                 return state.arena.insert(stmt_invalid(as_node->selection));
             }
            
@@ -809,5 +861,5 @@ bool core::frontend::parse(core::liprocess& process, const core::t_file_id file_
 
     state.file.dump_ast_arena = std::any(std::move(state.arena));
 
-    return true;
+    return state.parse_success;
 }

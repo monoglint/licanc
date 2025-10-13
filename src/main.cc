@@ -23,64 +23,63 @@ To see where flags are used throughout the compiler, ctrl+shift+f their name.
 // Note: Index 0 is the command name
 using t_command_data = std::vector<std::string>;
 
-std::string get_line() {
+static std::string get_line() {
     std::string line;
     std::getline(std::cin, line);
     return line;
 }
 
-// written by chatgpt because I'm lazy
-t_command_data parse_string_command(const std::string& line) {
-    t_command_data args;
-    std::string buffer;
+// Next two functions are written by AI
+    static t_command_data parse_string_command(const std::string& line) {
+        t_command_data args;
+        std::string buffer;
 
-    auto push_buffer = [&](const std::string& buf) {
-        if (buf.empty()) return;
-        // Check for grouped short options (e.g. -rf)
-        if (buf.size() > 1 && buf[0] == '-' && buf[1] != '-') {
-            for (size_t i = 1; i < buf.size(); i++) {
-                args.push_back(std::string("-") + buf[i]);
+        auto push_buffer = [&](const std::string& buf) {
+            if (buf.empty()) return;
+            // Check for grouped short options (e.g. -rf)
+            if (buf.size() > 1 && buf[0] == '-' && buf[1] != '-') {
+                for (size_t i = 1; i < buf.size(); i++) {
+                    args.push_back(std::string("-") + buf[i]);
+                }
+            } else {
+                args.push_back(buf);
             }
-        } else {
-            args.push_back(buf);
-        }
-    };
+        };
 
-    for (char c : line) {
-        if (c == ' ') {
-            push_buffer(buffer);
-            buffer.clear();
-            continue;
+        for (char c : line) {
+            if (c == ' ') {
+                push_buffer(buffer);
+                buffer.clear();
+                continue;
+            }
+            buffer += c;
         }
-        buffer += c;
+
+        push_buffer(buffer);
+
+        return args;
     }
 
-    push_buffer(buffer);
+    static t_command_data parse_c_style_command(int argc, char* argv[]) {
+        t_command_data args;
+        for (int i = 1; i < argc; i++) {
+            std::string str = argv[i];
 
-    return args;
-}
+            if (str.size() > 1 && str[0] == '-' && str[1] != '-') {
+                for (size_t j = 1; j < str.size(); j++) {
+                    args.push_back(std::string("-") + str[j]);
+                }
 
-// thanks copilot for autocompleting all of this for me...
-t_command_data parse_c_style_command(int argc, char* argv[]) {
-    t_command_data args;
-    for (int i = 1; i < argc; i++) {
-        std::string str = argv[i];
-
-        if (str.size() > 1 && str[0] == '-' && str[1] != '-') {
-            for (size_t j = 1; j < str.size(); j++) {
-                args.push_back(std::string("-") + str[j]);
+                continue;
             }
 
-            continue;
+            args.push_back(str);
         }
 
-        args.push_back(str);
+        return args;
     }
 
-    return args;
-}
-
-bool HELP(const t_command_data& command) {
+static bool HELP(const t_command_data& command) {
     std::cout << "commands:\n";
 
     std::cout << "help\n";
@@ -108,7 +107,7 @@ bool HELP(const t_command_data& command) {
     return true;
 }
 
-bool BUILD(const t_command_data& command) {
+static bool BUILD(const t_command_data& command) {
     if (command.size() < 3)
         return false;
 
@@ -132,7 +131,7 @@ bool BUILD(const t_command_data& command) {
     return true;
 }
 
-bool WRITE(const t_command_data& command) {
+static bool WRITE(const t_command_data& command) {
     std::vector<std::string> flag_list = command.size() > 1 ? std::vector<std::string>(command.begin() + 1, command.end()) : std::vector<std::string>();
 
     std::cout << "write a code snippet:\n";
@@ -141,19 +140,7 @@ bool WRITE(const t_command_data& command) {
     return licanapi::build_code(line, flag_list);
 }
 
-bool STRESS(const t_command_data& command) {
-    std::cout << "Command temporarily disabled - Use -c and write.\n";
-
-    return false;
-    // if (command.size() != 2)
-    //     return false;
-
-    // std::string buffer(static_cast<size_t>(std::stoull(command[1])), '/');
-
-    // return licanapi::build_code(buffer, {"-c"});
-}
-
-bool FLAGS(const t_command_data& command) {
+static bool FLAGS(const t_command_data& command) {
     std::cout << "sorry guys, sorthands only:\n";
     std::cout << "dump-tokens           -t     Dumps the list of tokens generated during lexing.\n";
     std::cout << "dump-ast              -a     Dumps the AST generated during parsing.\n";
@@ -164,14 +151,14 @@ bool FLAGS(const t_command_data& command) {
     return true;
 }
 
-bool VERSION(const t_command_data& command) {
+static bool VERSION(const t_command_data& command) {
     std::cout << "lican v0.4.0-alpha\n";
     std::cout << "licancli v0.2.0-rc\n";
 
     return true;
 }
 
-bool process_command(const t_command_data& command) {
+static bool process_command(const t_command_data& command) {
     std::string cmd_name = command[0];
 
     if (cmd_name == "help")
@@ -180,8 +167,6 @@ bool process_command(const t_command_data& command) {
         return BUILD(command);
     if (cmd_name == "write")
         return WRITE(command);
-    if (cmd_name == "stress")
-        return STRESS(command);
     if (cmd_name == "flags")
         return FLAGS(command);
     if (cmd_name == "version")

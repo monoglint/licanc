@@ -51,20 +51,20 @@ Basic sets for the binary expression segment of the parser
 
 using t_token_set = std::unordered_set<core::token_type>;
 
-static const t_token_set binary_scope_resolution_set = {
+inline const t_token_set binary_scope_resolution_set = {
     core::token_type::DOUBLE_DOT,
 };
 
-static const t_token_set binary_member_access_set = {
+inline const t_token_set binary_member_access_set = {
     core::token_type::DOT,
 };
 
-static const t_token_set unary_post_set = {
+inline const t_token_set unary_post_set = {
     core::token_type::DOUBLE_PLUS,
     core::token_type::DOUBLE_MINUS
 };
 
-static const t_token_set unary_pre_set = {
+inline const t_token_set unary_pre_set = {
     core::token_type::MINUS, // negate
     core::token_type::BANG, // not
     core::token_type::DOUBLE_PLUS,
@@ -73,42 +73,42 @@ static const t_token_set unary_pre_set = {
     core::token_type::ASTERISK, // derference
 };
 
-static const t_token_set binary_exponential_set = {
+inline const t_token_set binary_exponential_set = {
     core::token_type::CARET,
 };
 
-static const t_token_set binary_multiplicative_set = {
+inline const t_token_set binary_multiplicative_set = {
     core::token_type::ASTERISK,
     core::token_type::SLASH,
     core::token_type::PERCENT,
 };
 
-static const t_token_set binary_additive_set = {
+inline const t_token_set binary_additive_set = {
     core::token_type::PLUS,
     core::token_type::MINUS,
 };
 
-static const t_token_set binary_numeric_comparison_set = {
+inline const t_token_set binary_numeric_comparison_set = {
     core::token_type::LARROW,
     core::token_type::LESS_EQUAL,
     core::token_type::RARROW,
     core::token_type::GREATER_EQUAL,
 };
 
-static const t_token_set binary_direct_comparison_set = {
+inline const t_token_set binary_direct_comparison_set = {
     core::token_type::DOUBLE_EQUAL,
     core::token_type::BANG_EQUAL,
 };
 
-static const t_token_set binary_and_set = {
+inline const t_token_set binary_and_set = {
     core::token_type::DOUBLE_AMPERSAND,
 };
 
-static const t_token_set binary_or_set = {
+inline const t_token_set binary_or_set = {
     core::token_type::DOUBLE_PIPE,
 };
 
-static const t_token_set binary_assignment_set = {
+inline const t_token_set binary_assignment_set = {
     core::token_type::EQUAL,
     core::token_type::PLUS_EQUAL,
     core::token_type::MINUS_EQUAL,
@@ -118,7 +118,7 @@ static const t_token_set binary_assignment_set = {
     core::token_type::CARET_EQUAL,
 };
 
-static const bool is_overridable_operator(const core::token_type type) {
+bool inline is_overridable_operator(const core::token_type type) {
     switch (type) {
         case core::token_type::DOUBLE_PLUS:
         case core::token_type::DOUBLE_MINUS:

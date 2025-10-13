@@ -19,11 +19,13 @@ Holds the declarations for all of the stages of the compiler.
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 
 #include "licanapi.hh"
 
 namespace core {
-    using t_file_id = int16_t;
+    using t_file_id = uint16_t;
+    using t_identifier_id = uint16_t;
 
     // Honestly just for some reading clarification. I don't want to use size_t where ever I go.
     using t_pos = size_t;
@@ -33,7 +35,6 @@ namespace core {
 
     struct liprocess;
 
-    // Displays information AS IS. Do not pivot to display to the user. All pivoting is handled implicitly.
     struct lisel {
         lisel(const t_file_id file_id, const t_pos start, const t_pos end)
              : file_id(file_id), start(start), end(end) {}
@@ -44,9 +45,9 @@ namespace core {
         lisel(const lisel& other0, const lisel& other1)
             : file_id(other0.file_id), start(other0.start), end(other1.end) {}
 
+        t_file_id file_id;
         t_pos start;
         t_pos end;
-        t_file_id file_id;
         
         inline lisel operator-(t_pos amount) const { return lisel(start - amount, end - amount); }
         inline lisel operator+(t_pos amount) const { return lisel(start + amount, end + amount); }
@@ -83,6 +84,34 @@ namespace core {
         std::string pretty_debug(const liprocess& process) const;
     };
 
+    struct identifier_lookup {
+        inline t_identifier_id insert(const std::string& str) {
+            if (reverse.find(str) != reverse.end())
+                return reverse.at(str);
+
+            const t_identifier_id new_id = forward.size();
+            
+            forward.push_back(str);
+            reverse.insert({str, new_id});
+
+            return new_id;
+        }
+
+        // UB warning
+        inline std::string get(const t_identifier_id id) const {
+            return forward[id];
+        }
+
+        // UB warning
+        inline t_identifier_id get_id(const std::string& identifier) {
+            return reverse[identifier];
+        }
+
+    private:
+        std::vector<std::string> forward;
+        std::unordered_map<std::string, t_identifier_id> reverse;
+    };
+
     struct liprocess {
         struct lifile {
             lifile(const std::string& path, const std::string& source_code)
@@ -95,7 +124,7 @@ namespace core {
 
             // Data dump - avoids additional header dependencies. Decast as needed
             std::any dump_token_list;                   // std::vector<token>
-            std::any dump_ast_arena;                     // ast::ast_arena
+            std::any dump_ast_arena;                    // ast::ast_arena
 
             // 0-indexed
             t_pos get_line_of_position(const t_pos position) const;
@@ -111,6 +140,8 @@ namespace core {
         
         std::vector<lilog> log_list;
         std::vector<lifile> file_list;
+
+        identifier_lookup identifier_lookup;
 
         bool add_file(const std::string& path);
 

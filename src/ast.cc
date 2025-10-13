@@ -15,11 +15,11 @@ bool core::ast::ast_arena::is_expression_wrappable(const t_node_id id) {
             return opr_type == ASSIGNMENT_TOKEN;
         }
         case node_type::EXPR_CALL:
-        case node_type::VARIANT_DECLARATION:
+        case node_type::EXPR_DECLARATION:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 /* 
@@ -31,7 +31,7 @@ Everything else is all monoglint B)
 */
 
 void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent) {
-    const arena_node& an = node_list[id];
+    const arena_node& an = list[id];
     const node* base = get_base_ptr(id);
 
     if (!base) {
@@ -212,11 +212,19 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
             break;
         }
 
-        case node_type::ITEM_BODY: {
-            const auto& v = std::get<item_body>(an._raw);
-            buffer += liutil::indent_repeat(indent) + "item_body\n";
+        case node_type::ITEM_COMPOUND: {
+            const auto& v = std::get<item_compound>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "item_compound\n";
             buffer += liutil::indent_repeat(indent+1) + "items:\n";
-            for (const t_node_id& s : v.item_list) pretty_debug(process, s, buffer, indent+2);
+            for (const t_node_id& s : v.list) pretty_debug(process, s, buffer, indent+2);
+            break;
+        }
+
+        case node_type::STMT_COMPOUND: {
+            const auto& v = std::get<stmt_compound>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "stmt_compound\n";
+            buffer += liutil::indent_repeat(indent+1) + "items:\n";
+            for (const t_node_id& s : v.list) pretty_debug(process, s, buffer, indent+2);
             break;
         }
 
@@ -246,15 +254,37 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
             break;
         }
 
-        case node_type::VARIANT_DECLARATION: {
-            const auto& v = std::get<variant_declaration>(an._raw);
-            buffer += liutil::indent_repeat(indent) + "variant_declaration\n";
+        case node_type::ITEM_DECLARATION: {
+            const auto& v = std::get<item_declaration>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "item_declaration\n";
             buffer += liutil::indent_repeat(indent+1) + "name:\n";
             pretty_debug(process, v.name, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "type:\n";
             pretty_debug(process, v.value_type, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "value:\n";
             pretty_debug(process, v.value, buffer, indent+2);
+            break;
+        }
+
+        case node_type::EXPR_DECLARATION: {
+            const auto& v = std::get<expr_declaration>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "expr_declaration\n";
+            buffer += liutil::indent_repeat(indent+1) + "name:\n";
+            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "type:\n";
+            pretty_debug(process, v.value_type, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "value:\n";
+            pretty_debug(process, v.value, buffer, indent+2);
+            break;
+        }
+
+        case node_type::ITEM_FUNCTION_DECLARATION: {
+            const auto& v = std::get<item_function_declaration>(an._raw);
+            buffer += liutil::indent_repeat(indent) + "item_function_declaration\n";
+            buffer += liutil::indent_repeat(indent+1) + "name:\n";
+            pretty_debug(process, v.name, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "function:\n";
+            pretty_debug(process, v.function, buffer, indent+2);
             break;
         }
 

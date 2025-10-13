@@ -17,6 +17,7 @@ Contains all of the AST node declarations. Used by the frontend and read by the 
 #include "util.hh"
 #include "core.hh"
 #include "token.hh"
+#include "arena.hh"
 
 namespace core {
     namespace ast {
@@ -43,13 +44,17 @@ namespace core {
             STMT_IF,
             STMT_WHILE,
             STMT_RETURN,
-            ITEM_BODY,
             STMT_BREAK,
             STMT_CONTINUE,
 
+            ITEM_COMPOUND,
+            STMT_COMPOUND,
+
             ITEM_USE,
             ITEM_MODULE,
-            VARIANT_DECLARATION,
+            ITEM_DECLARATION,
+            EXPR_DECLARATION,
+            ITEM_FUNCTION_DECLARATION,
             ITEM_TYPE_DECLARATION,
 
             EXPR_PROPERTY,
@@ -74,8 +79,8 @@ namespace core {
             node(const core::lisel& selection, const node_type type)
                 : selection(selection), type(type) {}
 
-            node_type type;
             core::lisel selection;
+            node_type type;
         };
 
         struct ast_root : node {
@@ -116,8 +121,13 @@ namespace core {
 
         // Get identifier contents by observing its selection in the source code.
         struct expr_identifier : node {
-            expr_identifier(const core::lisel& selection)
-                : node(selection, node_type::EXPR_IDENTIFIER) {}
+            expr_identifier(const core::lisel& selection, const t_identifier_id id)
+                : node(selection, node_type::EXPR_IDENTIFIER), id(id) {}
+
+            expr_identifier(const core::lisel& selection, liprocess& process)
+                : node(selection, node_type::EXPR_IDENTIFIER), id(process.identifier_lookup.insert(process.sub_source_code(selection))) {}
+                
+            t_identifier_id id;
         };
 
         struct expr_literal : node {
@@ -225,14 +235,19 @@ namespace core {
             
             t_node_id expression;
         };
+        
+        struct item_compound : node {
+            item_compound(const core::lisel& selection, t_node_list&& list)
+                : node(selection, node_type::ITEM_COMPOUND), list(std::move(list)) {}
 
-        // quirk - holds statements and items depending on context.
-        // based on parser design, if it holds an item, then the rest of the nodes will be items too
-        struct item_body : node {
-            item_body(const core::lisel& selection, t_node_list&& item_list)
-                : node(selection, node_type::ITEM_BODY), item_list(std::move(item_list)) {}
+            t_node_list list;
+        };
 
-            t_node_list item_list;
+        struct stmt_compound : node {
+            stmt_compound(const core::lisel& selection, t_node_list&& list)
+                : node(selection, node_type::STMT_COMPOUND), list(std::move(list)) {}
+
+            t_node_list list;
         };
 
         struct stmt_break : node {
@@ -257,17 +272,35 @@ namespace core {
             item_module(const core::lisel& selection, t_node_id name, t_node_id content)
                 : node(selection, node_type::ITEM_MODULE), name(name), content(content) {}
 
-            t_node_id name;
-            t_node_id content;
+            t_node_id name; // identifier
+            t_node_id content; // single or compound item
         };
 
-        struct variant_declaration : node {
-            variant_declaration(const core::lisel& selection, t_node_id name, t_node_id value, t_node_id value_type)
-                : node(selection, node_type::VARIANT_DECLARATION), name(name), value(value), value_type(value_type) {}
+        // Can be wrapped into a statement.
+        struct expr_declaration : node {
+            expr_declaration(const core::lisel& selection, t_node_id name, t_node_id value_type, t_node_id value)
+                : node(selection, node_type::EXPR_DECLARATION), name(name), value_type(value_type), value(value) {}
             
             t_node_id name;
-            t_node_id value;
             t_node_id value_type;
+            t_node_id value;
+        };
+
+        struct item_declaration : node {
+            item_declaration(const core::lisel& selection, t_node_id name, t_node_id value_type, t_node_id value)
+                : node(selection, node_type::ITEM_DECLARATION), name(name), value_type(value_type), value(value) {}
+            
+            t_node_id name;
+            t_node_id value_type;
+            t_node_id value;
+        };
+
+        struct item_function_declaration : node {
+            item_function_declaration(const core::lisel& selection, t_node_id name, t_node_id function)
+                : node(selection, node_type::ITEM_FUNCTION_DECLARATION), name(name), function(function) {}
+
+            t_node_id name;
+            t_node_id function; // expr_function 
         };
 
         struct item_type_declaration : node {
@@ -391,13 +424,16 @@ namespace core {
                 stmt_if,
                 stmt_while,
                 stmt_return,
-                item_body,
+                item_compound,
+                stmt_compound,
                 stmt_break,
                 stmt_continue,
 
                 item_use,
                 item_module,
-                variant_declaration,
+                item_declaration,
+                expr_declaration,
+                item_function_declaration,
                 item_type_declaration,
 
                 expr_property,
@@ -414,56 +450,7 @@ namespace core {
             > _raw;
         };
 
-        struct ast_arena {
-            // !!EXPECTED BEHAVIOR!! - 0th index is the root!!
-            std::vector<arena_node> node_list = {};
-
-            template <typename T>
-            inline t_node_id insert(T&& node) {
-                node_list.push_back(std::forward<T>(node));
-                return node_list.size() - 1;
-            }
-
-            template <typename T>
-            // Insert a node into the arena and get its type.
-            inline T& static_insert(T&& node) {
-                node_list.push_back(std::forward<T>(node));
-                return std::get<T>(node_list.back()._raw);
-            }
-
-            
-            template <typename T>
-            inline T& get(const t_node_id id) {
-                return std::get<T>(node_list[id]._raw);
-            }
-
-            template <typename T>
-            inline const T& get(const t_node_id id) const {
-                return std::get<T>(node_list[id]._raw);
-            }
-
-
-            // Not safe for long-term pointer usage. Only use for direct modification and disposal of the given pointer.
-            inline node* get_base_ptr(const t_node_id id) {
-                return std::visit([](auto& n) { return (node*)(&n); }, node_list[id]._raw);
-            }
-
-            // Not safe for long-term pointer usage. Only use for direct access and disposal of the given pointer.
-            inline const node* get_base_ptr(const t_node_id id) const {
-                return std::visit([](auto& n) { return (const node*)(&n); }, node_list[id]._raw);
-            }
-
-            
-            template <typename T>
-            inline T& get_as(const t_node_id id) {
-                return std::get<T>(node_list[id]._raw);
-            }
-
-            template <typename T>
-            inline const T& get_as(const t_node_id id) const {
-                return std::get<T>(node_list[id]._raw);
-            }
-
+        struct ast_arena : liutil::arena<t_node_id, node, arena_node> {
             void pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent = 0);
             bool is_expression_wrappable(const t_node_id id);
         };

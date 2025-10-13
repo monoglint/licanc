@@ -12,9 +12,9 @@ static inline bool contains_flag(const std::vector<std::string>& flags, const st
 }
 
 licanapi::liconfig::liconfig(const liconfig_init init) : 
-    project_path(init.project_path), 
-    entry_point_path(init.project_path + (init.project_path.length() > 0 ? "/" : "") + init.entry_point_subpath),
+    project_path(init.project_path),
     output_path(init.output_path),
+    entry_point_path(init.project_path + (init.project_path.length() > 0 ? "/" : "") + init.entry_point_subpath),
     _dump_token_list(contains_flag(init.flag_list, "-t")),
     _dump_ast(contains_flag(init.flag_list, "-a")),
     _dump_logs(contains_flag(init.flag_list, "-l")),
@@ -32,9 +32,11 @@ std::pair<bool, std::chrono::milliseconds> measure_func(bool (*func)(core::lipro
 }
 
 bool run(core::liprocess& process) {
+    std::cout << "initializing licanc\n";
     if (!core::frontend::init(process))
         return false;
 
+    std::cout << "running frontend\n";
     // file_id 0 references the entry point file
     if (!core::frontend::lex(process, 0))
         return false;
@@ -42,6 +44,7 @@ bool run(core::liprocess& process) {
     if (!core::frontend::parse(process, 0))
         return false;
 
+    std::cout << "running backend\n";
     if (!core::frontend::semantic_analyze(process, 0))
         return false;
 
