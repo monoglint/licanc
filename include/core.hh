@@ -98,7 +98,7 @@ namespace core {
         }
 
         // UB warning
-        inline std::string get(const t_identifier_id id) const {
+        inline const std::string& get(const t_identifier_id id) const {
             return forward[id];
         }
 

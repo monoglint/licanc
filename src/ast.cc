@@ -268,8 +268,8 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
         case node_type::STMT_DECLARATION: {
             const auto& v = std::get<stmt_declaration>(an._raw);
             buffer += liutil::indent_repeat(indent) + "stmt_declaration\n";
-            buffer += liutil::indent_repeat(indent+1) + "source:\n";
-            pretty_debug(process, v.source, buffer, indent+2);
+            buffer += liutil::indent_repeat(indent+1) + "name:\n";
+            pretty_debug(process, v.name, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "type:\n";
             pretty_debug(process, v.value_type, buffer, indent+2);
             buffer += liutil::indent_repeat(indent+1) + "value:\n";

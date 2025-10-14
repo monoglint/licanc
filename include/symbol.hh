@@ -14,11 +14,13 @@ namespace core {
 
             INFO_TEMPLATE_INSERTION,
 
+            INVALID,
+
             DECL_PRIMITIVE, // TYPE
             DECL_VARIABLE,
             DECL_FUNCTION,
             DECL_STRUCT, // TYPE
-            DECL_ENUM,
+            DECL_ENUM, // TYPE
             DECL_MODULE,
             DECL_TYPEDEC,
         };
@@ -32,6 +34,12 @@ namespace core {
 
             virtual ~symbol() = default;
             symbol_type type;
+        };
+
+        // Example use would be the result of failing to resolve a symbol. "Variable 'a' has not been declared in the current socpe." 
+        struct sym_invalid : symbol {
+            sym_invalid()
+                : symbol(symbol_type::INVALID) {}
         };
 
         struct decl_primitive : symbol {
@@ -49,6 +57,7 @@ namespace core {
             ast::t_node_id value_type; // expr_type
         };
 
+        // This needs to support overloading!!!
         struct decl_function : symbol {
             inline ast::t_node_list _make_parameter_type_list(const ast::ast_arena& arena, const ast::t_node_list& parameter_list) {
                 ast::t_node_list _paramter_type_list = {};
@@ -62,22 +71,27 @@ namespace core {
 
             // parameter_type_list isn't natively part of expr_function, so it will be generated during semantic analysis.
             // therefore, we can make it an rvalue reference to be moved in
-            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, ast::t_node_list template_list)
-                : symbol(symbol_type::DECL_FUNCTION), return_type(return_type), parameter_type_list(std::move(parameter_type_list)), template_parameter_list(template_list) {}
+            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, ast::t_node_list template_parameter_list)
+                : symbol(symbol_type::DECL_FUNCTION), return_type(return_type), parameter_type_list(std::move(parameter_type_list)), template_parameter_list(template_parameter_list) {}
 
             decl_function(const ast::ast_arena& arena, const ast::expr_function& function)
-                : decl_function(function.return_type, _make_parameter_type_list(arena, function.parameter_list), template_parameter_list) {}
+                : decl_function(function.return_type, _make_parameter_type_list(arena, function.parameter_list), function.template_parameter_list) {}
 
             ast::t_node_id return_type; // expr_type
             ast::t_node_list parameter_type_list; // expr_type
-            ast::t_node_list &template_parameter_list; // expr_identifier
+            ast::t_node_list& template_parameter_list; // expr_identifier
         };
 
         struct decl_module : symbol { 
             decl_module()
                 : symbol(symbol_type::DECL_MODULE) {}
 
-            std::unordered_map<t_identifier_id, t_symbol_id> declarations;
+            std::unordered_map<t_identifier_id, t_symbol_id> declaration_map; // decl
+
+            // Quick lookup
+            inline bool has_item(const t_identifier_id identifier) const {
+                return declaration_map.find(identifier) != declaration_map.end();
+            }
         };
 
         struct sym_root : symbol {
@@ -87,15 +101,23 @@ namespace core {
             t_symbol_id global_module;
         };
 
+        struct sym_call_frame {
+            // Remember; functions, enums, and structs are not meant to be declared on the local level ever.
+            std::unordered_map<t_identifier_id, decl_variable> local_map; 
+        };
+
         struct arena_symbol {
             template <typename T>
             arena_symbol(T&& node)
                 : _raw(std::forward<T>(node)) {}
 
             std::variant <
-                decl_function,
+                sym_invalid,
+                decl_primitive,
                 decl_variable,
+                decl_function,
                 decl_module,
+
                 sym_root
             > _raw;
         };

@@ -127,6 +127,10 @@ namespace core {
                 : node(selection, node_type::EXPR_IDENTIFIER), id(process.identifier_lookup.insert(process.sub_source_code(selection))) {}
                 
             t_identifier_id id;
+
+            inline const std::string read(liprocess& process) const {
+                return process.identifier_lookup.get(id);
+            }
         };
 
         struct expr_literal : node {
@@ -153,6 +157,17 @@ namespace core {
             core::token opr;
             bool post;
         };
+
+        /*
+        
+        Important syntactic checks that should be implemented sooner or later (preferrably sooner)
+            - SCOPE RESOLUTION NODES CAN ONLY HAVE IDENTIFIERS. NOT EVEN PARANETHESIZED EXPRESSIONS
+            - MEMBER ACCESS RHS MEMBERS SHOULD ONLY BE IDENTIFIERS. PARENTHESIZED EXPRESSIONS SHOULD BE ALLOWED
+            - yada dada do, you get the point future me
+
+            13 oct 2025
+        
+        */
 
         struct expr_binary : node {
             expr_binary(const core::lisel& selection, t_node_id first, t_node_id second, const core::token& opr)
@@ -276,10 +291,10 @@ namespace core {
 
         // Can be wrapped into a statement.
         struct stmt_declaration : node {
-            stmt_declaration(const core::lisel& selection, t_node_id source, t_node_id value_type, t_node_id value)
-                : node(selection, node_type::STMT_DECLARATION), source(source), value_type(value_type), value(value) {}
+            stmt_declaration(const core::lisel& selection, t_node_id name, t_node_id value_type, t_node_id value)
+                : node(selection, node_type::STMT_DECLARATION), name(name), value_type(value_type), value(value) {}
             
-            t_node_id source; // expr_identifier | expr_binary (scope_resolution)
+            t_node_id name; // expr_identifier
             t_node_id value_type; // expr_type?
             t_node_id value; // expr
         };
