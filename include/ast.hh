@@ -128,7 +128,7 @@ namespace core {
                 
             t_identifier_id id;
 
-            inline const std::string read(liprocess& process) const {
+            inline const std::string read(const liprocess& process) const {
                 return process.identifier_lookup.get(id);
             }
         };
@@ -147,6 +147,15 @@ namespace core {
                 : node(selection, node_type::EXPR_LITERAL), literal_type(literal_type) {}
 
             e_literal_type literal_type;
+
+            inline const std::string read(const liprocess& process) const {
+                switch (literal_type) {
+                    case e_literal_type::STRING:
+                        return process.sub_source_code(selection, 1);
+                    default:
+                        return process.sub_source_code(selection);
+                }
+            }
         };
 
         struct expr_unary : node {

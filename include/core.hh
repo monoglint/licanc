@@ -49,8 +49,8 @@ namespace core {
         t_pos start;
         t_pos end;
         
-        inline lisel operator-(t_pos amount) const { return lisel(start - amount, end - amount); }
-        inline lisel operator+(t_pos amount) const { return lisel(start + amount, end + amount); }
+        inline lisel operator-(t_pos amount) const { return lisel(file_id, start - amount, end - amount); }
+        inline lisel operator+(t_pos amount) const { return lisel(file_id, start + amount, end + amount); }
 
         inline lisel& operator++() {
             start++;
@@ -103,8 +103,8 @@ namespace core {
         }
 
         // UB warning
-        inline t_identifier_id get_id(const std::string& identifier) {
-            return reverse[identifier];
+        inline t_identifier_id get_id(const std::string& identifier) const {
+            return reverse.find(identifier)->second;
         }
 
     private:
@@ -149,8 +149,8 @@ namespace core {
             log_list.emplace_back(level, selection, message);
         }
 
-        inline std::string sub_source_code(const lisel& selection) const {
-            return file_list[selection.file_id].source_code.substr(selection.start, selection.end - selection.start + 1);
+        inline std::string sub_source_code(const lisel& selection, const uint16_t padding = 0) const {
+            return file_list[selection.file_id].source_code.substr((selection.start + padding), (selection.end - selection.start + 1) - padding * 2);
         }
     };
 

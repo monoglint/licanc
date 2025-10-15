@@ -12,17 +12,19 @@ namespace core {
         enum class symbol_type : uint8_t {
             ROOT,
 
-            INFO_TEMPLATE_INSERTION,
+            INFO_FUNCTION_SPECIFICATION,
+            INFO_STRUCT_SPECIFICATION,
+            INFO_TYPEDEC_SPECIFICATION,
 
             INVALID,
 
             DECL_PRIMITIVE, // TYPE
             DECL_VARIABLE,
-            DECL_FUNCTION,
-            DECL_STRUCT, // TYPE
+            DECL_FUNCTION, // TEMPLATABLE
+            DECL_STRUCT, // TYPE - TEMPLATABLE
             DECL_ENUM, // TYPE
             DECL_MODULE,
-            DECL_TYPEDEC,
+            DECL_TYPEDEC, // TEMPLATABLE
         };
 
         using t_symbol_id = size_t;
@@ -57,21 +59,26 @@ namespace core {
             ast::t_node_id value_type; // expr_type
         };
 
-        // This needs to support overloading!!!
+        struct info_function_specification : symbol {
+            t_symbol_id return_type; // any type decl symbol
+            t_symbol_list parameter_type_list; // any type decl symbol
+            t_symbol_id declaration; // decl_function
+        };
+
         struct decl_function : symbol {
             inline ast::t_node_list _make_parameter_type_list(const ast::ast_arena& arena, const ast::t_node_list& parameter_list) {
-                ast::t_node_list _paramter_type_list = {};
+                ast::t_node_list _parameter_type_list = {};
 
                 for (ast::t_node_id param_id : parameter_list) {
-                    _paramter_type_list.push_back(arena.get_as<ast::expr_parameter>(param_id).value_type);
+                    _parameter_type_list.push_back(arena.get_as<ast::expr_parameter>(param_id).value_type);
                 }
 
-                return _paramter_type_list;
+                return _parameter_type_list;
             }
 
             // parameter_type_list isn't natively part of expr_function, so it will be generated during semantic analysis.
             // therefore, we can make it an rvalue reference to be moved in
-            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, ast::t_node_list template_parameter_list)
+            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, const ast::t_node_list& template_parameter_list)
                 : symbol(symbol_type::DECL_FUNCTION), return_type(return_type), parameter_type_list(std::move(parameter_type_list)), template_parameter_list(template_parameter_list) {}
 
             decl_function(const ast::ast_arena& arena, const ast::expr_function& function)
@@ -79,8 +86,18 @@ namespace core {
 
             ast::t_node_id return_type; // expr_type
             ast::t_node_list parameter_type_list; // expr_type
-            ast::t_node_list& template_parameter_list; // expr_identifier
+            ast::t_node_list template_parameter_list; // expr_identifier
+            
+            // | Nothing appended to these during instantiation. | \\
+            // V                                                 V \\
+
+            t_node_list overloads;
+
+            std::unordered_map<std::vector<t_symbol_id>, t_symbol_id> specification_map; // vector<any type node>, info_function_specification 
         };
+
+        struct info_struct_specification {};
+        struct decl_struct {};
 
         struct decl_module : symbol { 
             decl_module()
@@ -103,7 +120,7 @@ namespace core {
 
         struct sym_call_frame {
             // Remember; functions, enums, and structs are not meant to be declared on the local level ever.
-            std::unordered_map<t_identifier_id, decl_variable> local_map; 
+            std::unordered_map<t_identifier_id, t_symbol_id> local_map; // decl_variable 
         };
 
         struct arena_symbol {
@@ -115,7 +132,6 @@ namespace core {
                 sym_invalid,
                 decl_primitive,
                 decl_variable,
-                decl_function,
                 decl_module,
 
                 sym_root
@@ -127,3 +143,9 @@ namespace core {
         };
     }
 }
+
+/* UNFINISHED - PROOF-OF-CONCEPT PROTOTYPE
+
+
+    
+*/

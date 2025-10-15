@@ -34,11 +34,27 @@ struct semantic_state {
         // The current module that all newly generated items should be appended to.
         t_symbol_id focused_module_id;
 
-        // If true, any template specifications will be not considered. Any call expressions will not push a new scope. No declarations will be processed.
-        bool function_prescan_mode = false;
+        // Below properties will point to any fillable type arguments for resolving T.
 
-        // The active function that is being parsed. Is valid to all statement parsing functions.
-        expr_function* active_function;
+        /* e.g.
+            dec add<T>(a: T, b: T): T
+                return a + b
+        
+            When prescanning add, both contexts will be empty. When calling add<int>,
+            struct_context will remain empty, and function_context is set to the
+            <int> specification of add, which holds the resolved return and parameter types.
+
+            If a variable (typed T) is declared in add as a local variable, eval_expr_type will
+            use the contexts below to determine how T should be deduced.
+        
+        */
+
+        info_function_specification* function_context;
+        info_struct_specification* struct_context;
+
+        inline bool is_specification_context_open() const {
+            return function_context != nullptr || struct_context != nullptr;
+        }
 
         // If all runs of the analyzer are successful - No errors thrown.
         bool semantic_success = true;
@@ -82,7 +98,7 @@ struct semantic_subthread {
 
 */
 
-static void eval_expr(semantic_state& state, const t_node_id node_id);
+static t_symbol_id eval_expr(semantic_state& state, const t_node_id node_id);
 static void eval_stmt(semantic_state& state, const t_node_id node_id);
 static void eval_item(semantic_state& state, const core::ast::t_node_id node_id);
 
@@ -98,10 +114,9 @@ Helper Functions
 */
 
 // - type checker literally disabled lmao
-// NOTE: This function will need to specify types if they possess type parameters. Beware!
 // Call asert_types_match() if you're only running to throw an error.
 static bool types_match(semantic_state& state, const t_symbol_id type0, const t_symbol_id type1) {
-    return true;
+    return type0 == type1;
 }
 
 // Potentially add casting later? Not necessary.
@@ -116,7 +131,7 @@ static bool assert_types_match(semantic_state& state, const core::lisel& error_s
 }
 
 // Ensure that resolution_node's operator is correct.
-static t_symbol_id _search_symbol_internal(semantic_state& state, const decl_module& current_module, const t_node_id resolution_node_id) {
+static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_module& current_module, const t_node_id resolution_node_id) {
     const node* current_node = state.get_node_base_ptr(resolution_node_id);
     
     /*
@@ -159,11 +174,11 @@ static t_symbol_id _search_symbol_internal(semantic_state& state, const decl_mod
     // Resolve LHS
         // If this condition is true, we're on the very very bottom left of the diagram.
         if (state.get_node_base_ptr(expr_binary_current_node.first)->type == node_type::EXPR_IDENTIFIER)
-            focused_module = &state.get_symbol<decl_module>(_search_symbol_internal(state, current_module, expr_binary_current_node.first));
+            focused_module = &state.get_symbol<decl_module>(_search_symbol_hierarchy(state, current_module, expr_binary_current_node.first));
 
         // Otherwise, the parse has syntactically guaranteed that the left side will be another binary expression.
         else {
-            const t_symbol_id resolved_lhs = _search_symbol_internal(state, current_module, expr_binary_current_node.first);
+            const t_symbol_id resolved_lhs = _search_symbol_hierarchy(state, current_module, expr_binary_current_node.first);
             
             if (state.arena.get_base_ptr(resolved_lhs)->type != symbol_type::DECL_MODULE) {
                 state.add_log(core::lilog::log_level::ERROR, current_node->selection, "Attempted to search inside a symbol that was not a module.");
@@ -185,10 +200,43 @@ static t_symbol_id _search_symbol_internal(semantic_state& state, const decl_mod
     return focused_module->declaration_map.at(rhs_identifier_node.id);
 }
 
-static t_symbol_id search_symbol(semantic_state& state, const t_node_id resolution_node_id) {
-    return _search_symbol_internal(state, state.get_symbol<decl_module>(state.focused_module_id), resolution_node_id);
+static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const core::t_identifier_id symbol_name) {
+    // Temporary check
+    if (state.function_context == nullptr)
+        return state.arena.insert(sym_invalid());
 }
 
+static t_symbol_id search_symbol(semantic_state& state, const t_node_id resolution_node_id) {
+    /*
+    
+    First check if we are in a specified context. This is important, because if is_specification_context_open() returns true,
+    then the resolution node could be the T in
+
+    dec x: T = 5
+
+    or
+
+    struct.x = 5 ; x has T type
+    
+    */
+
+    if (state.is_specification_context_open() && state.get_node_base_ptr(resolution_node_id)->type == node_type::EXPR_IDENTIFIER) {
+        return _search_specified_template_argument_symbol(state, state.get_node<expr_identifier>(resolution_node_id).id);
+    }
+
+    return _search_symbol_hierarchy(state, state.get_symbol<decl_module>(state.focused_module_id), resolution_node_id);
+}
+
+enum class context_type : uint8_t {
+    NONE,
+    STRUCT,
+    FUNCTION,
+};
+
+// For type specification. If context is none, types that use templates should not be deduced. Otherwise, they should be filled in with their specification counterparts.
+static void get_context(semantic_state& state) {
+
+}
 
 // Ensure that resolution_node's operator is correct
 static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(semantic_state& state, const t_node_id resolution_node) {
@@ -198,8 +246,7 @@ static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(s
     UNREACHABLE();
 }
 
-// Locate a type in the symbol table.
-static t_symbol_id eval_type(semantic_state& state, const t_node_id resolution_node_id) {
+static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id resolution_node_id) {
     const t_symbol_id found_symbol_id = search_symbol(state, resolution_node_id);
     const symbol* symbol_base_ptr = state.arena.get_base_ptr(found_symbol_id);
     
@@ -210,45 +257,16 @@ static t_symbol_id eval_type(semantic_state& state, const t_node_id resolution_n
 
         // search_symbol already casted its log if an error was made, so we'll include the invalid symbol type as a fallthrough condition.
         case symbol_type::INVALID:
-            return found_symbol_id;
+            break;
         default:
             state.add_log(core::lilog::log_level::ERROR, state.get_node_base_ptr(resolution_node_id)->selection, "Invalid symbol - not a type.");
             return state.arena.insert(sym_invalid());
     }
-}
 
-// If a variable has no explicit type, see if its value can be deduced.
-// Same can go with parameters and other expressions.
-// NOTE: This function does not type check the literal.
-// -> decl_struct | decl_enum | primitive
-static t_symbol_id deduce_expression_type(semantic_state& state, const t_node_id expr_node_id) {
-    const node* node_base_ptr = state.get_node_base_ptr(expr_node_id);
 
-    switch (node_base_ptr->type) {
-        // Top level variables
-        case node_type::EXPR_IDENTIFIER:
-    
-        // Track down function path and check return value
-        case node_type::EXPR_CALL:
 
-        // Member access or scope resolution
-        case node_type::EXPR_BINARY:
-
-        case node_type::EXPR_LITERAL:
-
-        case node_type::EXPR_TERNARY: {
-            return 0; // start later
-        }
-        case node_type::EXPR_UNARY: {
-            const t_node_id operand_id = ((expr_unary*)node_base_ptr)->operand;
-            return deduce_expression_type(state, operand_id);
-        }
-        default:
-            break;
-        
-    }
-
-    UNREACHABLE();
+    // TODO: Add type specifier stuff.
+    return found_symbol_id;
 }
 
 // Covers all declarations. Appends basically any symbol into the currently active namespaces.
@@ -282,6 +300,22 @@ Tree walker functions
 
 */
 
+// Remember - operator overloads are prevalent here!
+static t_symbol_id eval_expr_unary(semantic_state& state, const expr_unary& focus_node) {
+    return eval_expr(state, focus_node.operand);
+}
+
+static t_symbol_id eval_expr_binary(semantic_state& state, const expr_binary& focus_node) {
+    const t_node_id first_id = eval_expr(state, focus_node.first);
+    const t_node_id second_id = eval_expr(state, focus_node.second);
+
+    if (!assert_types_match(state, focus_node.selection, first_id, second_id)) {
+        return state.arena.insert(sym_invalid());
+    }
+
+    return first_id;
+}
+
 // Local variable declaration
 static void eval_stmt_declaration(semantic_state& state, const stmt_declaration& focus_node) {
 
@@ -295,7 +329,13 @@ static void eval_item_declaration(semantic_state& state, const item_declaration&
         state.arena.insert(decl_variable(focus_node.value_type))
     );
 
-    eval_expr(state, focus_node.value);
+    const t_symbol_id deduced_value_type = eval_expr(state, focus_node.value);
+
+    if (state.get_node_base_ptr(focus_node.value_type)->type == node_type::EXPR_NONE)
+        return;
+
+    const t_symbol_id value_type_symbol = eval_expr_type(state, focus_node.value_type);
+    assert_types_match(state, focus_node.selection, deduced_value_type, value_type_symbol);
 }
 
 static void eval_item_function_declaration(semantic_state& state, const item_function_declaration& focus_node) {
@@ -320,22 +360,19 @@ static void eval_item_function_declaration(semantic_state& state, const item_fun
         const bool has_default_value = default_value_base_node_ptr->type != node_type::EXPR_NONE;
 
         if (!has_value_type) {
-            type_symbol = deduce_expression_type(state, parameter_node.default_value);
+            type_symbol = eval_expr(state, parameter_node.default_value);
         }
 
         if (has_default_value) {
-            const t_symbol_id default_value_type_deduction = deduce_expression_type(state, parameter_node.default_value);
+            const t_symbol_id default_value_type_deduction = eval_expr(state, parameter_node.default_value);
 
-            if (!assert_types_match(state, parameter_node.selection, eval_type(state, parameter_node.value_type), default_value_type_deduction))
+            if (!assert_types_match(state, parameter_node.selection, eval_expr_type(state, parameter_node.value_type), default_value_type_deduction))
                 continue;
         }
             
     }
 
-    // Run the body.
-    state.function_prescan_mode = true;
-    state.active_function = const_cast<expr_function*>(&func_node);
-
+    // Prescan the body. Contexts should be null at this point.
     eval_stmt(state, func_node.body);
 }
 
@@ -348,13 +385,21 @@ static void eval_item_module(semantic_state& state, const item_module& focus_nod
     state.focused_module_id = parent_module_id;
 }
 
-static void eval_expr(semantic_state& state, const t_node_id node_id) {
-    const core::ast::node* base_ptr = state.get_node_base_ptr(node_id); 
+static void eval_item_use(semantic_state& state, const item_use& focus_node) {
+    state.process.add_file(state.get_node<expr_literal>(focus_node.path).read(state.process));
+}
 
-    switch (base_ptr->type) {
+static t_symbol_id eval_expr(semantic_state& state, const t_node_id node_id) {
+    const core::ast::node* node_base_ptr = state.get_node_base_ptr(node_id); 
+
+    switch (node_base_ptr->type) {
+        case node_type::EXPR_UNARY:
+            return eval_expr_unary(state, *(expr_unary*)node_base_ptr);
         default:
             break;
     }
+
+    UNREACHABLE();
 }
 
 static void eval_stmt(semantic_state& state, const t_node_id node_id) {
@@ -381,6 +426,9 @@ static void eval_item(semantic_state& state, const core::ast::t_node_id node_id)
             break;
         case core::ast::node_type::ITEM_FUNCTION_DECLARATION:
             eval_item_function_declaration(state, *(core::ast::item_function_declaration*)node_base_ptr);
+            break;
+        case core::ast::node_type::ITEM_USE:
+            eval_item_use(state, *(core::ast::item_use*)node_base_ptr);
             break;
         default:
             break;
