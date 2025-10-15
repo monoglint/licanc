@@ -131,6 +131,16 @@ namespace core {
             inline const std::string read(const liprocess& process) const {
                 return process.identifier_lookup.get(id);
             }
+
+            // Not really used explicitly, just for clarity.
+            inline bool operator==(const expr_identifier& other) const {
+                return id == other.id;
+            }
+
+            // Used by semantic analyzer to check if an identifier lies in template parameters. (_search_specified_template_argument_symbol())
+            inline bool operator==(const t_identifier_id& other) const {
+                return id == other;
+            }
         };
 
         struct expr_literal : node {

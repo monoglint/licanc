@@ -61,7 +61,7 @@ namespace core {
 
         struct info_function_specification : symbol {
             t_symbol_id return_type; // any type decl symbol
-            t_symbol_list parameter_type_list; // any type decl symbol
+            t_symbol_list type_argument_list; // any type decl symbol
             t_symbol_id declaration; // decl_function
         };
 

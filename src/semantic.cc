@@ -1,4 +1,5 @@
 #include <string>
+#include <algorithm>
 
 #include "core.hh"
 #include "ast.hh"
@@ -200,10 +201,19 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
     return focused_module->declaration_map.at(rhs_identifier_node.id);
 }
 
-static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const core::t_identifier_id symbol_name) {
+// This is more of a proof-of-concept function. Rewriting is necessary once structs are implemented.
+static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const expr_identifier& param_name) {
     // Temporary check
     if (state.function_context == nullptr)
         return state.arena.insert(sym_invalid());
+
+    auto& function_declaration = state.get_symbol<decl_function>(state.function_context->declaration);
+
+    if (std::find(function_declaration.template_parameter_list.begin(), function_declaration.template_parameter_list.end(), param_name) == function_declaration.template_parameter_list.end())
+        // We did not find a successful template parameter.
+        return state.arena.insert(sym_invalid());
+
+    return state.function_context->type_argument_list.at()
 }
 
 static t_symbol_id search_symbol(semantic_state& state, const t_node_id resolution_node_id) {
