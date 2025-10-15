@@ -13,6 +13,8 @@ Minor functions are are used in different locations of the compiler.
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
+#include <functional>
+#include <vector>
 
 #if defined(__GNUC__) || defined(__clang__)
     #define UNREACHABLE() __builtin_unreachable()
@@ -57,4 +59,16 @@ namespace liutil {
 
         return false;
     }
+
+    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+    template <typename T>
+    struct vector_hasher {
+        static size_t operator()(const std::vector<T>& vec) {
+            size_t seed = vec.size();
+            
+            for (const T& i : vec) {
+                seed ^= std::hash<T>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            }
+        }
+    };
 }

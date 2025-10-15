@@ -6,6 +6,7 @@
 
 #include "core.hh"
 #include "arena.hh"
+#include "util.hh"
 
 namespace core {
     namespace sym {
@@ -88,12 +89,12 @@ namespace core {
             ast::t_node_list parameter_type_list; // expr_type
             ast::t_node_list template_parameter_list; // expr_identifier
             
-            // | Nothing appended to these during instantiation. | \\
-            // V                                                 V \\
+            // | Nothing appended to these during instantiation. |
+            // V                                                 V
 
-            t_node_list overloads;
+            t_symbol_list overloads;
 
-            std::unordered_map<std::vector<t_symbol_id>, t_symbol_id> specification_map; // vector<any type node>, info_function_specification 
+            std::unordered_map<t_symbol_list, t_symbol_id, liutil::vector_hasher<t_symbol_id>> specification_map; // vector<any type node>, info_function_specification 
         };
 
         struct info_struct_specification {};

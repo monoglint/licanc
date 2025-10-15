@@ -50,11 +50,11 @@ struct semantic_state {
         
         */
 
-        info_function_specification* function_context;
-        info_struct_specification* struct_context;
+        info_function_specification* function_specification;
+        info_struct_specification* struct_specification;
 
-        inline bool is_specification_context_open() const {
-            return function_context != nullptr || struct_context != nullptr;
+        inline bool is_specification_open() const {
+            return function_specification != nullptr || struct_specification != nullptr;
         }
 
         // If all runs of the analyzer are successful - No errors thrown.
@@ -201,25 +201,30 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
     return focused_module->declaration_map.at(rhs_identifier_node.id);
 }
 
-// This is more of a proof-of-concept function. Rewriting is necessary once structs are implemented.
-static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const expr_identifier& param_name) {
-    // Temporary check
-    if (state.function_context == nullptr)
+// This function runs under the assumption that there is at least one specification open. Therefore, it can return invalids.
+// Under the case that it does, search_symbol() will just default to trying to find a symbol from the module hierarchy.
+// This function must be updated for struct and typedec support.
+static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const core::t_identifier_id param_name) {
+    if (state.function_specification == nullptr)
         return state.arena.insert(sym_invalid());
 
-    auto& function_declaration = state.get_symbol<decl_function>(state.function_context->declaration);
+    auto& function_declaration = state.get_symbol<decl_function>(state.function_specification->declaration);
 
-    if (std::find(function_declaration.template_parameter_list.begin(), function_declaration.template_parameter_list.end(), param_name) == function_declaration.template_parameter_list.end())
+    // expr_identifier can equate to t_identifier_ids. 
+    const auto iterator = std::find(function_declaration.template_parameter_list.begin(), function_declaration.template_parameter_list.end(), param_name); 
+    if (iterator == function_declaration.template_parameter_list.end()) {}
         // We did not find a successful template parameter.
         return state.arena.insert(sym_invalid());
 
-    return state.function_context->type_argument_list.at()
+    const size_t index = iterator - function_declaration.template_parameter_list.begin();
+
+    return state.function_specification->type_argument_list.at(index);
 }
 
 static t_symbol_id search_symbol(semantic_state& state, const t_node_id resolution_node_id) {
     /*
     
-    First check if we are in a specified context. This is important, because if is_specification_context_open() returns true,
+    First check if we are in a specification. This is important, because if is_specification_open() returns true,
     then the resolution node could be the T in
 
     dec x: T = 5
@@ -230,25 +235,17 @@ static t_symbol_id search_symbol(semantic_state& state, const t_node_id resoluti
     
     */
 
-    if (state.is_specification_context_open() && state.get_node_base_ptr(resolution_node_id)->type == node_type::EXPR_IDENTIFIER) {
-        return _search_specified_template_argument_symbol(state, state.get_node<expr_identifier>(resolution_node_id).id);
+    if (state.is_specification_open() && state.get_node_base_ptr(resolution_node_id)->type == node_type::EXPR_IDENTIFIER) {
+        const t_symbol_id searched_symbol = _search_specified_template_argument_symbol(state, state.get_node<expr_identifier>(resolution_node_id).id);
+
+        if (state.arena.get_base_ptr(searched_symbol)->type != symbol_type::INVALID)
+            return searched_symbol;
     }
 
     return _search_symbol_hierarchy(state, state.get_symbol<decl_module>(state.focused_module_id), resolution_node_id);
 }
 
-enum class context_type : uint8_t {
-    NONE,
-    STRUCT,
-    FUNCTION,
-};
-
-// For type specification. If context is none, types that use templates should not be deduced. Otherwise, they should be filled in with their specification counterparts.
-static void get_context(semantic_state& state) {
-
-}
-
-// Ensure that resolution_node's operator is correct
+// Behaves like search_symbol, but is used in the context of creating a new declaration with its name being the last identifier in the tree.
 static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(semantic_state& state, const t_node_id resolution_node) {
     // First check from the perspective of the current module
 
@@ -296,6 +293,7 @@ static void append_item_declaration(semantic_state& state, const t_node_id resol
     target_module.declaration_map[name_id] = symbol_id;
 }
 
+// * Needs to work with specifications since this is statement-level
 static void append_local_declaration(semantic_state& state, const t_node_id name_node_id, const t_symbol_id symbol_id) {
 
 }
