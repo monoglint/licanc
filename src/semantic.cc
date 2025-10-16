@@ -116,13 +116,16 @@ Helper Functions
 
 */
 
-// Call asert_types_match() if you're only running to throw an error.
-static bool types_match(semantic_state& state, const t_symbol_id type0, const t_symbol_id type1) {
+// This function should take in either .
+static bool types_match(semantic_state& state, const type_wrapper& type0, const type_wrapper& type1) {
+    if (type0.specification == 0 || type1.specification == 0)
+        return true;
+        
     return type0 == type1;
 }
 
 // Potentially add casting later? Not necessary.
-static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const t_symbol_id type0, const t_symbol_id type1) {
+static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const type_wrapper type0, const type_wrapper type1) {
     if (!types_match(state, type0, type1)) {
         // !NOTE - We could totally add a flag that makes the type checker optional. Holy C community would love this
         state.add_log(core::lilog::log_level::ERROR, error_selection, "Types do not match. Double check sources and qualifiers.");
@@ -130,6 +133,10 @@ static bool assert_types_match(semantic_state& state, const core::lisel& error_s
     }
 
     return true;
+}
+
+static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const t_node_id type0, const t_node_id type1) {
+    return assert_types_match(state, error_selection, state.get_symbol<type_wrapper>(type0), state.get_symbol<type_wrapper>(type1));
 }
 
 // Ensure that resolution_node's operator is correct.
@@ -213,11 +220,11 @@ Specification symbol_id is just the id of the specification we are using to sear
 */
 template <typename T_SPECIFICATION, typename T_DECLARATION>
 // e.g.   'info_function_speci...'  decl_function
-static t_symbol_id _check_specification_for_template_parameter_name(semantic_state& state, t_node_id specification_symbol_id, const core::t_identifier_id param_name) {
+static t_symbol_id _check_specification_for_template_parameter_name(semantic_state& state, t_node_id specification_symbol_id, const core::t_identifier_id potential_param_name) {
     const auto& declaration = state.get_symbol<T_DECLARATION>(state.get_symbol<T_SPECIFICATION>(specification_symbol_id).declaration);
 
     // expr_identifier can equate to t_identifier_ids. 
-    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), param_name); 
+    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), potential_param_name); 
     if (iterator == declaration.template_parameter_list.end())
         // We did not find a successful template parameter.
         return state.arena.insert(sym_invalid());
@@ -230,9 +237,9 @@ static t_symbol_id _check_specification_for_template_parameter_name(semantic_sta
 // Check if there is an active template parameter that is valid to the current prescanning context that matches the given identifier.
 // If we find one, return a "temporary unresolved type" that is treated more leniently in type checking.
 template <typename T_DECLARATION>
-static t_symbol_id _check_prescan_for_template_parameters(semantic_state& state, t_node_id prescan_symbol_id, const core::t_identifier_id param_name) {
+static t_symbol_id _check_prescan_for_template_parameters(semantic_state& state, t_node_id prescan_symbol_id, const core::t_identifier_id potential_param_name) {
     const auto& declaration = state.get_symbol<T_DECLARATION>(prescan_symbol_id);
-    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), param_name);
+    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), potential_param_name);
 
     if (iterator == declaration.template_parameter_list.end())
         return state.arena.insert(sym_invalid())
@@ -249,12 +256,14 @@ If we find that we are prescanning, then attempt to find a corresponding templat
 
 */
 static t_symbol_id _search_potential_prescans_and_specifications(semantic_state& state, const t_node_id identifier_node_id) {
+    const core::t_identifier_id potential_param_name = state.get_node<expr_identifier>(identifier_node_id).id;
+
     // Specified template arguments
     if (state.context.function_specification_id != 0) {
         const t_symbol_id searched_function_specialization_symbol = _check_specification_for_template_parameter_name<info_function_specification, decl_function>(
             state, 
             state.context.function_specification_id,
-            state.get_node<expr_identifier>(identifier_node_id).id
+            potential_param_name
         );
 
         if (state.arena.get_base_ptr(searched_function_specialization_symbol)->type != symbol_type::INVALID)
@@ -265,7 +274,7 @@ static t_symbol_id _search_potential_prescans_and_specifications(semantic_state&
         const t_symbol_id searched_struct_specialization_symbol = _check_specification_for_template_parameter_name<info_struct_specification, decl_struct>(
             state, 
             state.context.struct_specification_id,
-            state.get_node<expr_identifier>(identifier_node_id).id
+            potential_param_name
         );
 
         if (state.arena.get_base_ptr(searched_struct_specialization_symbol)->type != symbol_type::INVALID)
@@ -274,11 +283,19 @@ static t_symbol_id _search_potential_prescans_and_specifications(semantic_state&
 
     // Unspecified template parameter matching
     if (state.context.function_prescan_id != 0) {
-        const t_symbol_id searched
+        const t_symbol_id searched_function_prescan_symbol = _check_prescan_for_template_parameters<decl_function>(
+            state,
+            state.context.function_prescan_id,
+            potential_param_name
+        );
     }
 
     if (state.context.struct_prescan_id != 0) {
-
+        const t_symbol_id searched_function_prescan_symbol = _check_prescan_for_template_parameters<decl_struct>(
+            state,
+            state.context.function_prescan_id,
+            potential_param_name
+        );
     }
 }
 
@@ -295,6 +312,29 @@ static t_symbol_id search_symbol(semantic_state& state, const t_node_id resoluti
     return _search_symbol_hierarchy(state, state.get_symbol<decl_module>(state.focused_module_id), resolution_node_id);
 }
 
+// -> info_function_specification
+static t_symbol_id generate_function_specification(semantic_state& state, const t_symbol_id declaration_id, const t_node_list& template_argument_list) {
+    // info_function_specification specification;
+
+    // state.get_symbol<decl_function>(declaration_id).specification_map.insert(template_argument_list, specification);
+    UNREACHABLE();
+}
+
+// -> info_..._specification
+template <typename DECLARATION>
+static t_symbol_id find_or_generate_specification(semantic_state& state, const DECLARATION declaration, const t_node_list& template_argument_list) {
+    const auto iterator = declaration.specification_map.find(template_argument_list)
+
+    if (iterator != declaration.specification_map.end())
+        return iterator->second;
+
+    if constexpr (decltype(DECLARATION) == decl_function)
+        return generate_function_specification(state);
+
+    // Haven't gotten to this implementation yet
+    UNREACHABLE();
+}
+
 // Behaves like search_symbol, but is used in the context of creating a new declaration with its name being the last identifier in the tree.
 static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(semantic_state& state, const t_node_id resolution_node) {
     // First check from the perspective of the current module
@@ -303,27 +343,33 @@ static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(s
     UNREACHABLE();
 }
 
-static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id resolution_node_id) {
-    const t_symbol_id found_symbol_id = search_symbol(state, resolution_node_id);
+// -> type_wrapper | invalid
+static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id focus_node_id) {
+    const expr_type& type_focus_node = state.get_node<expr_type>(focus_node_id);
+
+    const t_symbol_id found_symbol_id = search_symbol(state, type_focus_node.source);
     const symbol* symbol_base_ptr = state.arena.get_base_ptr(found_symbol_id);
     
     switch (symbol_base_ptr->type) {
         case symbol_type::DECL_ENUM:
         case symbol_type::DECL_STRUCT:
         case symbol_type::DECL_PRIMITIVE:
-
-        // search_symbol already casted its log if an error was made, so we'll include the invalid symbol type as a fallthrough condition.
-        case symbol_type::INVALID:
+        case symbol_type::DECL_TYPEDEC:
             break;
+
+        // return early instead of erroring - search_symbol already errored for us under this condition
+        case symbol_type::INVALID:
+            return found_symbol_id;
         default:
-            state.add_log(core::lilog::log_level::ERROR, state.get_node_base_ptr(resolution_node_id)->selection, "Invalid symbol - not a type.");
+            state.add_log(core::lilog::log_level::ERROR, state.get_node_base_ptr(focus_node_id)->selection, "Invalid symbol - not a type.");
             return state.arena.insert(sym_invalid());
     }
 
+    // Create a specification and its wrapper.
 
+    t_node_id specification = find_or_generate_specification(state, *symbol_base_ptr, type_focus_node.argument_list);
 
-    // TODO: Add type specifier stuff.
-    return found_symbol_id;
+    return state.arena.insert(type_wrapper(specification, type_focus_node.is_const));
 }
 
 // Covers all declarations. Appends basically any symbol into the currently active namespaces.

@@ -26,12 +26,14 @@ namespace core {
             DECL_ENUM, // TYPE
             DECL_MODULE,
             DECL_TYPEDEC, // TEMPLATABLE
-            DECL_UNRESOLVED, // T
+
+            TYPE_WRAPPER,
         };
 
         using t_symbol_id = size_t;
         using t_symbol_list = std::vector<t_symbol_id>;
 
+        using t_specification_map = std::unordered_map<t_symbol_list, t_symbol_id, liutil::vector_hasher<t_symbol_id>>;
         struct symbol {
             symbol(const symbol_type type)
                 : type(type) {}
@@ -74,8 +76,8 @@ namespace core {
         };
 
         struct info_function_specification : symbol {
-            t_symbol_id return_type; // any type decl symbol
-            t_symbol_list type_argument_list; // any type decl symbol
+            t_symbol_id return_type; // type_wrapper
+            t_symbol_list type_argument_list; // type_wrapper
             t_symbol_id declaration; // decl_function
         };
 
@@ -107,7 +109,7 @@ namespace core {
 
             t_symbol_list overloads;
 
-            std::unordered_map<t_symbol_list, t_symbol_id, liutil::vector_hasher<t_symbol_id>> specification_map; // vector<any type node>, info_function_specification 
+            t_specification_map specification_map; // vector<any type node>, info_function_specification 
         };
 
         struct info_struct_specification : symbol {
@@ -115,6 +117,18 @@ namespace core {
         };
 
         struct decl_struct {};
+
+        struct type_wrapper : symbol {
+            type_wrapper(const t_node_id specification, const t_node_id is_const)
+                : symbol(symbol_type::TYPE_WRAPPER), specification(specification), is_const(is_const) {}
+
+            t_node_id specification; // point to 0 for unspecified
+            t_node_id is_const;
+
+            inline bool operator==(const type_wrapper& other) const {
+                return specification == other.specification && is_const == other.is_const;
+            }
+        };
 
         struct sym_root : symbol {
             sym_root()
@@ -144,6 +158,8 @@ namespace core {
 
                 info_struct_specification,
                 decl_struct,
+
+                type_wrapper,
 
                 sym_root
             > _raw;
