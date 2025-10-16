@@ -63,7 +63,7 @@ namespace liutil {
     // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
     template <typename T>
     struct vector_hasher {
-        static size_t operator()(const std::vector<T>& vec) {
+        size_t operator()(const std::vector<T>& vec) const {
             size_t seed = vec.size();
             
             for (const T& i : vec) {

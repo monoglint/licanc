@@ -26,6 +26,7 @@ namespace core {
             DECL_ENUM, // TYPE
             DECL_MODULE,
             DECL_TYPEDEC, // TEMPLATABLE
+            DECL_UNRESOLVED, // T
         };
 
         using t_symbol_id = size_t;
@@ -58,6 +59,18 @@ namespace core {
                 : symbol(symbol_type::DECL_VARIABLE), value_type(value_type) {}
 
             ast::t_node_id value_type; // expr_type
+        };
+
+        struct decl_module : symbol { 
+            decl_module()
+                : symbol(symbol_type::DECL_MODULE) {}
+
+            std::unordered_map<t_identifier_id, t_symbol_id> declaration_map; // decl
+
+            // Quick lookup
+            inline bool has_item(const t_identifier_id identifier) const {
+                return declaration_map.find(identifier) != declaration_map.end();
+            }
         };
 
         struct info_function_specification : symbol {
@@ -97,20 +110,11 @@ namespace core {
             std::unordered_map<t_symbol_list, t_symbol_id, liutil::vector_hasher<t_symbol_id>> specification_map; // vector<any type node>, info_function_specification 
         };
 
-        struct info_struct_specification {};
-        struct decl_struct {};
-
-        struct decl_module : symbol { 
-            decl_module()
-                : symbol(symbol_type::DECL_MODULE) {}
-
-            std::unordered_map<t_identifier_id, t_symbol_id> declaration_map; // decl
-
-            // Quick lookup
-            inline bool has_item(const t_identifier_id identifier) const {
-                return declaration_map.find(identifier) != declaration_map.end();
-            }
+        struct info_struct_specification : symbol {
+            t_symbol_id declaration; // decl_struct
         };
+
+        struct decl_struct {};
 
         struct sym_root : symbol {
             sym_root()
@@ -134,6 +138,12 @@ namespace core {
                 decl_primitive,
                 decl_variable,
                 decl_module,
+
+                info_function_specification,
+                decl_function,
+
+                info_struct_specification,
+                decl_struct,
 
                 sym_root
             > _raw;

@@ -8,6 +8,26 @@
 using namespace core::sym;
 using namespace core::ast;
 
+struct semantic_state;
+
+struct semantic_context {
+    // If a specification is active, the following properties will be valid. This is when T is resolved to the type whatever called the function or instantiated the struct wants.
+    t_symbol_id function_specification_id; // info_function_specification
+    t_symbol_id struct_specification_id; // info_struct_specification
+
+    // If we are in prescan mode
+    t_symbol_id function_prescan_id; // decl_function        
+    t_symbol_id struct_prescan_id; // decl_struct
+
+    inline bool is_specification_open() const {
+        return function_specification_id != 0 || struct_specification_id != 0;
+    }
+
+    inline bool is_prescan_open() const {
+        return function_prescan_id != 0 || struct_prescan_id != 0;
+    }
+};
+
 struct semantic_state {
     semantic_state(core::liprocess& process, const core::t_file_id file_id)
         : process(process),
@@ -35,27 +55,9 @@ struct semantic_state {
         // The current module that all newly generated items should be appended to.
         t_symbol_id focused_module_id;
 
-        // Below properties will point to any fillable type arguments for resolving T.
+        // The context properties below equate to zero (technically the root's index) if they are not being used.
 
-        /* e.g.
-            dec add<T>(a: T, b: T): T
-                return a + b
-        
-            When prescanning add, both contexts will be empty. When calling add<int>,
-            struct_context will remain empty, and function_context is set to the
-            <int> specification of add, which holds the resolved return and parameter types.
-
-            If a variable (typed T) is declared in add as a local variable, eval_expr_type will
-            use the contexts below to determine how T should be deduced.
-        
-        */
-
-        info_function_specification* function_specification;
-        info_struct_specification* struct_specification;
-
-        inline bool is_specification_open() const {
-            return function_specification != nullptr || struct_specification != nullptr;
-        }
+        semantic_context context;
 
         // If all runs of the analyzer are successful - No errors thrown.
         bool semantic_success = true;
@@ -114,7 +116,6 @@ Helper Functions
 
 */
 
-// - type checker literally disabled lmao
 // Call asert_types_match() if you're only running to throw an error.
 static bool types_match(semantic_state& state, const t_symbol_id type0, const t_symbol_id type1) {
     return type0 == type1;
@@ -201,42 +202,91 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
     return focused_module->declaration_map.at(rhs_identifier_node.id);
 }
 
-// This function runs under the assumption that there is at least one specification open. Therefore, it can return invalids.
-// Under the case that it does, search_symbol() will just default to trying to find a symbol from the module hierarchy.
-// This function must be updated for struct and typedec support.
-static t_symbol_id _search_specified_template_argument_symbol(semantic_state& state, const core::t_identifier_id param_name) {
-    if (state.function_specification == nullptr)
-        return state.arena.insert(sym_invalid());
 
-    auto& function_declaration = state.get_symbol<decl_function>(state.function_specification->declaration);
+/*
+
+Uses a specification's declaration to see if there is a template parameter whose name matches the given identifier. 
+If there is a matching parameter, use its index to find which argument in the specification to return.
+
+Specification symbol_id is just the id of the specification we are using to search the template parameters of.
+
+*/
+template <typename T_SPECIFICATION, typename T_DECLARATION>
+// e.g.   'info_function_speci...'  decl_function
+static t_symbol_id _check_specification_for_template_parameter_name(semantic_state& state, t_node_id specification_symbol_id, const core::t_identifier_id param_name) {
+    const auto& declaration = state.get_symbol<T_DECLARATION>(state.get_symbol<T_SPECIFICATION>(specification_symbol_id).declaration);
 
     // expr_identifier can equate to t_identifier_ids. 
-    const auto iterator = std::find(function_declaration.template_parameter_list.begin(), function_declaration.template_parameter_list.end(), param_name); 
-    if (iterator == function_declaration.template_parameter_list.end()) {}
+    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), param_name); 
+    if (iterator == declaration.template_parameter_list.end())
         // We did not find a successful template parameter.
         return state.arena.insert(sym_invalid());
 
-    const size_t index = iterator - function_declaration.template_parameter_list.begin();
+    const size_t index = iterator - declaration.template_parameter_list.begin();
 
-    return state.function_specification->type_argument_list.at(index);
+    return state.get_symbol<T_SPECIFICATION>(specification_symbol_id).type_argument_list.at(index);
+}
+
+// Check if there is an active template parameter that is valid to the current prescanning context that matches the given identifier.
+// If we find one, return a "temporary unresolved type" that is treated more leniently in type checking.
+template <typename T_DECLARATION>
+static t_symbol_id _check_prescan_for_template_parameters(semantic_state& state, t_node_id prescan_symbol_id, const core::t_identifier_id param_name) {
+    const auto& declaration = state.get_symbol<T_DECLARATION>(prescan_symbol_id);
+    const auto iterator = std::find(declaration.template_parameter_list.begin(), declaration.template_parameter_list.end(), param_name);
+
+    if (iterator == declaration.template_parameter_list.end())
+        return state.arena.insert(sym_invalid())
+
+    return state.arena.insert(decl_unresolved_type());
+}
+
+/*
+
+Given the provided identifier, look to see if it should be resolved based on the context of the analyzer;
+
+If we find that a specification is open, attempt to find a specified symbol sourced from a template argument corresponding to the given identifier.
+If we find that we are prescanning, then attempt to find a corresponding template parameter name and return a temporary symbol.
+
+*/
+static t_symbol_id _search_potential_prescans_and_specifications(semantic_state& state, const t_node_id identifier_node_id) {
+    // Specified template arguments
+    if (state.context.function_specification_id != 0) {
+        const t_symbol_id searched_function_specialization_symbol = _check_specification_for_template_parameter_name<info_function_specification, decl_function>(
+            state, 
+            state.context.function_specification_id,
+            state.get_node<expr_identifier>(identifier_node_id).id
+        );
+
+        if (state.arena.get_base_ptr(searched_function_specialization_symbol)->type != symbol_type::INVALID)
+            return searched_function_specialization_symbol;
+    }
+
+    if (state.context.struct_specification_id != 0) {
+        const t_symbol_id searched_struct_specialization_symbol = _check_specification_for_template_parameter_name<info_struct_specification, decl_struct>(
+            state, 
+            state.context.struct_specification_id,
+            state.get_node<expr_identifier>(identifier_node_id).id
+        );
+
+        if (state.arena.get_base_ptr(searched_struct_specialization_symbol)->type != symbol_type::INVALID)
+            return searched_struct_specialization_symbol;
+    }
+
+    // Unspecified template parameter matching
+    if (state.context.function_prescan_id != 0) {
+        const t_symbol_id searched
+    }
+
+    if (state.context.struct_prescan_id != 0) {
+
+    }
 }
 
 static t_symbol_id search_symbol(semantic_state& state, const t_node_id resolution_node_id) {
-    /*
-    
-    First check if we are in a specification. This is important, because if is_specification_open() returns true,
-    then the resolution node could be the T in
-
-    dec x: T = 5
-
-    or
-
-    struct.x = 5 ; x has T type
-    
-    */
-
-    if (state.is_specification_open() && state.get_node_base_ptr(resolution_node_id)->type == node_type::EXPR_IDENTIFIER) {
-        const t_symbol_id searched_symbol = _search_specified_template_argument_symbol(state, state.get_node<expr_identifier>(resolution_node_id).id);
+    // Check if the symbol being accessed is controlled by the template system.
+    // Basically any context that involves 'T' sourced from <T>
+    if ((state.context.is_specification_open() || state.context.is_prescan_open()) && state.get_node_base_ptr(resolution_node_id)->type == node_type::EXPR_IDENTIFIER) {
+        const t_symbol_id searched_symbol = _search_potential_prescans_and_specifications(state, resolution_node_id);
 
         if (state.arena.get_base_ptr(searched_symbol)->type != symbol_type::INVALID)
             return searched_symbol;
@@ -346,15 +396,12 @@ static void eval_item_declaration(semantic_state& state, const item_declaration&
     assert_types_match(state, focus_node.selection, deduced_value_type, value_type_symbol);
 }
 
-static void eval_item_function_declaration(semantic_state& state, const item_function_declaration& focus_node) {
-    const expr_function& func_node = state.get_node<expr_function>(focus_node.function);
+static void eval_item_function_contents(semantic_state& state, const expr_function& func_node, t_symbol_id declaration_symbol_id) {
+    semantic_context context_waypoint = state.context;
+    state.context = semantic_context {
 
-    append_item_declaration(
-        state,
-        focus_node.source,
-        state.arena.insert(decl_function(state.ast_arena, func_node))
-    );
-
+    };
+    
     // Veryify/test the return and parameter types.
     for (const t_node_id parameter : func_node.parameter_list) {
         const auto& parameter_node = state.get_node<expr_parameter>(parameter);
@@ -376,12 +423,27 @@ static void eval_item_function_declaration(semantic_state& state, const item_fun
 
             if (!assert_types_match(state, parameter_node.selection, eval_expr_type(state, parameter_node.value_type), default_value_type_deduction))
                 continue;
-        }
-            
+        }   
     }
 
     // Prescan the body. Contexts should be null at this point.
     eval_stmt(state, func_node.body);
+    
+    state.context = context_waypoint;
+}
+
+static void eval_item_function_declaration(semantic_state& state, const item_function_declaration& focus_node) {
+    const expr_function& func_node = state.get_node<expr_function>(focus_node.function);
+
+    t_symbol_id declaration_symbol_id = state.arena.insert(decl_function(state.ast_arena, func_node));
+
+    append_item_declaration(
+        state,
+        focus_node.source,
+        declaration_symbol_id
+    );
+
+    eval_item_function_contents(state, func_node, declaration_symbol_id);
 }
 
 static void eval_item_module(semantic_state& state, const item_module& focus_node) {
