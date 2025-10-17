@@ -106,10 +106,10 @@ bool licanapi::build_project(const licanapi::liconfig_init& config) {
         }
     }
 
-    if (!run_success) {
-        std::cout << "All debug info skipped. One or more processes resulted in termination of the compiler.\n";
-        return false;
-    }
+    // if (!run_success) {
+    //     std::cout << "All debug info skipped. One or more processes resulted in termination of the compiler.\n";
+    //     return false;
+    // }
 
     for (auto& file : process.file_list) {
         std::cout << "FILE - '" << file.path << "':\n";

@@ -132,10 +132,6 @@ namespace core {
             // point to INVALID_SYMBOL_ID for unspecified
             t_symbol_id wrapee_id; // specification | type_wrapper
             core::e_type_qualifier qualifier; // if wrapee is another wrapper, then this can be something other than NONE
-
-            inline bool operator==(const type_wrapper& other) const {
-                return wrapee_id == other.wrapee_id && qualifier == other.qualifier;
-            }
         };
 
         struct sym_root : symbol {
@@ -178,9 +174,3 @@ namespace core {
         };
     }
 }
-
-/* UNFINISHED - PROOF-OF-CONCEPT PROTOTYPE
-
-
-    
-*/

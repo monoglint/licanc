@@ -1,1 +1,1 @@
-dec main() return 5
+dec main()	dec x: foo[T]@@const = 5

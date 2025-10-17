@@ -15,6 +15,7 @@ Minor functions are are used in different locations of the compiler.
 #include <stdexcept>
 #include <functional>
 #include <vector>
+#include <iostream>
 
 #if defined(__GNUC__) || defined(__clang__)
     #define UNREACHABLE() __builtin_unreachable()
@@ -24,6 +25,8 @@ Minor functions are are used in different locations of the compiler.
     #include <cstdlib>
     #define UNREACHABLE() std::abort()
 #endif
+
+#define STMT_UNREACHABLE(str) std::cout << "REACHED UNREACHABLE - " << str << std::endl; UNREACHABLE()
 
 namespace liutil {
     inline bool is_whitespace(const char c) {

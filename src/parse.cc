@@ -254,16 +254,8 @@ static t_node_id parse_expr_type(parse_state& state) {
 
     t_node_list argument_list = parse_list<true, true>(state, parse_expr_type, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
 
-    if (!argument_list.empty()) {
-        inner_id = state.arena.insert(
-            expr_type(
-                core::lisel(state.arena.get_base_ptr(inner_id)->selection, state.now().selection),
-                inner_id,
-                std::move(argument_list),
-                core::e_type_qualifier::NONE
-            )
-        );
-    }
+    if (!argument_list.empty())
+        state.arena.get_as<expr_type>(inner_id).argument_list = std::move(argument_list);
 
     while (true) {
         core::e_type_qualifier qualifier;

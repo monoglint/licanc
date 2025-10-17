@@ -12,7 +12,7 @@ struct semantic_state;
 
 constexpr t_symbol_id INVALD_SYMBOL_ID = 0;
 constexpr t_symbol_id ROOT_SYMBOL_ID = 1;
-
+constexpr t_symbol_id GLOBAL_MODULE_SYMBOL_ID = 2;
 // semantic context
 enum class semcon {
     FUNC,
@@ -147,10 +147,24 @@ Helper Functions
 
 // This function should take in either .
 static bool types_match(semantic_state& state, const type_wrapper& type0, const type_wrapper& type1) {
+    // Any unspecified type should not be type checked no matter the qualifiers.
     if (type0.wrapee_id == INVALD_SYMBOL_ID || type1.wrapee_id == INVALD_SYMBOL_ID)
         return true;
+
+    if (type0.qualifier != type1.qualifier)
+        return false;
+
+    auto wrapee0 = state.arena.get_base_ptr(type0.wrapee_id);
+    auto wrapee1 = state.arena.get_base_ptr(type1.wrapee_id); 
         
-    return type0 == type1;
+    if (wrapee0->type != wrapee1->type)
+        return false;
+    
+    if (wrapee0->type == symbol_type::TYPE_WRAPPER)
+        return types_match(state, state.get_symbol<type_wrapper>(type0.wrapee_id), state.get_symbol<type_wrapper>(type1.wrapee_id));
+
+    // i forget why this is here
+    return wrapee0 == wrapee1;
 }
 
 // Potentially add casting later? Not necessary.
@@ -428,7 +442,7 @@ static t_symbol_id find_or_generate_specification(semantic_state& state, const t
         return generate_function_specification(state, declaration_id, template_argument_list);
 
     // Haven't gotten to this implementation yet
-    UNREACHABLE();
+    STMT_UNREACHABLE("find_or_generate_specification");
 }
 
 // Behaves like search_symbol, but is used in the context of creating a new declaration with its name being the last identifier in the tree.
@@ -436,7 +450,7 @@ static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(s
     // First check from the perspective of the current module
 
     // If the entry point identifier is not recognizable, 
-    UNREACHABLE();
+    STMT_UNREACHABLE("search_symbol_for_naming");
 }
 
 // Covers all declarations. Appends basically any symbol into the currently active namespaces.
@@ -591,7 +605,7 @@ static t_symbol_id eval_expr(semantic_state& state, const t_node_id node_id) {
             break;
     }
 
-    UNREACHABLE();
+    STMT_UNREACHABLE("eval_expr");
 }
 
 static void eval_stmt(semantic_state& state, const t_node_id node_id) {
@@ -623,20 +637,16 @@ static void eval_item(semantic_state& state, const core::ast::t_node_id node_id)
             eval_item_use(state, *(core::ast::item_use*)node_base_ptr);
             break;
         default:
+            state.process.add_log(
+                core::lilog::log_level::COMPILER_ERROR,
+                node_base_ptr->selection,
+                "Unexpected AST node - Expected 'item', got [code " + std::to_string((uint8_t)node_base_ptr->type) + "])"
+            );
             break;
     }
-
-    state.process.add_log(
-        core::lilog::log_level::COMPILER_ERROR,
-        node_base_ptr->selection,
-        "Unexpected AST node - Expected 'item', got [code " + std::to_string((uint8_t)node_base_ptr->type) + "])"
-    );
 }
 
 static void eval_ast_root(semantic_state& state, const core::ast::ast_root& node) {
-    state.arena.insert(sym_root());
-    state.focused_module_id = 1;
-
     for (const core::ast::t_node_id& child : node.item_list) {
         eval_item(state, child);
     }
@@ -647,10 +657,14 @@ bool core::frontend::semantic_analyze(liprocess& process, const t_file_id file_i
 
     state.arena.insert(sym_invalid()); // INVALD_SYMBOL_ID
     state.arena.insert(sym_root()); // ROOT_SYMBOL_ID
+    state.arena.insert(decl_module()); // GLOBAL_MODULE_SYMBOL_ID
 
-    eval_ast_root(state, state.get_node<core::ast::ast_root>(0));
+    state.get_symbol<sym_root>(ROOT_SYMBOL_ID).global_module = GLOBAL_MODULE_SYMBOL_ID;
+    state.focused_module_id = GLOBAL_MODULE_SYMBOL_ID;
 
-    std::cout << "Finished successfully\n";
+    //eval_ast_root(state, state.get_node<core::ast::ast_root>(0));
+
+    //std::cout << "Finished successfully\n";
 
     return true;
 }
