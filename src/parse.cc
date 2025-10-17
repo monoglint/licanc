@@ -231,32 +231,69 @@ static t_node_list parse_list(parse_state& state, FUNC func, const core::token_t
     return list;
 }
 
+// Temporary solution that supports layering
 static t_node_id parse_expr_type(parse_state& state) {
-    const bool is_const = state.now().type == core::token_type::CONST;
-    if (is_const) state.pos++;
+    const t_node_id base_id = parse_scope_resolution(state);
 
-    const bool is_pointer = state.now().type == TYPE_POINTER_TOKEN;
-    if (is_pointer) state.pos++;
+    t_node_id inner_id = state.arena.insert(
+        expr_type(
+            state.arena.get_base_ptr(base_id)->selection,
+            base_id,
+            {},
+            core::e_type_qualifier::NONE
+        )
+    );
 
-    const t_node_id source_id = parse_scope_resolution(state);
+    /*
+    
+    syntax-following example
+    
+    dec x: array<int>@
+    
+    */
 
     t_node_list argument_list = parse_list<true, true>(state, parse_expr_type, L_TEMPLATE_DELIMITER_TOKEN, R_TEMPLATE_DELIMITER_TOKEN);
 
-    expr_type::e_reference_type reference_type;
-    switch (state.now().type) {
-        case TYPE_LVALUE_REFERENCE_TOKEN:
-            reference_type = expr_type::e_reference_type::LVALUE;
-            state.pos++;
-            break;
-        case TYPE_RVALUE_REFERENCE_TOKEN:
-            reference_type = expr_type::e_reference_type::RVALUE;
-            state.pos++;
-            break;
-        default:
-            reference_type = expr_type::e_reference_type::NONE;
+    if (!argument_list.empty()) {
+        inner_id = state.arena.insert(
+            expr_type(
+                core::lisel(state.arena.get_base_ptr(inner_id)->selection, state.now().selection),
+                inner_id,
+                std::move(argument_list),
+                core::e_type_qualifier::NONE
+            )
+        );
     }
 
-    return state.arena.insert(expr_type(core::lisel(state.arena.get_base_ptr(source_id)->selection, state.now().selection), source_id, std::move(argument_list), is_const, is_pointer, reference_type));
+    while (true) {
+        core::e_type_qualifier qualifier;
+
+        const core::token_type current_type = state.now().type;
+
+        if (current_type == core::token_type::CONST) 
+            qualifier = core::e_type_qualifier::CONST;
+        else if (current_type == TYPE_POINTER_TOKEN) 
+            qualifier = core::e_type_qualifier::POINTER;
+        else if (current_type == TYPE_LVALUE_REFERENCE_TOKEN) 
+            qualifier = core::e_type_qualifier::LVALUE_REF;
+        else if (current_type == TYPE_RVALUE_REFERENCE_TOKEN) 
+            qualifier = core::e_type_qualifier::RVALUE_REF;
+        else
+            break;
+
+        state.pos++;
+
+        inner_id = state.arena.insert(
+            expr_type(
+                core::lisel(state.arena.get_base_ptr(inner_id)->selection, state.now().selection),
+                inner_id,
+                {},
+                qualifier
+            )
+        );
+    }
+
+    return inner_id;
 }
 
 static t_node_id parse_expr_parameter(parse_state& state) {

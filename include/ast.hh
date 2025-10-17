@@ -20,6 +20,14 @@ Contains all of the AST node declarations. Used by the frontend and read by the 
 #include "arena.hh"
 
 namespace core {
+    enum class e_type_qualifier : uint8_t {
+        NONE,
+        CONST,
+        POINTER,
+        LVALUE_REF,
+        RVALUE_REF,
+    };
+
     namespace ast {
         enum class node_type : uint8_t {
             ROOT,
@@ -100,22 +108,15 @@ namespace core {
                 : node(selection, node_type::EXPR_INVALID) {}
         };
 
+        
         struct expr_type : node {
-            enum class e_reference_type : uint8_t {
-                NONE,
-                LVALUE,
-                RVALUE
-            };
-
-            expr_type(const core::lisel& selection, const t_node_id source, t_node_list&& argument_list, const bool is_const, const bool is_pointer, const e_reference_type reference_type)
-                : node(selection, node_type::EXPR_TYPE), source(source), argument_list(std::move(argument_list)), is_const(is_const), is_pointer(is_pointer), reference_type(reference_type) {}
+            expr_type(const core::lisel& selection, const t_node_id source, t_node_list&& argument_list, const e_type_qualifier qualifier)
+                : node(selection, node_type::EXPR_TYPE), source(source), argument_list(std::move(argument_list)), qualifier(qualifier) {}
             
             t_node_id source; // expr_identifier | expr_binary (scope_resolution) 
             t_node_list argument_list; // expr
             
-            bool is_const;
-            bool is_pointer;
-            e_reference_type reference_type;
+            e_type_qualifier qualifier;
         };
 
         // Get identifier contents by observing its selection in the source code.

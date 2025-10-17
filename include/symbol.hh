@@ -42,6 +42,30 @@ namespace core {
             symbol_type type;
         };
 
+        struct specifiable : symbol {
+            specifiable(const symbol_type type, const ast::t_node_list& template_parameter_list)
+                : symbol(type), template_parameter_list(template_parameter_list) {}
+            
+            virtual ~specifiable() = default;
+            
+            ast::t_node_list template_parameter_list; // expr_identifier
+            // Does not need to be initialized in constructor
+            t_specification_map specification_map;
+        };
+
+        struct specification : symbol {
+            specification(const symbol_type type, const t_symbol_list& template_argument_list, const t_symbol_id declaration_id)
+                : symbol(type), template_argument_list(template_argument_list), declaration_id(declaration_id) {}
+
+            specification(const symbol_type type)
+                : symbol(type) {}
+
+            virtual ~specification() = default;
+
+            t_symbol_list template_argument_list; // type_wrapper
+            t_symbol_id declaration_id; // decl_function
+        };
+
         // Example use would be the result of failing to resolve a symbol. "Variable 'a' has not been declared in the current socpe." 
         struct sym_invalid : symbol {
             sym_invalid()
@@ -75,58 +99,42 @@ namespace core {
             }
         };
 
-        struct info_function_specification : symbol {
+        struct info_function_specification : specification {
+            info_function_specification(const t_symbol_id return_type, const t_symbol_list& type_argument_list, const t_symbol_id declaration_id)
+                : specification(symbol_type::INFO_FUNCTION_SPECIFICATION, type_argument_list, declaration_id), return_type(return_type) {}
+
             t_symbol_id return_type; // type_wrapper
-            t_symbol_list type_argument_list; // type_wrapper
-            t_symbol_id declaration; // decl_function
         };
 
-        struct decl_function : symbol {
-            inline ast::t_node_list _make_parameter_type_list(const ast::ast_arena& arena, const ast::t_node_list& parameter_list) {
-                ast::t_node_list _parameter_type_list = {};
+        struct decl_function : specifiable {
+            decl_function(const ast::expr_function& node)
+                : specifiable(symbol_type::DECL_FUNCTION, node.template_parameter_list), node(node) {}
 
-                for (ast::t_node_id param_id : parameter_list) {
-                    _parameter_type_list.push_back(arena.get_as<ast::expr_parameter>(param_id).value_type);
-                }
-
-                return _parameter_type_list;
-            }
-
-            // parameter_type_list isn't natively part of expr_function, so it will be generated during semantic analysis.
-            // therefore, we can make it an rvalue reference to be moved in
-            decl_function(const ast::t_node_id return_type, ast::t_node_list&& parameter_type_list, const ast::t_node_list& template_parameter_list)
-                : symbol(symbol_type::DECL_FUNCTION), return_type(return_type), parameter_type_list(std::move(parameter_type_list)), template_parameter_list(template_parameter_list) {}
-
-            decl_function(const ast::ast_arena& arena, const ast::expr_function& function)
-                : decl_function(function.return_type, _make_parameter_type_list(arena, function.parameter_list), function.template_parameter_list) {}
-
-            ast::t_node_id return_type; // expr_type
-            ast::t_node_list parameter_type_list; // expr_type
-            ast::t_node_list template_parameter_list; // expr_identifier
+            const ast::expr_function& node;
             
             // | Nothing appended to these during instantiation. |
             // V                                                 V
 
             t_symbol_list overloads;
-
-            t_specification_map specification_map; // vector<any type node>, info_function_specification 
         };
 
-        struct info_struct_specification : symbol {
-            t_symbol_id declaration; // decl_struct
+        struct info_struct_specification : specification {
+            info_struct_specification()
+                : specification(symbol_type::INFO_STRUCT_SPECIFICATION) {}
         };
 
         struct decl_struct {};
-
+        
         struct type_wrapper : symbol {
-            type_wrapper(const t_node_id specification, const t_node_id is_const)
-                : symbol(symbol_type::TYPE_WRAPPER), specification(specification), is_const(is_const) {}
+            type_wrapper(const t_symbol_id wrapee_id, const core::e_type_qualifier qualifier)
+                : symbol(symbol_type::TYPE_WRAPPER), wrapee_id(wrapee_id), qualifier(qualifier) {}
 
-            t_node_id specification; // point to 0 for unspecified
-            t_node_id is_const;
+            // point to INVALID_SYMBOL_ID for unspecified
+            t_symbol_id wrapee_id; // specification | type_wrapper
+            core::e_type_qualifier qualifier; // if wrapee is another wrapper, then this can be something other than NONE
 
             inline bool operator==(const type_wrapper& other) const {
-                return specification == other.specification && is_const == other.is_const;
+                return wrapee_id == other.wrapee_id && qualifier == other.qualifier;
             }
         };
 

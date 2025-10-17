@@ -60,15 +60,7 @@ void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_i
             buffer += liutil::indent_repeat(indent) + "expr_type\n";
             buffer += liutil::indent_repeat(indent+1) + "source:\n";
             pretty_debug(process, v.source, buffer, indent+2);
-            buffer += liutil::indent_repeat(indent+1) + "is_const: " + (v.is_const ? "true" : "false") + '\n';
-            buffer += liutil::indent_repeat(indent+1) + "is_pointer: " + (v.is_pointer ? "true" : "false") + '\n';
-            buffer += liutil::indent_repeat(indent+1) + "reference_type: ";
-            switch (v.reference_type) {
-                case expr_type::e_reference_type::NONE: buffer += "NONE\n"; break;
-                case expr_type::e_reference_type::LVALUE: buffer += "LVALUE\n"; break;
-                case expr_type::e_reference_type::RVALUE: buffer += "RVALUE\n"; break;
-                default: buffer += "UNKNOWN\n"; break;
-            }
+            buffer += liutil::indent_repeat(indent+1) + "qualifier: " + std::to_string((uint8_t)v.qualifier) + '\n';
             buffer += liutil::indent_repeat(indent+1) + "arguments:\n";
             for (const t_node_id& a : v.argument_list) pretty_debug(process, a, buffer, indent+2);
             break;

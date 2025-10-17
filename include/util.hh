@@ -69,6 +69,8 @@ namespace liutil {
             for (const T& i : vec) {
                 seed ^= std::hash<T>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             }
+
+            return seed;
         }
     };
 }

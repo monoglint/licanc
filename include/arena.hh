@@ -48,6 +48,7 @@ namespace liutil {
 
         template <typename T>
         inline const T& get_as(const ID id) const {
+            std::cout << "Getting " << std::to_string(id) << '\n';
             return std::get<T>(list[id]._raw);
         }
     };

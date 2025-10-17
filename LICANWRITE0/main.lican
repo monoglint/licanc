@@ -1,1 +1,1 @@
-dec main() io..write("hello world")
+dec main() return 5
