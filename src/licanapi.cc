@@ -5,7 +5,7 @@
 #include "licanapi.hh"
 #include "core.hh"
 #include "token.hh"
-#include "ast.hh"
+#include "symbol.hh"
 
 static inline bool contains_flag(const std::vector<std::string>& flags, const std::string& flag) {
     return std::find(flags.begin(), flags.end(), flag) != flags.end();
@@ -96,8 +96,16 @@ bool licanapi::build_project(const licanapi::liconfig_init& config) {
     std::cout << ")\n";
     
     core::liprocess process(config);
-    
-    bool run_success = process.config._dump_chrono ? run_chrono(process) : run(process);
+
+    // try {
+        bool run_success = process.config._dump_chrono ? run_chrono(process) : run(process);
+
+        if (!run_success)
+            std::cout << "Compiler found one or more errors. Debug info may show invalid structure.\n";
+    // }
+    // catch (std::exception& e) {
+    //     std::cout << "Internal compiler error. Do not expect any debug info to show valid data. [Exception thrown: " << e.what() << "]\n";
+    // }
 
     if (process.config._dump_logs) {
         std::cout << "Logs:\n";
@@ -105,11 +113,6 @@ bool licanapi::build_project(const licanapi::liconfig_init& config) {
             std::cout << log.pretty_debug(process) << '\n';
         }
     }
-
-    // if (!run_success) {
-    //     std::cout << "All debug info skipped. One or more processes resulted in termination of the compiler.\n";
-    //     return false;
-    // }
 
     for (auto& file : process.file_list) {
         std::cout << "FILE - '" << file.path << "':\n";
@@ -126,6 +129,14 @@ bool licanapi::build_project(const licanapi::liconfig_init& config) {
             std::string buffer(0, ' ');
             auto ast_arena = std::any_cast<core::ast::ast_arena>(file.dump_ast_arena);
             ast_arena.pretty_debug(process, 0, buffer, 0);
+            std::cout << buffer << '\n';
+        }
+
+        if (process.config._dump_ast && file.dump_symbol_table.has_value()) {
+            std::cout << "Symbol Table:\n";
+            std::string buffer(0, ' ');
+            auto ast_arena = std::any_cast<core::sym::symbol_arena>(file.dump_symbol_table);
+            ast_arena.pretty_debug(process, 1, buffer, 0);
             std::cout << buffer << '\n';
         }
     }

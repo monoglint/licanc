@@ -10,9 +10,15 @@ using namespace core::ast;
 
 struct semantic_state;
 
-constexpr t_symbol_id INVALD_SYMBOL_ID = 0;
-constexpr t_symbol_id ROOT_SYMBOL_ID = 1;
-constexpr t_symbol_id GLOBAL_MODULE_SYMBOL_ID = 2;
+enum STATIC_SYMBOLS : uint8_t {
+    INVALID_SYMBOL_ID,
+    ROOT_SYMBOL_ID,
+    GLOBAL_MODULE_SYMBOL_ID,
+
+    TYPE_VOID_SYMBOL_ID,
+    TYPE_I32_SYMBOL_ID,
+};
+
 // semantic context
 enum class semcon {
     FUNC,
@@ -21,41 +27,41 @@ enum class semcon {
 
 struct semantic_context {
     // If a specification is active, the following properties will be valid. This is when T is resolved to the type whatever called the function or instantiated the struct wants.
-    t_symbol_id function_specification_id; // info_function_specification
-    t_symbol_id struct_specification_id; // info_struct_specification
+    t_symbol_id function_specification_id = 0; // info_function_specification
+    t_symbol_id struct_specification_id = 0; // info_struct_specification
 
     // If we are in prescan mode
-    t_symbol_id function_prescan_id; // decl_function        
-    t_symbol_id struct_prescan_id; // decl_struct
+    t_symbol_id function_prescan_id = 0; // decl_function        
+    t_symbol_id struct_prescan_id = 0; // decl_struct
 
     inline bool is_specification_open() const {
-        return function_specification_id != INVALD_SYMBOL_ID || struct_specification_id != INVALD_SYMBOL_ID;
+        return function_specification_id != INVALID_SYMBOL_ID || struct_specification_id != INVALID_SYMBOL_ID;
     }
 
     inline bool is_prescan_open() const {
-        return function_prescan_id != INVALD_SYMBOL_ID || struct_prescan_id != INVALD_SYMBOL_ID;
+        return function_prescan_id != INVALID_SYMBOL_ID || struct_prescan_id != INVALID_SYMBOL_ID;
     }
 
     template <semcon CONTEXT_TYPE>
     inline void set_specification(const t_symbol_id specification_id) {
         if constexpr (CONTEXT_TYPE == semcon::FUNC) {
             function_specification_id = specification_id;
-            function_prescan_id = INVALD_SYMBOL_ID;
+            function_prescan_id = INVALID_SYMBOL_ID;
         }
         else {
             struct_specification_id = specification_id;
-            struct_prescan_id = INVALD_SYMBOL_ID;
+            struct_prescan_id = INVALID_SYMBOL_ID;
         }
     }
 
     template <semcon CONTEXT_TYPE>
     inline void set_prescan(const t_symbol_id prescan_id) {
         if constexpr (CONTEXT_TYPE == semcon::FUNC) {
-            function_specification_id = INVALD_SYMBOL_ID;
+            function_specification_id = INVALID_SYMBOL_ID;
             function_prescan_id = prescan_id;
         }
         else {
-            struct_specification_id = INVALD_SYMBOL_ID;
+            struct_specification_id = INVALID_SYMBOL_ID;
             struct_prescan_id = prescan_id;
         }
     }
@@ -65,15 +71,18 @@ struct semantic_state {
     semantic_state(core::liprocess& process, const core::t_file_id file_id)
         : process(process),
           file_id(file_id),
-          file(process.file_list[file_id]),
           ast_arena(std::any_cast<const core::ast::ast_arena&>(process.file_list[file_id].dump_ast_arena))
           {}
 
     core::liprocess& process;
 
     const core::t_file_id file_id;
-    core::liprocess::lifile& file;
 
+    inline core::liprocess::lifile& file() const {
+        return process.file_list[file_id];
+    }
+
+    // safe; no longer changed at this point in runtime
     const core::ast::ast_arena& ast_arena;
     symbol_arena arena;
     
@@ -148,38 +157,43 @@ Helper Functions
 // This function should take in either .
 static bool types_match(semantic_state& state, const type_wrapper& type0, const type_wrapper& type1) {
     // Any unspecified type should not be type checked no matter the qualifiers.
-    if (type0.wrapee_id == INVALD_SYMBOL_ID || type1.wrapee_id == INVALD_SYMBOL_ID)
+    if (type0.wrapee_id == INVALID_SYMBOL_ID || type1.wrapee_id == INVALID_SYMBOL_ID)
         return true;
 
+    const symbol* wrapee0_base_ptr = state.arena.get_base_ptr(type0.wrapee_id);
+    const symbol* wrapee1_base_ptr = state.arena.get_base_ptr(type1.wrapee_id);
+
+    // Compare qualifier of current layer
     if (type0.qualifier != type1.qualifier)
         return false;
 
-    auto wrapee0 = state.arena.get_base_ptr(type0.wrapee_id);
-    auto wrapee1 = state.arena.get_base_ptr(type1.wrapee_id); 
-        
-    if (wrapee0->type != wrapee1->type)
+    // Compare base types
+    if (wrapee0_base_ptr->type != wrapee1_base_ptr->type)
         return false;
-    
-    if (wrapee0->type == symbol_type::TYPE_WRAPPER)
-        return types_match(state, state.get_symbol<type_wrapper>(type0.wrapee_id), state.get_symbol<type_wrapper>(type1.wrapee_id));
 
-    // i forget why this is here
-    return wrapee0 == wrapee1;
+    // If we're not at the lowest layer...
+    if (wrapee0_base_ptr->type == symbol_type::TYPE_WRAPPER)
+        return types_match(state, *(type_wrapper*)wrapee0_base_ptr, *(type_wrapper*)wrapee1_base_ptr);
+
+    // If we are at the lowest layer, compare the specifications we are pointing to.
+    return type0.wrapee_id == type1.wrapee_id;
 }
 
 // Potentially add casting later? Not necessary.
-static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const type_wrapper type0, const type_wrapper type1) {
-    if (!types_match(state, type0, type1)) {
+static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const t_symbol_id type0_id, const t_symbol_id type1_id) {
+    if (!types_match(state, state.get_symbol<type_wrapper>(type0_id), state.get_symbol<type_wrapper>(type1_id))) {
         // !NOTE - We could totally add a flag that makes the type checker optional. Holy C community would love this
-        state.add_log(core::lilog::log_level::ERROR, error_selection, "Types do not match. Double check sources and qualifiers.");
+        std::string buffer0;
+        state.arena.pretty_debug(state.process, type0_id, buffer0);
+
+        std::string buffer1;
+        state.arena.pretty_debug(state.process, type1_id, buffer1);
+        
+        state.add_log(core::lilog::log_level::ERROR, error_selection, "Type mismatch\n" + buffer0 + '\n' + buffer1);
         return false;
     }
 
     return true;
-}
-
-static bool assert_types_match(semantic_state& state, const core::lisel& error_selection, const t_node_id type0, const t_node_id type1) {
-    return assert_types_match(state, error_selection, state.get_symbol<type_wrapper>(type0), state.get_symbol<type_wrapper>(type1));
 }
 
 // Ensure that resolution_node's operator is correct.
@@ -215,7 +229,7 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
 
         // Okay, fallback unsuccessful; we can confidently assert that the programmer fucked up in some way, shape, or form.
         state.add_log(core::lilog::log_level::ERROR, current_node->selection, "\"" + identifier_node.read(state.process) + "\" was not declared in this scope.");
-        return INVALD_SYMBOL_ID;
+        return INVALID_SYMBOL_ID;
     }
 
     // If its's not an identifier, then it is a binary expression.
@@ -234,7 +248,7 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
             
             if (state.arena.get_base_ptr(resolved_lhs)->type != symbol_type::DECL_MODULE) {
                 state.add_log(core::lilog::log_level::ERROR, current_node->selection, "Attempted to search inside a symbol that was not a module.");
-                return INVALD_SYMBOL_ID;
+                return INVALID_SYMBOL_ID;
             }
 
             focused_module = &state.get_symbol<decl_module>(resolved_lhs);
@@ -246,12 +260,27 @@ static t_symbol_id _search_symbol_hierarchy(semantic_state& state, const decl_mo
      
     if (!focused_module->has_item(rhs_identifier_node.id)) {
         state.add_log(core::lilog::log_level::ERROR, current_node->selection, "\"" + rhs_identifier_node.read(state.process) + "\" was not declared in this scope.");
-        return INVALD_SYMBOL_ID;
+        return INVALID_SYMBOL_ID;
     }
 
     return focused_module->declaration_map.at(rhs_identifier_node.id);
 }
 
+// Behaves like search_symbol, but is used in the context of creating a new declaration with its name being the last identifier in the tree.
+static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(semantic_state& state, decl_module& current_module, const t_node_id resolution_node_id) {
+    const node* resolution_node_base_ptr = state.get_node_base_ptr(resolution_node_id);
+
+    if (resolution_node_base_ptr->type == node_type::EXPR_IDENTIFIER) {
+        return { current_module, state.get_node<expr_identifier>(resolution_node_id).id };
+    }
+
+    // Otherwise, we're in a bianry expression.
+
+    const auto& expr_binary_resolution_node = state.get_node<expr_binary>(resolution_node_id);
+    t_symbol_id parent_module = _search_symbol_hierarchy(state, current_module, expr_binary_resolution_node.first);
+
+    return { state.get_symbol<decl_module>(parent_module), state.get_node<expr_identifier>(expr_binary_resolution_node.second).id };
+}
 
 /*
 
@@ -259,14 +288,13 @@ Uses a specification's declaration to see if there is a template parameter whose
 If there is a matching parameter, use its index to find which argument in the specification to return.
 
 */
-static t_symbol_id _fill_potential_template_parameter_with_argument(semantic_state& state, t_node_id specification_symbol_id, const core::t_identifier_id potential_param_name) {
+static t_symbol_id _fill_potential_template_parameter_with_argument(semantic_state& state, const t_symbol_id specification_symbol_id, const core::t_identifier_id potential_param_name) {
     const specification* specification_symbol = (specification*)state.get_node_base_ptr(specification_symbol_id);
     const specifiable* declaration_symbol = (specifiable*)state.arena.get_base_ptr(specification_symbol->declaration_id);
-
     const auto iterator = std::find(declaration_symbol->template_parameter_list.begin(), declaration_symbol->template_parameter_list.end(), potential_param_name);
 
     if (iterator == declaration_symbol->template_parameter_list.end())
-        return INVALD_SYMBOL_ID;
+        return INVALID_SYMBOL_ID;
 
     const size_t iterator_index = iterator - declaration_symbol->template_parameter_list.begin();
 
@@ -275,15 +303,19 @@ static t_symbol_id _fill_potential_template_parameter_with_argument(semantic_sta
 
 // Check if there is an active template parameter that is valid to the current prescanning context that matches the given identifier.
 // If we find one, return a "temporary unresolved type" that is treated more leniently in type checking.
-static t_symbol_id _check_prescan_for_potential_template_parameter(semantic_state& state, t_node_id prescan_symbol_id, const core::t_identifier_id potential_param_name) {
+static t_symbol_id _check_prescan_for_potential_template_parameter(semantic_state& state, const t_symbol_id prescan_symbol_id, const core::t_identifier_id potential_param_name) {
     const specifiable* declaration_symbol = (specifiable*)(state.arena.get_base_ptr(prescan_symbol_id));
 
-    const auto iterator = std::find(declaration_symbol->template_parameter_list.begin(), declaration_symbol->template_parameter_list.end(), potential_param_name);
+    const auto iterator = std::find_if(
+        declaration_symbol->template_parameter_list.begin(),
+        declaration_symbol->template_parameter_list.end(),
+        [state, potential_param_name](const t_node_id focus_node) { return state.get_node<expr_identifier>(focus_node).id == potential_param_name; }
+    );
 
     if (iterator == declaration_symbol->template_parameter_list.end())
-        return INVALD_SYMBOL_ID;
+        return INVALID_SYMBOL_ID;
 
-    return state.arena.insert(type_wrapper(INVALD_SYMBOL_ID, core::e_type_qualifier::NONE));
+    return state.arena.insert(type_wrapper(INVALID_SYMBOL_ID));
 }
 
 /*
@@ -299,16 +331,16 @@ Return the specified or unspecified type wrapper.
 */
 static t_symbol_id _search_potential_prescans_and_specifications(semantic_state& state, const t_node_id identifier_node_id) {
     const core::t_identifier_id potential_param_name = state.get_node<expr_identifier>(identifier_node_id).id;
-
+    
     // Specified template arguments
-    if (state.context.function_specification_id != INVALD_SYMBOL_ID) {
+    if (state.context.function_specification_id != INVALID_SYMBOL_ID) {
         const t_symbol_id searched_function_specialization_symbol = _fill_potential_template_parameter_with_argument(state, state.context.function_specification_id, potential_param_name);
 
         if (state.arena.get_base_ptr(searched_function_specialization_symbol)->type != symbol_type::INVALID)
             return searched_function_specialization_symbol;
     }
 
-    if (state.context.struct_specification_id != INVALD_SYMBOL_ID) {
+    if (state.context.struct_specification_id != INVALID_SYMBOL_ID) {
         const t_symbol_id searched_struct_specialization_symbol = _fill_potential_template_parameter_with_argument(state, state.context.struct_specification_id, potential_param_name);
 
         if (state.arena.get_base_ptr(searched_struct_specialization_symbol)->type != symbol_type::INVALID)
@@ -316,21 +348,20 @@ static t_symbol_id _search_potential_prescans_and_specifications(semantic_state&
     }
 
     // Unspecified template parameter matching
-    if (state.context.function_prescan_id != INVALD_SYMBOL_ID) {
+    if (state.context.function_prescan_id != INVALID_SYMBOL_ID) {
         const t_symbol_id searched_function_prescan_symbol = _check_prescan_for_potential_template_parameter(state, state.context.function_prescan_id, potential_param_name);
+        if (state.arena.get_base_ptr(searched_function_prescan_symbol)->type != symbol_type::INVALID)
+            return searched_function_prescan_symbol;
+    }
+
+    if (state.context.struct_prescan_id != INVALID_SYMBOL_ID) {
+        const t_symbol_id searched_function_prescan_symbol = _check_prescan_for_potential_template_parameter(state, state.context.struct_prescan_id, potential_param_name);
 
         if (state.arena.get_base_ptr(searched_function_prescan_symbol)->type != symbol_type::INVALID)
             return searched_function_prescan_symbol;
     }
 
-    if (state.context.struct_prescan_id != INVALD_SYMBOL_ID) {
-        const t_symbol_id searched_function_prescan_symbol = _check_prescan_for_potential_template_parameter(state, state.context.function_prescan_id, potential_param_name);
-
-        if (state.arena.get_base_ptr(searched_function_prescan_symbol)->type != symbol_type::INVALID)
-            return searched_function_prescan_symbol;
-    }
-
-    return INVALD_SYMBOL_ID;
+    return INVALID_SYMBOL_ID;
 }
 
 /*
@@ -358,11 +389,11 @@ static t_symbol_id search_symbol(semantic_state& state, const t_node_id resoluti
 
 static t_symbol_id find_or_generate_specification(semantic_state& state, const t_symbol_id declaration_id, const t_node_list& template_argument_list);
 // -> type_wrapper | invalid
+// Only call under the condition that focus_node is a type. Resolve NONE externally.
 static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id focus_node_id) {
     const expr_type& focus_node = state.get_node<expr_type>(focus_node_id);
-
     const node* type_source_base_ptr = state.get_node_base_ptr(focus_node.source);
-
+    
     if (type_source_base_ptr->type == node_type::EXPR_TYPE) {
         const core::e_type_qualifier qualifier = focus_node.qualifier;
 
@@ -370,7 +401,6 @@ static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id focus_n
     }
 
     // Under this 'implicit else' condition, focus_node.source is an identifier or binary expression.
-
     const t_symbol_id found_symbol_id = search_symbol(state, focus_node.source);
     const symbol* symbol_base_ptr = state.arena.get_base_ptr(found_symbol_id);
     
@@ -381,7 +411,7 @@ static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id focus_n
         case symbol_type::DECL_TYPEDEC: {
             // Create a specification and its wrapper.
 
-            t_node_id specification = find_or_generate_specification(state, found_symbol_id, state.get_node<expr_type>(focus_node_id).argument_list);
+            t_symbol_id specification = find_or_generate_specification(state, found_symbol_id, state.get_node<expr_type>(focus_node_id).argument_list);
             return state.arena.insert(type_wrapper(specification, state.get_node<expr_type>(focus_node_id).qualifier));
         }
 
@@ -397,7 +427,7 @@ static t_symbol_id eval_expr_type(semantic_state& state, const t_node_id focus_n
             return state.arena.insert(sym_invalid());
     }
 
-    return state.arena.insert(type_wrapper(found_symbol_id, core::e_type_qualifier::NONE));
+    return state.arena.insert(type_wrapper(found_symbol_id));
 }
 
 // vector<eval_expr_type(type_node_N)>
@@ -414,7 +444,7 @@ static t_symbol_list eval_type_list(semantic_state& state, const t_node_list& ty
 // -> info_function_specification
 static t_symbol_id generate_function_specification(semantic_state& state, const t_symbol_id declaration_id, const t_node_list& template_argument_node_list) {
     const auto& declaration = state.get_symbol<decl_function>(declaration_id);
-    
+
     const t_symbol_id return_type_symbol_id = eval_expr_type(state, declaration.node.return_type);
     const t_symbol_list template_argument_symbol_list = eval_type_list(state, template_argument_node_list);
     
@@ -430,34 +460,44 @@ static t_symbol_id generate_function_specification(semantic_state& state, const 
     return specification_symbol_id;
 }
 
+static t_symbol_id generate_primitive_specification(semantic_state& state, const t_symbol_id declaration_id) {
+    const t_symbol_id specification_symbol_id = state.arena.insert(info_primitive_specification());
+
+    auto& declaration = state.get_symbol<decl_primitive>(declaration_id);
+
+    std::pair<const core::sym::t_symbol_list, const core::sym::t_symbol_id> pair = {declaration._empty_template_parameter_list, specification_symbol_id}; 
+    // even though you're suppossed to insert arguments here, template_parameter_list is always empty. just use it instead. it has the same type anyway
+    declaration.specification_map.insert(std::move(pair));
+
+    return specification_symbol_id;
+}
+
 // -> info_..._specification
-static t_symbol_id find_or_generate_specification(semantic_state& state, const t_symbol_id declaration_id, const t_node_list& template_argument_list) {
+static t_symbol_id find_or_generate_specification(semantic_state& state, const t_symbol_id declaration_id, const t_node_list& template_argument_node_list) {
     const specifiable* as_specifiable = (specifiable*)state.arena.get_base_ptr(declaration_id);
-    const auto iterator = as_specifiable->specification_map.find(template_argument_list);
+    const auto iterator = as_specifiable->specification_map.find(template_argument_node_list);
 
     if (iterator != as_specifiable->specification_map.end())
         return iterator->second;
 
     if (as_specifiable->type == symbol_type::DECL_FUNCTION)
-        return generate_function_specification(state, declaration_id, template_argument_list);
+        return generate_function_specification(state, declaration_id, template_argument_node_list);
+    else if (as_specifiable->type == symbol_type::DECL_PRIMITIVE) {
+        if (template_argument_node_list.size() > 0)
+            state.add_log(core::lilog::log_level::COMPILER_ERROR, state.get_node_base_ptr(template_argument_node_list[0])->selection, "Primitives can not have specifications.");
+        return generate_primitive_specification(state, declaration_id);
+    }
+        
 
-    // Haven't gotten to this implementation yet
-    STMT_UNREACHABLE("find_or_generate_specification");
-}
-
-// Behaves like search_symbol, but is used in the context of creating a new declaration with its name being the last identifier in the tree.
-static std::pair<decl_module&, core::t_identifier_id> search_symbol_for_naming(semantic_state& state, const t_node_id resolution_node) {
-    // First check from the perspective of the current module
-
-    // If the entry point identifier is not recognizable, 
-    STMT_UNREACHABLE("search_symbol_for_naming");
+    state.add_log(core::lilog::log_level::COMPILER_ERROR, core::lisel(0, 0), "Unexpected expression type.");
+    return INVALID_SYMBOL_ID;
 }
 
 // Covers all declarations. Appends basically any symbol into the currently active namespaces.
 static void append_item_declaration(semantic_state& state, const t_node_id resolution_node_id, const t_symbol_id symbol_id) {
     // Locate the module we want to declare the variable in RELATIVE TO focused_module
 
-    std::pair<decl_module&, core::t_identifier_id> name_info = search_symbol_for_naming(state, resolution_node_id);
+    std::pair<decl_module&, core::t_identifier_id> name_info = search_symbol_for_naming(state, state.get_symbol<decl_module>(state.focused_module_id), resolution_node_id);
     auto& target_module = name_info.first;
     auto& name_id = name_info.second;
 
@@ -471,7 +511,7 @@ static void append_item_declaration(semantic_state& state, const t_node_id resol
 
 // * Needs to work with specifications since this is statement-level
 static void append_local_declaration(semantic_state& state, const t_node_id name_node_id, const t_symbol_id symbol_id) {
-
+    state.add_log(core::lilog::log_level::COMPILER_ERROR, state.get_node_base_ptr(name_node_id)->selection, "Functionality for appending a local declaration not added yet.");
 }
 
 /*
@@ -493,16 +533,91 @@ static t_symbol_id eval_expr_binary(semantic_state& state, const expr_binary& fo
     const t_node_id first_id = eval_expr(state, focus_node.first);
     const t_node_id second_id = eval_expr(state, focus_node.second);
 
-    if (!assert_types_match(state, focus_node.selection, first_id, second_id)) {
-        return INVALD_SYMBOL_ID;
+    if ((first_id == INVALID_SYMBOL_ID || second_id == INVALID_SYMBOL_ID) || !assert_types_match(state, focus_node.selection, first_id, second_id)) {
+        return INVALID_SYMBOL_ID;
     }
 
     return first_id;
 }
 
+static t_symbol_id eval_expr_literal(semantic_state& state, const expr_literal& focus_node) {
+    switch (focus_node.literal_type) {
+        case expr_literal::e_literal_type::INT: {
+            return state.arena.insert(type_wrapper(find_or_generate_specification(state, TYPE_I32_SYMBOL_ID, {})));
+        }
+        default:    
+            break;
+    }
+
+    state.add_log(core::lilog::log_level::COMPILER_ERROR, focus_node.selection, "Unhandled literal type.");
+    return INVALID_SYMBOL_ID;
+}
+
+static t_symbol_id eval_expr_call(semantic_state& state, const expr_call& focus_node) {
+    const t_symbol_id declaration_symbol_id = search_symbol(state, focus_node.callee);
+
+    switch (state.arena.get_base_ptr(declaration_symbol_id)->type) {
+        case symbol_type::INVALID:
+            return declaration_symbol_id;
+        case symbol_type::DECL_FUNCTION:
+            state.add_log(core::lilog::log_level::ERROR, focus_node.selection, "Attempted to call a symbol that is not a function.");
+            return INVALID_SYMBOL_ID;
+        default:
+            break;
+    }
+
+    t_symbol_id specification_symbol_id = find_or_generate_specification(state, declaration_symbol_id, focus_node.template_argument_list);
+
+    semantic_context context_waypoint = state.context;
+    state.context.set_specification<semcon::FUNC>(specification_symbol_id);
+
+    eval_stmt(state, focus_node.callee);
+
+    state.context = context_waypoint;
+    
+    return state.get_symbol<info_function_specification>(specification_symbol_id).return_type_id;
+}
+
+static t_symbol_id eval_expr_identifier(semantic_state& state, const expr_call& focus_node) {
+    return 0;
+}
+
 // Local variable declaration
 static void eval_stmt_declaration(semantic_state& state, const stmt_declaration& focus_node) {
 
+}
+
+static void eval_stmt_return(semantic_state& state, const stmt_return& focus_node) {
+    t_symbol_id return_value_type_symbol_id = eval_expr(state, focus_node.expression);
+
+    if (return_value_type_symbol_id == INVALID_SYMBOL_ID)
+        return;
+    
+    // We assue that if a specification isn't open, then a prescan is.
+    t_symbol_id& function_return_type_symbol_id = 
+        state.context.function_specification_id != INVALID_SYMBOL_ID 
+            ? state.get_symbol<info_function_specification>(state.context.function_specification_id).return_type_id
+            : state.get_symbol<decl_function>(state.context.function_prescan_id).return_type_id;
+
+    // Function return type was declared implicit. Therefore, we don't need to type check.
+    if (function_return_type_symbol_id == INVALID_SYMBOL_ID) {
+        function_return_type_symbol_id = return_value_type_symbol_id;
+        return;
+    }
+
+    // There is an explicit function return type.
+    assert_types_match(
+        state, 
+        state.get_node_base_ptr(focus_node.expression)->selection, 
+        return_value_type_symbol_id,
+        function_return_type_symbol_id
+    );
+}
+
+static void eval_stmt_compound(semantic_state& state, const stmt_compound& focus_node) {
+    for (const t_node_id subnode_id : focus_node.stmt_list) {
+        eval_stmt(state, subnode_id);
+    }
 }
 
 // Global variable declaration
@@ -515,7 +630,7 @@ static void eval_item_declaration(semantic_state& state, const item_declaration&
 
     const t_symbol_id deduced_value_type = eval_expr(state, focus_node.value);
 
-    if (state.get_node_base_ptr(focus_node.value_type)->type == node_type::EXPR_NONE)
+    if (deduced_value_type == INVALID_SYMBOL_ID || state.get_node_base_ptr(focus_node.value_type)->type == node_type::EXPR_NONE)
         return;
 
     const t_symbol_id value_type_symbol = eval_expr_type(state, focus_node.value_type);
@@ -525,6 +640,14 @@ static void eval_item_declaration(semantic_state& state, const item_declaration&
 static void prescan_function_decl(semantic_state& state, const expr_function& func_node, t_symbol_id declaration_symbol_id) {
     semantic_context context_waypoint = state.context;
     state.context.set_prescan<semcon::FUNC>(declaration_symbol_id);
+
+    t_symbol_id return_type_id = 
+        state.get_node_base_ptr(func_node.return_type)->type != node_type::EXPR_NONE
+        ? eval_expr_type(state, func_node.return_type)
+        : INVALID_SYMBOL_ID;
+
+    // This can be unspecified since we're in the prescan. It's all good.
+    state.get_symbol<decl_function>(declaration_symbol_id).return_type_id = return_type_id;
     
     // Veryify/test the return and parameter types.
     for (const t_node_id parameter : func_node.parameter_list) {
@@ -546,14 +669,17 @@ static void prescan_function_decl(semantic_state& state, const expr_function& fu
         //      ^ <-- if that exists
         if (has_value_type)
             // Veryify that the type semantics are true. Pass forward for potential type checking with default value.
-            type_symbol = eval_expr_type(state, parameter_node.value_type);    
+            type_symbol = eval_expr_type(state, parameter_node.value_type); 
         else
             type_symbol = eval_expr(state, parameter_node.default_value);         
 
         if (has_default_value) {
             const t_symbol_id default_value_type_deduction = eval_expr(state, parameter_node.default_value);
 
-            if (!assert_types_match(state, parameter_node.selection, type_symbol, default_value_type_deduction))
+            if (
+                (type_symbol == INVALID_SYMBOL_ID || default_value_type_deduction == INVALID_SYMBOL_ID)
+                || !assert_types_match(state, parameter_node.selection, type_symbol, default_value_type_deduction)
+            )
                 continue;
         }   
 
@@ -562,23 +688,24 @@ static void prescan_function_decl(semantic_state& state, const expr_function& fu
 
     // Prescan the body. Contexts should be null at this point.
     eval_stmt(state, func_node.body);
+
+    // Ensure the return type of the function still isn't implicit (if it was) after prescanning).
+    if (state.get_symbol<decl_function>(declaration_symbol_id).return_type_id == INVALID_SYMBOL_ID)
+        state.add_log(core::lilog::log_level::ERROR, state.get_node_base_ptr(func_node.return_type)->selection, "Return type not specified.");
     
     state.context = context_waypoint;
 }
 
 static void eval_item_function_declaration(semantic_state& state, const item_function_declaration& focus_node) {
     const expr_function& func_node = state.get_node<expr_function>(focus_node.function);
-
     t_symbol_id declaration_symbol_id = state.arena.insert(decl_function(func_node));
 
-    std::cout << "Append declaration\n";
     append_item_declaration(
         state,
         focus_node.source,
         declaration_symbol_id
     );
 
-    std::cout << "Prescan func decl\n";
     prescan_function_decl(state, func_node, declaration_symbol_id);
 }
 
@@ -601,11 +728,20 @@ static t_symbol_id eval_expr(semantic_state& state, const t_node_id node_id) {
     switch (node_base_ptr->type) {
         case node_type::EXPR_UNARY:
             return eval_expr_unary(state, *(expr_unary*)node_base_ptr);
+        case node_type::EXPR_BINARY:
+            return eval_expr_binary(state, *(expr_binary*)node_base_ptr);
+        case node_type::EXPR_CALL:
+            return eval_expr_call(state, *(expr_call*)node_base_ptr);
+        case node_type::EXPR_LITERAL:
+            return eval_expr_literal(state, *(expr_literal*)node_base_ptr);
+        case node_type::EXPR_IDENTIFIER:
+            return eval_expr_identifier(state, *(expr_identifier*)node_base_ptr);
         default:
             break;
     }
 
-    STMT_UNREACHABLE("eval_expr");
+    state.add_log(core::lilog::log_level::COMPILER_ERROR, node_base_ptr->selection, "Unexpected expression type.");
+    return INVALID_SYMBOL_ID;
 }
 
 static void eval_stmt(semantic_state& state, const t_node_id node_id) {
@@ -614,6 +750,12 @@ static void eval_stmt(semantic_state& state, const t_node_id node_id) {
     switch (node_base_ptr->type) {
         case core::ast::node_type::STMT_DECLARATION:
             eval_stmt_declaration(state, *(stmt_declaration*)node_base_ptr);
+            break;
+        case core::ast::node_type::STMT_RETURN:
+            eval_stmt_return(state, *(stmt_return*)node_base_ptr);
+            break;
+        case core::ast::node_type::STMT_COMPOUND:
+            eval_stmt_compound(state, *(stmt_compound*)node_base_ptr);
             break;
         default:
             break;
@@ -655,16 +797,24 @@ static void eval_ast_root(semantic_state& state, const core::ast::ast_root& node
 bool core::frontend::semantic_analyze(liprocess& process, const t_file_id file_id) {
     semantic_state state(process, file_id);
 
-    state.arena.insert(sym_invalid()); // INVALD_SYMBOL_ID
+    state.arena.insert(sym_invalid()); // INVALID_SYMBOL_ID
     state.arena.insert(sym_root()); // ROOT_SYMBOL_ID
     state.arena.insert(decl_module()); // GLOBAL_MODULE_SYMBOL_ID
 
-    state.get_symbol<sym_root>(ROOT_SYMBOL_ID).global_module = GLOBAL_MODULE_SYMBOL_ID;
+    state.arena.insert(decl_primitive(0, 0)); // void - change implementation strategy
+    state.arena.insert(decl_primitive(4, 4)); // i32
+
+    auto& root_symbol = state.get_symbol<sym_root>(ROOT_SYMBOL_ID);
+    root_symbol.global_module = GLOBAL_MODULE_SYMBOL_ID;
+
+    auto& global_module_symbol = state.get_symbol<decl_module>(GLOBAL_MODULE_SYMBOL_ID);
+    global_module_symbol.declaration_map.insert({state.process.identifier_lookup.insert("i32"), TYPE_I32_SYMBOL_ID});
+
     state.focused_module_id = GLOBAL_MODULE_SYMBOL_ID;
 
-    //eval_ast_root(state, state.get_node<core::ast::ast_root>(0));
+    eval_ast_root(state, state.get_node<core::ast::ast_root>(0));
 
-    //std::cout << "Finished successfully\n";
+    state.file().dump_symbol_table = std::any(std::move(state.arena));
 
     return true;
 }

@@ -1,19 +1,6 @@
-; Basic boilerplate
+dec add[T](a: T, b: T): T
+    return a + b
 
-dec loop_fib(loops: u32): u32 {
-    dec a: u32 = 0
-    dec b: u32 = 1
-
-    dec i = 0
-    while i < loops {
-        dec c = b
-        b = a + b
-        a = c
-    }
-
-    return b
-}
-
-dec main() {
-    io..write("Hello world")
+dec main(): i32 {
+    add[int](5, 2)
 }

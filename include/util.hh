@@ -26,8 +26,6 @@ Minor functions are are used in different locations of the compiler.
     #define UNREACHABLE() std::abort()
 #endif
 
-#define STMT_UNREACHABLE(str) std::cout << "REACHED UNREACHABLE - " << str << std::endl; UNREACHABLE()
-
 namespace liutil {
     inline bool is_whitespace(const char c) {
         return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -37,7 +35,7 @@ namespace liutil {
         std::string buffer;
 
         for (uint8_t i = 0; i < level; i++) {
-            buffer += ".  ";
+            buffer += " ";
         }
 
         return buffer;

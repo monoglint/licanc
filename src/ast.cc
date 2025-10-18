@@ -29,7 +29,7 @@ Everything else is all monoglint B)
 
 */
 
-void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent) {
+void core::ast::ast_arena::pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent) const {
     const arena_node& an = list[id];
     const node* base = get_base_ptr(id);
 

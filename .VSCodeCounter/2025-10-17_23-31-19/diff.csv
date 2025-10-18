@@ -1,0 +1,10 @@
+"filename", "language", "C++", "CMake", "comment", "blank", "total"
+"c:\Users\jghig\cxxprojects\licanc\CMakeLists.txt", "CMake", 0, 1, 0, 0, 1
+"c:\Users\jghig\cxxprojects\licanc\include\arena.hh", "C++", 1, 0, 0, 1, 2
+"c:\Users\jghig\cxxprojects\licanc\include\symbol.hh", "C++", 11, 0, 0, 2, 13
+"c:\Users\jghig\cxxprojects\licanc\include\util.hh", "C++", 1, 0, 0, 0, 1
+"c:\Users\jghig\cxxprojects\licanc\src\licanapi.cc", "C++", -2, 0, 5, 0, 3
+"c:\Users\jghig\cxxprojects\licanc\src\parse.cc", "C++", -8, 0, 0, 0, -8
+"c:\Users\jghig\cxxprojects\licanc\src\semantic.cc", "C++", 112, 0, 11, 28, 151
+"c:\Users\jghig\cxxprojects\licanc\src\symbol.cc", "C++", 104, 0, 1, 18, 123
+"Total", "-", 219, 1, 17, 49, 286

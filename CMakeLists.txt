@@ -16,6 +16,7 @@ add_executable(licanc
     src/semantic.cc
     src/generate.cc
     src/ast.cc
+    src/symbol.cc
     resources/resources.rc
 )
 

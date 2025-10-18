@@ -138,8 +138,7 @@ namespace core {
                 return id == other.id;
             }
 
-            // Used by semantic analyzer to check if an identifier lies in template parameters. (_search_specified_template_argument_symbol())
-            inline bool operator==(const t_identifier_id& other) const {
+            inline bool operator==(const t_identifier_id other) const {
                 return id == other;
             }
         };
@@ -484,7 +483,7 @@ namespace core {
         };
 
         struct ast_arena : liutil::arena<t_node_id, node, arena_node> {
-            void pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent = 0);
+            void pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent = 0) const;
             bool is_expression_wrappable(const t_node_id id);
         };
     }

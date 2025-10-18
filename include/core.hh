@@ -125,6 +125,7 @@ namespace core {
             // Data dump - avoids additional header dependencies. Decast as needed
             std::any dump_token_list;                   // std::vector<token>
             std::any dump_ast_arena;                    // ast::ast_arena
+            std::any dump_symbol_table;                 // sym::symbol_arena
 
             // 0-indexed
             t_pos get_line_of_position(const t_pos position) const;

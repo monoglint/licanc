@@ -1,10 +1,13 @@
 #pragma once
 
 #include <vector>
+#include <variant>
 
 namespace liutil {
     template <typename ID, typename PBN, typename VAR> // PBN = polymorphic base node, VAR = a class with the property _raw that is a variant for all of the possible node types
     struct arena {
+        arena() {}
+
         std::vector<VAR> list = {};
 
         template <typename T>
