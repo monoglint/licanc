@@ -1,6 +1,6 @@
 dec add[T](a: T, b: T): T
-    return a + b
+    return 5.5
 
 dec main(): i32 {
-    add[int](5, 2)
+    return add[i32](3, 2)
 }

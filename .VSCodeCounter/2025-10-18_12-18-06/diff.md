@@ -1,23 +1,23 @@
 # Diff Summary
 
-Date : 2025-10-12 21:27:05
+Date : 2025-10-18 12:18:06
 
 Directory c:\\Users\\jghig\\cxxprojects\\licanc
 
-Total : 12 files,  632 codes, 43 comments, 199 blanks, all 874 lines
+Total : 5 files,  65 codes, 6 comments, 14 blanks, all 85 lines
 
 [Summary](results.md) / [Details](details.md) / Diff Summary / [Diff Details](diff-details.md)
 
 ## Languages
 | language | files | code | comment | blank | total |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| C++ | 12 | 632 | 43 | 199 | 874 |
+| C++ | 5 | 65 | 6 | 14 | 85 |
 
 ## Directories
 | path | files | code | comment | blank | total |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| . | 12 | 632 | 43 | 199 | 874 |
-| include | 6 | 282 | 18 | 77 | 377 |
-| src | 6 | 350 | 25 | 122 | 497 |
+| . | 5 | 65 | 6 | 14 | 85 |
+| include | 2 | 1 | -1 | 0 | 0 |
+| src | 3 | 64 | 7 | 14 | 85 |
 
 [Summary](results.md) / [Details](details.md) / Diff Summary / [Diff Details](diff-details.md)

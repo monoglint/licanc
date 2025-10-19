@@ -8,6 +8,7 @@
 #include "arena.hh"
 #include "util.hh"
 #include "ast.hh"
+#include "semantic.hh"
 
 namespace core {
     namespace sym {
@@ -44,7 +45,6 @@ namespace core {
             symbol_type type;
         };
 
-        // This isn't movable because of the const - warning
         struct specifiable : symbol {
             specifiable(const symbol_type type, const ast::t_node_list& template_parameter_list)
                 : symbol(type), template_parameter_list(template_parameter_list) {}
@@ -57,8 +57,8 @@ namespace core {
         };
 
         struct specification : symbol {
-            specification(const symbol_type type, const t_symbol_list& template_argument_list, const t_symbol_id declaration_id)
-                : symbol(type), template_argument_list(template_argument_list), declaration_id(declaration_id) {}
+            specification(const symbol_type type, t_symbol_list&& template_argument_list, const t_symbol_id declaration_id)
+                : symbol(type), template_argument_list(std::move(template_argument_list)), declaration_id(declaration_id) {}
 
             specification(const symbol_type type)
                 : symbol(type) {}
@@ -66,7 +66,7 @@ namespace core {
             virtual ~specification() = default;
 
             t_symbol_list template_argument_list = {}; // type_wrapper
-            t_symbol_id declaration_id = 0; // decl_function
+            t_symbol_id declaration_id = INVALID_SYMBOL_ID; // decl_function
         };
 
         // Example use would be the result of failing to resolve a symbol. "Variable 'a' has not been declared in the current socpe." 
@@ -86,8 +86,8 @@ namespace core {
             decl_primitive(const size_t size, const size_t alignment)
                 : specifiable(symbol_type::DECL_PRIMITIVE, _empty_template_parameter_list), size(size), alignment(alignment) {}
 
-            size_t size;
-            size_t alignment;
+            size_t size = 0;
+            size_t alignment = 0;
 
             // fake ast node list to satisfy specification
             ast::t_node_list _empty_template_parameter_list = {};
@@ -113,10 +113,10 @@ namespace core {
         };
 
         struct info_function_specification : specification {
-            info_function_specification(const t_symbol_id return_type_id, const t_symbol_list& type_argument_list, const t_symbol_id declaration_id)
-                : specification(symbol_type::INFO_FUNCTION_SPECIFICATION, type_argument_list, declaration_id), return_type_id(return_type_id) {}
+            info_function_specification(t_symbol_list&& type_argument_list, const t_symbol_id declaration_id)
+                : specification(symbol_type::INFO_FUNCTION_SPECIFICATION, std::move(type_argument_list), declaration_id) {}
 
-            t_symbol_id return_type_id; // type_wrapper
+            t_symbol_id return_type_id = INVALID_SYMBOL_ID; // type_wrapper
         };
 
         struct decl_function : specifiable {
@@ -131,7 +131,7 @@ namespace core {
             const ast::expr_function& node;
             
             // More of a temporary value for prescan runs. Will be re-processed during specification.
-            t_symbol_id return_type_id; // Can be unspecified
+            t_symbol_id return_type_id = INVALID_SYMBOL_ID; // Can be unspecified
 
             // | Nothing appended to these during instantiation. |
             // V                                                 V
@@ -159,7 +159,7 @@ namespace core {
             sym_root()
                 : symbol(symbol_type::ROOT) {}
 
-            t_symbol_id global_module;
+            t_symbol_id global_module = INVALID_SYMBOL_ID;
         };
 
         struct sym_call_frame {

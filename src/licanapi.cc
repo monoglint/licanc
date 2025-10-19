@@ -132,13 +132,13 @@ bool licanapi::build_project(const licanapi::liconfig_init& config) {
             std::cout << buffer << '\n';
         }
 
-        if (process.config._dump_ast && file.dump_symbol_table.has_value()) {
-            std::cout << "Symbol Table:\n";
-            std::string buffer(0, ' ');
-            auto ast_arena = std::any_cast<core::sym::symbol_arena>(file.dump_symbol_table);
-            ast_arena.pretty_debug(process, 1, buffer, 0);
-            std::cout << buffer << '\n';
-        }
+        // if (process.config._dump_ast && file.dump_symbol_table.has_value()) {
+        //     std::cout << "Symbol Table:\n";
+        //     std::string buffer(0, ' ');
+        //     auto ast_arena = std::any_cast<core::sym::symbol_arena>(file.dump_symbol_table);
+        //     ast_arena.pretty_debug(process, 1, buffer, 0);
+        //     std::cout << buffer << '\n';
+        // }
     }
 
     return true;

@@ -97,14 +97,16 @@ namespace core {
             return new_id;
         }
 
-        // UB warning
         inline const std::string& get(const t_identifier_id id) const {
-            return forward[id];
+            return forward.at(id);
         }
 
-        // UB warning
-        inline t_identifier_id get_id(const std::string& identifier) const {
-            return reverse.find(identifier)->second;
+        inline auto get_id(const std::string& identifier) const {
+            return reverse.find(identifier);
+        }
+
+        inline bool is_get_id_iterator_valid(const std::unordered_map<std::string, core::t_identifier_id>::const_iterator& iterator) {
+            return iterator != reverse.end();
         }
 
     private:
