@@ -1,6 +1,8 @@
-dec add[T](a: T, b: T): T
+dec foo[T](a: f32 = 2.5): T
     return 5.5
 
-dec main(): i32 {
-    return add[i32](3, 2)
+dec main() {
+    foo[f32]()
+
+    return 0
 }

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 
 #include "core.hh"
@@ -15,10 +16,10 @@ namespace core {
         enum class symbol_type : uint8_t {
             ROOT,
 
-            INFO_FUNCTION_SPECIFICATION,
-            INFO_STRUCT_SPECIFICATION,
-            INFO_TYPEDEC_SPECIFICATION,
-            INFO_PRIMITIVE_SPECIFICATION,
+            SPEC_FUNCTION,
+            SPEC_STRUCT,
+            SPEC_TYPEDEC,
+            SPEC_PRIMITIVE,
 
             INVALID,
 
@@ -51,7 +52,7 @@ namespace core {
             
             virtual ~specifiable() = default;
             
-            const ast::t_node_list& template_parameter_list; // expr_identifier
+            std::reference_wrapper<const ast::t_node_list> template_parameter_list; // expr_identifier
             // Does not need to be initialized in constructor
             t_specification_map specification_map;
         };
@@ -74,24 +75,6 @@ namespace core {
             sym_invalid()
                 : symbol(symbol_type::INVALID) {}
         };
-
-        // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
-        struct info_primitive_specification : specification {
-            info_primitive_specification()
-                : specification(symbol_type::INFO_PRIMITIVE_SPECIFICATION) {}
-        };
-
-        // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
-        struct decl_primitive : specifiable {
-            decl_primitive(const size_t size, const size_t alignment)
-                : specifiable(symbol_type::DECL_PRIMITIVE, _empty_template_parameter_list), size(size), alignment(alignment) {}
-
-            size_t size = 0;
-            size_t alignment = 0;
-
-            // fake ast node list to satisfy specification
-            ast::t_node_list _empty_template_parameter_list = {};
-        };
         
         struct decl_variable : symbol {
             decl_variable(const ast::t_node_id value_type)
@@ -112,9 +95,9 @@ namespace core {
             }
         };
 
-        struct info_function_specification : specification {
-            info_function_specification(t_symbol_list&& type_argument_list, const t_symbol_id declaration_id)
-                : specification(symbol_type::INFO_FUNCTION_SPECIFICATION, std::move(type_argument_list), declaration_id) {}
+        struct spec_function : specification {
+            spec_function(t_symbol_list&& type_argument_list, const t_symbol_id declaration_id)
+                : specification(symbol_type::SPEC_FUNCTION, std::move(type_argument_list), declaration_id) {}
 
             t_symbol_id return_type_id = INVALID_SYMBOL_ID; // type_wrapper
         };
@@ -128,7 +111,7 @@ namespace core {
                     return_type_id = _return_type_id;
                 }
 
-            const ast::expr_function& node;
+            std::reference_wrapper<const ast::expr_function> node;
             
             // More of a temporary value for prescan runs. Will be re-processed during specification.
             t_symbol_id return_type_id = INVALID_SYMBOL_ID; // Can be unspecified
@@ -139,12 +122,35 @@ namespace core {
             t_symbol_list overloads;
         };
 
-        struct info_struct_specification : specification {
-            info_struct_specification()
-                : specification(symbol_type::INFO_STRUCT_SPECIFICATION) {}
+        struct spec_struct : specification {
+            spec_struct()
+                : specification(symbol_type::SPEC_STRUCT) {}
         };
 
-        struct decl_struct {};
+        struct decl_struct : specifiable {
+            decl_struct(const ast::item_struct_declaration& node)
+                : specifiable(symbol_type::DECL_STRUCT, node.template_parameter_list), node(node) {}
+
+            std::reference_wrapper<const ast::item_struct_declaration> node;
+        };
+
+        // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
+        struct spec_primitive : specification {
+            spec_primitive()
+                : specification(symbol_type::SPEC_PRIMITIVE) {}
+        };
+
+        // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
+        struct decl_primitive : specifiable {
+            decl_primitive(const size_t size, const size_t alignment)
+                : specifiable(symbol_type::DECL_PRIMITIVE, _empty_template_parameter_list), size(size), alignment(alignment) {}
+
+            size_t size = 0;
+            size_t alignment = 0;
+
+            // fake ast node list to satisfy specification
+            ast::t_node_list _empty_template_parameter_list = {};
+        };
         
         struct type_wrapper : symbol {
             type_wrapper(const t_symbol_id wrapee_id, const core::e_type_qualifier qualifier = core::e_type_qualifier::NONE)
@@ -169,21 +175,21 @@ namespace core {
 
         struct arena_symbol {
             template <typename T>
-            arena_symbol(T&& node)
-                : _raw(std::forward<T>(node)) {}
+            arena_symbol(T&& sym)
+                : _raw(std::forward<T>(sym)) {}
 
             std::variant <
                 sym_invalid,
                 decl_variable,
                 decl_module,
 
-                info_function_specification,
+                spec_function,
                 decl_function,
 
-                info_struct_specification,
+                spec_struct,
                 decl_struct,
 
-                info_primitive_specification,
+                spec_primitive,
                 decl_primitive,
 
                 type_wrapper,
@@ -193,7 +199,25 @@ namespace core {
         };
 
         struct symbol_arena : liutil::arena<t_symbol_id, symbol, arena_symbol> {
-            void pretty_debug(const core::liprocess& process, const t_symbol_id id, std::string& buffer, uint8_t indent = 0);
+            std::string pretty_debug(const core::liprocess& process, const core::ast::ast_arena& ast_arena, const t_symbol_id id);
+
+            // Contains names for declarations and other symbols. Used purely for debugging.
+            std::unordered_map<t_symbol_id, core::t_identifier_id> symbol_name_map;
+
+            inline t_symbol_id unwrap_type_wrapper(const type_wrapper& type) const {
+                if (get_base_ptr(type.wrapee_id)->type == symbol_type::TYPE_WRAPPER)
+                    return unwrap_type_wrapper(get_as<type_wrapper>(type.wrapee_id));
+                return type.wrapee_id;
+            }
+
+            inline std::string get_symbol_name(const core::liprocess& process, const t_symbol_id symbol_id) const {
+                const auto iterator = symbol_name_map.find(symbol_id);
+
+                if (iterator == symbol_name_map.end())
+                    return "<unnamed>";
+                else
+                    return process.identifier_lookup.get(iterator->second);
+            }
         };
     }
 }

@@ -22,6 +22,10 @@ namespace liutil {
             list.push_back(std::forward<T>(node));
             return std::get<T>(list.back()._raw);
         }
+
+        inline void erase(const ID id) {
+            list.erase(list.begin() + id);
+        }
         
         template <typename T>
         inline T& get(const ID id) {

@@ -113,7 +113,7 @@ namespace core {
             expr_type(const core::lisel& selection, const t_node_id source, t_node_list&& argument_list, const e_type_qualifier qualifier)
                 : node(selection, node_type::EXPR_TYPE), source(source), argument_list(std::move(argument_list)), qualifier(qualifier) {}
             
-            t_node_id source; // expr_identifier | expr_binary (scope_resolution) 
+            t_node_id source; // expr_type | expr_identifier | expr_binary (scope_resolution) 
             t_node_list argument_list; // expr
             
             e_type_qualifier qualifier;
@@ -230,7 +230,7 @@ namespace core {
                 : node(selection, node_type::EXPR_CALL), callee(callee), template_argument_list(std::move(template_argument_list)), argument_list(std::move(argument_list)) {}
 
             t_node_id callee; // expr_identifier | expr_binary (scope_resolution) 
-            t_node_list template_argument_list; // expr
+            t_node_list template_argument_list; // expr_type (expr in the future)
             t_node_list argument_list; // expr
         };
         
@@ -485,6 +485,14 @@ namespace core {
         struct ast_arena : liutil::arena<t_node_id, node, arena_node> {
             void pretty_debug(const liprocess& process, const t_node_id id, std::string& buffer, uint8_t indent = 0) const;
             bool is_expression_wrappable(const t_node_id id);
+
+            // -> expr_identifier | expr_binary
+            inline t_node_id unwrap_expr_type(const expr_type& type) const {
+                if (get_base_ptr(type.source)->type == node_type::EXPR_TYPE)
+                    return unwrap_expr_type(get_as<expr_type>(type.source));
+                else
+                    return type.source;
+            }
         };
     }
 }
