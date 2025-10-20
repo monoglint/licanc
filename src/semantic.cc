@@ -66,6 +66,16 @@ struct semantic_context {
     }
 };
 
+struct local {
+    core::t_identifier_id name;
+    t_symbol_id value_type; // type_wrapper
+
+};
+
+struct call_frame {
+    std::vector<local> local_stack; 
+};
+
 struct semantic_state {
     semantic_state(core::liprocess& process, const core::t_file_id file_id)
         : process(process),
@@ -85,7 +95,7 @@ struct semantic_state {
     const ast_arena& ast_arena;
     symbol_arena arena;
     
-    std::vector<sym_call_frame> call_frame_stack;
+    std::vector<call_frame> call_frame_stack;
 
     /*
     
@@ -178,7 +188,7 @@ static bool assert_types_match(semantic_state& state, const core::lisel& error_s
         const std::string type0_str = state.arena.pretty_debug(state.process, state.ast_arena, type0_id);
         const std::string type1_str = state.arena.pretty_debug(state.process, state.ast_arena, type1_id);
 
-        state.add_log(core::lilog::log_level::ERROR, error_selection, "Type mismatch\n" + type0_str + '\n' + type1_str);
+        state.add_log(core::lilog::log_level::ERROR, error_selection, "Type mismatch\n" + type0_str + type1_str);
         return false;
     }
 
@@ -459,11 +469,7 @@ static t_symbol_id generate_function_specification(semantic_state& state, const 
     semantic_context context_waypoint = state.context;
     state.context.set_specification<semcon::FUNC>(specification_symbol_id);
 
-    if (!check_decl_function_parameters(state, state.get_symbol<decl_function>(declaration_id).node.get())) {
-        state.context = context_waypoint;
-        state.arena.erase(specification_symbol_id);
-        return INVALID_SYMBOL_ID;
-    }
+    check_decl_function_parameters(state, state.get_symbol<decl_function>(declaration_id).node.get());
 
     const t_symbol_id return_type_symbol_id = eval_expr_type(state, state.get_symbol<decl_function>(declaration_id).node.get().return_type);
     state.get_symbol<spec_function>(specification_symbol_id).return_type_id = return_type_symbol_id;
@@ -474,7 +480,7 @@ static t_symbol_id generate_function_specification(semantic_state& state, const 
 }
 
 static t_symbol_id generate_primitive_specification(semantic_state& state, const t_symbol_id declaration_id) {
-    const t_symbol_id specification_symbol_id = state.arena.insert(spec_primitive());
+    const t_symbol_id specification_symbol_id = state.arena.insert(spec_primitive(declaration_id));
 
     auto& declaration = state.get_symbol<decl_primitive>(declaration_id);
 
@@ -727,7 +733,7 @@ static bool check_decl_function_parameters(semantic_state& state, const expr_fun
 
             if (
                 (type_symbol == INVALID_SYMBOL_ID || default_value_type_deduction == INVALID_SYMBOL_ID)
-                || !assert_types_match(state, parameter_node.selection, type_symbol, default_value_type_deduction)
+                || !assert_types_match(state, state.get_node_base_ptr(parameter_node.default_value)->selection, type_symbol, default_value_type_deduction)
             )
                 return false;
         }   
@@ -742,10 +748,7 @@ static void prescan_function_decl(semantic_state& state, const expr_function& fu
     semantic_context context_waypoint = state.context;
     state.context.set_prescan<semcon::FUNC>(declaration_symbol_id);
     
-    if (!check_decl_function_parameters(state, func_node)) {
-        state.context = context_waypoint;
-        return;
-    }
+    check_decl_function_parameters(state, func_node);
 
     t_symbol_id return_type_id = 
         state.get_node_base_ptr(func_node.return_type)->type != node_type::EXPR_NONE

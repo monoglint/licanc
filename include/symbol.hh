@@ -61,13 +61,13 @@ namespace core {
             specification(const symbol_type type, t_symbol_list&& template_argument_list, const t_symbol_id declaration_id)
                 : symbol(type), template_argument_list(std::move(template_argument_list)), declaration_id(declaration_id) {}
 
-            specification(const symbol_type type)
-                : symbol(type) {}
+            specification(const symbol_type type, const t_symbol_id declaration_id)
+                : symbol(type), declaration_id(declaration_id) {}
 
             virtual ~specification() = default;
 
             t_symbol_list template_argument_list = {}; // type_wrapper
-            t_symbol_id declaration_id = INVALID_SYMBOL_ID; // decl_function
+            t_symbol_id declaration_id; // decl_function
         };
 
         // Example use would be the result of failing to resolve a symbol. "Variable 'a' has not been declared in the current socpe." 
@@ -123,8 +123,8 @@ namespace core {
         };
 
         struct spec_struct : specification {
-            spec_struct()
-                : specification(symbol_type::SPEC_STRUCT) {}
+            spec_struct(const t_symbol_id declaration_id)
+                : specification(symbol_type::SPEC_STRUCT, declaration_id) {}
         };
 
         struct decl_struct : specifiable {
@@ -136,8 +136,8 @@ namespace core {
 
         // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
         struct spec_primitive : specification {
-            spec_primitive()
-                : specification(symbol_type::SPEC_PRIMITIVE) {}
+            spec_primitive(const t_symbol_id declaration_id)
+                : specification(symbol_type::SPEC_PRIMITIVE, declaration_id) {}
         };
 
         // NOTE: Primitives are not designed to work with templates. Specifications are just here for general architecture uniformity.
@@ -166,12 +166,7 @@ namespace core {
                 : symbol(symbol_type::ROOT) {}
 
             t_symbol_id global_module = INVALID_SYMBOL_ID;
-        };
-
-        struct sym_call_frame {
-            // Remember; functions, enums, and structs are not meant to be declared on the local level ever.
-            std::unordered_map<t_identifier_id, t_symbol_id> local_map; // decl_variable 
-        };
+        };  
 
         struct arena_symbol {
             template <typename T>
