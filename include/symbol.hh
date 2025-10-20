@@ -205,7 +205,7 @@ namespace core {
             std::unordered_map<t_symbol_id, core::t_identifier_id> symbol_name_map;
 
             inline t_symbol_id unwrap_type_wrapper(const type_wrapper& type) const {
-                if (get_base_ptr(type.wrapee_id)->type == symbol_type::TYPE_WRAPPER)
+                if (type.wrapee_id != INVALID_SYMBOL_ID && get_base_ptr(type.wrapee_id)->type == symbol_type::TYPE_WRAPPER)
                     return unwrap_type_wrapper(get_as<type_wrapper>(type.wrapee_id));
                 return type.wrapee_id;
             }

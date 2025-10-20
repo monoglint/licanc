@@ -12,14 +12,19 @@ void _pretty_debug(const core::liprocess& process, const symbol_arena& sym_arena
     ignore_set.insert(id);
     
     switch (base_ptr->type) {
-        case symbol_type::SPEC_FUNCTION: {
-            const auto& as_spec_function = sym_arena.get_as<spec_function>(id);
-            buffer += liutil::indent_repeat(indent) + "specification for " + sym_arena.get_symbol_name(process, as_spec_function.declaration_id) + '\n';
+        case symbol_type::SPEC_FUNCTION:
+        case symbol_type::SPEC_PRIMITIVE: {
+            const specification* as_spec = (specification*)sym_arena.get_base_ptr(id);
+            buffer += liutil::indent_repeat(indent) + "specification for " + sym_arena.get_symbol_name(process, as_spec->declaration_id) + '\n';
+            buffer += liutil::indent_repeat(indent) + "(decl id: " + std::to_string((uint8_t)as_spec->declaration_id) + ")\n";
             break;
         }
+
         case symbol_type::TYPE_WRAPPER: {
             const auto& as_type_wrapper = sym_arena.get_as<type_wrapper>(id);
-            buffer += liutil::indent_repeat(indent) + "[qual] " + sym_arena.get_symbol_name(process, sym_arena.unwrap_type_wrapper(as_type_wrapper));
+            buffer += liutil::indent_repeat(indent) + "[qual] ";
+            _pretty_debug(process, sym_arena, ast_arena, sym_arena.unwrap_type_wrapper(as_type_wrapper), buffer, ignore_set, indent + 1);
+
             break;
         }
         case symbol_type::INVALID:

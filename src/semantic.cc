@@ -312,6 +312,13 @@ static t_symbol_id _check_decl_for_potential_template_parameter(semantic_state& 
     return state.arena.insert(type_wrapper(INVALID_SYMBOL_ID));
 }
 
+static bool is_resolution_node_a_template_parameter_name(semantic_state& state, const t_symbol_id decl_symbol_id, const t_node_id resolution_node) {
+    if (state.get_node_base_ptr(resolution_node)->type != node_type::EXPR_IDENTIFIER)
+        return false;
+
+    return _check_decl_for_potential_template_parameter(state, decl_symbol_id, state.get_node<expr_identifier>(resolution_node).id);
+}
+
 /*
 
 Given the provided identifier, look to see if or how it should be resolved based on the context of the analyzer;
@@ -698,23 +705,22 @@ static bool check_decl_function_parameters(semantic_state& state, const expr_fun
         const bool has_value_type = state.get_node_base_ptr(parameter_node.value_type)->type != node_type::EXPR_NONE;
         const bool has_default_value = default_value_base_node_ptr->type != node_type::EXPR_NONE;
 
-        if (has_value_type)
+        if (has_value_type) {
+            // If we are in a specification, we only want to validate the types the prescanner couldn't get.
+            if (
+                state.context.function_specification_id != INVALID_SYMBOL_ID && !is_resolution_node_a_template_parameter_name(
+                    state, 
+                    state.get_symbol<spec_function>(state.context.function_specification_id).declaration_id,
+                    state.ast_arena.unwrap_expr_type(state.get_node<expr_type>(parameter_node.value_type))
+                )
+            )
+                continue;
+
             // Verify that the type semantics are true. Pass forward for potential type checking with default value.
             type_symbol = eval_expr_type(state, parameter_node.value_type); 
+        }
         else
             type_symbol = eval_expr(state, parameter_node.default_value);  
-            
-        // If we're in a specification, ignore all parameter types that do not have a specification.
-        if (state.context.function_specification_id != INVALID_SYMBOL_ID) {
-            if (
-                !_check_decl_for_potential_template_parameter(
-                    state, state.get_symbol<spec_function>(state.context.function_specification_id).declaration_id,
-                    state.get_node<expr_identifier>(parameter_node.name).id
-                )
-            ) {
-                continue;
-            }
-        }
 
         if (has_default_value) {
             const t_symbol_id default_value_type_deduction = eval_expr(state, parameter_node.default_value);

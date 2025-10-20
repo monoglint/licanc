@@ -1,5 +1,5 @@
-dec foo[T](a: f32 = 2.5): T
-    return 5.5
+dec foo[T](a: T = 5.5): T
+    return 5
 
 dec main() {
     foo[f32]()
