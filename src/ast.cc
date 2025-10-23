@@ -12,7 +12,7 @@ bool core::ast::ast_arena::is_expression_wrappable(const t_node_id id) {
         case node_type::EXPR_BINARY: {
             const token_type opr_type = ((expr_binary*)base)->opr.type;
 
-            return opr_type == ASSIGNMENT_TOKEN;
+            return opr_type == core::parse::ASSIGNMENT_TOKEN;
         }
         case node_type::EXPR_CALL:
             return true;

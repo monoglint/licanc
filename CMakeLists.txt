@@ -13,7 +13,7 @@ add_executable(licanc
     src/parse.cc
     src/licanapi.cc
     src/core.cc
-    src/semantic.cc
+    src/sema.cc
     src/generate.cc
     src/ast.cc
     src/symbol.cc

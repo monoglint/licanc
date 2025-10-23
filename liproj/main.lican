@@ -1,11 +1,8 @@
-dec foo[T](a: T = 5.5): T
-    return 3.14
+dec add(a: u8, b: u8): u8
+    return a + b
 
-dec mid[T](): T
-    return foo[T]()
+dec main(): u8 {
+    add(5, 2)
 
-dec main() {
-    mid[i32]()
-
-    return 0
+    return 5
 }

@@ -9,7 +9,7 @@
 #include "arena.hh"
 #include "util.hh"
 #include "ast.hh"
-#include "semantic.hh"
+#include "sema.hh"
 
 namespace core {
     namespace sym {
@@ -99,7 +99,7 @@ namespace core {
             spec_function(t_symbol_list&& type_argument_list, const t_symbol_id declaration_id)
                 : specification(symbol_type::SPEC_FUNCTION, std::move(type_argument_list), declaration_id) {}
 
-            t_symbol_id return_type_id = INVALID_SYMBOL_ID; // type_wrapper
+            t_symbol_id return_type_id = core::sema::SYM_INVALID_ID; // type_wrapper
         };
 
         struct decl_function : specifiable {
@@ -114,7 +114,7 @@ namespace core {
             std::reference_wrapper<const ast::expr_function> node;
             
             // More of a temporary value for prescan runs. Will be re-processed during specification.
-            t_symbol_id return_type_id = INVALID_SYMBOL_ID; // Can be unspecified
+            t_symbol_id return_type_id = core::sema::SYM_INVALID_ID; // Can be unspecified
 
             // | Nothing appended to these during instantiation. |
             // V                                                 V
@@ -156,7 +156,7 @@ namespace core {
             type_wrapper(const t_symbol_id wrapee_id, const core::e_type_qualifier qualifier = core::e_type_qualifier::NONE)
                 : symbol(symbol_type::TYPE_WRAPPER), wrapee_id(wrapee_id), qualifier(qualifier) {}
 
-            // point to INVALID_SYMBOL_ID for unspecified
+            // point to SYM_INVALID_ID for unspecified
             t_symbol_id wrapee_id; // specification | type_wrapper
             core::e_type_qualifier qualifier; // if wrapee is another wrapper, then this can be something other than NONE
         };
@@ -165,7 +165,7 @@ namespace core {
             sym_root()
                 : symbol(symbol_type::ROOT) {}
 
-            t_symbol_id global_module = INVALID_SYMBOL_ID;
+            t_symbol_id global_module = core::sema::SYM_INVALID_ID;
         };  
 
         struct arena_symbol {
@@ -200,7 +200,7 @@ namespace core {
             std::unordered_map<t_symbol_id, core::t_identifier_id> symbol_name_map;
 
             inline t_symbol_id unwrap_type_wrapper(const type_wrapper& type) const {
-                if (type.wrapee_id != INVALID_SYMBOL_ID && get_base_ptr(type.wrapee_id)->type == symbol_type::TYPE_WRAPPER)
+                if (type.wrapee_id != core::sema::SYM_INVALID_ID && get_base_ptr(type.wrapee_id)->type == symbol_type::TYPE_WRAPPER)
                     return unwrap_type_wrapper(get_as<type_wrapper>(type.wrapee_id));
                 return type.wrapee_id;
             }

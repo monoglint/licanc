@@ -44,12 +44,124 @@ ctor can be an identifier
 
 */
 
+#include <unordered_set>
+
 #include "core.hh"
 #include "ast.hh"
 #include "token.hh"
 #include "parse.hh"
 
 using namespace core::ast;
+using namespace core::parse;
+
+/*
+
+====================================================
+
+Basic sets for the binary expression segment of the parser
+
+====================================================
+
+*/
+
+using t_token_set = std::unordered_set<core::token_type>;
+
+inline const t_token_set binary_scope_resolution_set = {
+    core::token_type::DOUBLE_DOT,
+};
+
+inline const t_token_set binary_member_access_set = {
+    core::token_type::DOT,
+};
+
+inline const t_token_set unary_post_set = {
+    core::token_type::DOUBLE_PLUS,
+    core::token_type::DOUBLE_MINUS
+};
+
+inline const t_token_set unary_pre_set = {
+    core::token_type::MINUS, // negate
+    core::token_type::BANG, // not
+    core::token_type::DOUBLE_PLUS,
+    core::token_type::DOUBLE_MINUS,
+    core::token_type::AT, // address of
+    core::token_type::ASTERISK, // derference
+};
+
+inline const t_token_set binary_exponential_set = {
+    core::token_type::CARET,
+};
+
+inline const t_token_set binary_multiplicative_set = {
+    core::token_type::ASTERISK,
+    core::token_type::SLASH,
+    core::token_type::PERCENT,
+};
+
+inline const t_token_set binary_additive_set = {
+    core::token_type::PLUS,
+    core::token_type::MINUS,
+};
+
+inline const t_token_set binary_numeric_comparison_set = {
+    core::token_type::LARROW,
+    core::token_type::LESS_EQUAL,
+    core::token_type::RARROW,
+    core::token_type::GREATER_EQUAL,
+};
+
+inline const t_token_set binary_direct_comparison_set = {
+    core::token_type::DOUBLE_EQUAL,
+    core::token_type::BANG_EQUAL,
+};
+
+inline const t_token_set binary_and_set = {
+    core::token_type::DOUBLE_AMPERSAND,
+};
+
+inline const t_token_set binary_or_set = {
+    core::token_type::DOUBLE_PIPE,
+};
+
+inline const t_token_set binary_assignment_set = {
+    core::token_type::EQUAL,
+    core::token_type::PLUS_EQUAL,
+    core::token_type::MINUS_EQUAL,
+    core::token_type::ASTERISK_EQUAL,
+    core::token_type::SLASH_EQUAL,
+    core::token_type::PERCENT_EQUAL,
+    core::token_type::CARET_EQUAL,
+};
+
+bool inline is_overridable_operator(const core::token_type type) {
+    switch (type) {
+        case core::token_type::DOUBLE_PLUS:
+        case core::token_type::DOUBLE_MINUS:
+        case core::token_type::MINUS:
+        case core::token_type::BANG:
+        case core::token_type::AT:
+        case core::token_type::ASTERISK:
+        case core::token_type::CARET:
+        case core::token_type::SLASH:
+        case core::token_type::PERCENT:
+        case core::token_type::PLUS:
+        case core::token_type::LARROW:
+        case core::token_type::LESS_EQUAL:
+        case core::token_type::RARROW:
+        case core::token_type::GREATER_EQUAL:
+        case core::token_type::DOUBLE_EQUAL:
+        case core::token_type::BANG_EQUAL:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/*
+
+====================================================
+
+*/
 
 struct parse_state {
     parse_state(core::liprocess& process, const core::t_file_id file_id)
