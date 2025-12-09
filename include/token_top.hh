@@ -6,8 +6,8 @@ Holds top level declarations that are openly shared to any file that includes fc
 
 #pragma once
 
-namespace fcore {
-    enum class ast_node_type {
-        
+namespace tok {
+    enum class token_type {
+
     };
 }
