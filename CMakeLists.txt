@@ -5,10 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(licanc
-    src/fcore.cc
+set(SOURCES "")
 
-    src/main.cc
+file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cc")
+
+add_executable(licanc
+    ${SOURCES}
+
     resources/resources.rc
 )
 

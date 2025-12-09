@@ -6,8 +6,10 @@ Holds top level declarations that are openly shared to any file that includes fc
 
 #pragma once
 
-namespace ast {
-    enum class node_type {
-        
+namespace tok {
+    enum class t_token_type {
+
     };
+
+    struct t_token;
 }

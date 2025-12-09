@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fcore.hh"
+#include "frontend/core/main.hh"
 
 namespace ast {
 

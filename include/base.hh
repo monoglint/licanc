@@ -28,6 +28,6 @@ namespace base {
     
     template <typename T>
     struct arena {
-
+        arena() {}
     };
 }
