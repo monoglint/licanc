@@ -2,12 +2,17 @@
 
 This header file holds fundemental data structures that the entire projet depends on.
 
+serves as the "main" core of the project where i can implement some of my personal style
+attributes (e.g. u8 etc.)
+
 */
 
 #pragma once
 
+
 #include <cstdint>
 
+// MONOGLINT0 VIOLATION 18 DEC 2025 - INTENTIONAL
 using u8 = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
@@ -22,9 +27,10 @@ using f32 = float;
 using f64 = double;
 
 namespace base {
-    using t_success = bool;
-    constexpr t_success SUCCESS = true;
-    constexpr t_success FAILURE = false;
+    enum class e_success : bool {
+        SUCCESS = true,
+        FAILURE = false
+    };
     
     template <typename T>
     struct arena {

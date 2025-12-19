@@ -6,10 +6,14 @@ Holds top level declarations that are openly shared to any file that includes fc
 
 #pragma once
 
+#include "base/base.hh"
+
 namespace ast {
-    enum class t_ast_node_type {
-        
+    enum class e_ast_node_type {
+        NONE,
+
+
     };
 
-    struct t_ast_node;
+    struct s_ast_node;
 }

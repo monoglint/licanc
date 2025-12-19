@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "frontend/core/main.hh"
+#include "frontend/fcore/fcore.hh"
 
 int main() {
     std::cout << "Hello world\n";

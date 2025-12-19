@@ -49,9 +49,25 @@ cmake_ninja_workdir = C$:/Users/jghig/projects/c/licanc/out/release/
 
 build cmake_object_order_depends_target_licanc: phony || .
 
-build CMakeFiles/licanc.dir/src/fcore.cc.obj: CXX_COMPILER__licanc_unscanned_Release C$:/Users/jghig/projects/c/licanc/src/fcore.cc || cmake_object_order_depends_target_licanc
+build CMakeFiles/licanc.dir/src/frontend/fcore/fcore.cc.obj: CXX_COMPILER__licanc_unscanned_Release C$:/Users/jghig/projects/c/licanc/src/frontend/fcore/fcore.cc || cmake_object_order_depends_target_licanc
   CONFIG = Release
-  DEP_FILE = CMakeFiles\licanc.dir\src\fcore.cc.obj.d
+  DEP_FILE = CMakeFiles\licanc.dir\src\frontend\fcore\fcore.cc.obj.d
+  FLAGS = -static-libgcc -static-libstdc++ -Wall -std=c++17
+  INCLUDES = -IC:/Users/jghig/projects/c/licanc/include
+  OBJECT_DIR = CMakeFiles\licanc.dir
+  OBJECT_FILE_DIR = CMakeFiles\licanc.dir\src\frontend\fcore
+
+build CMakeFiles/licanc.dir/src/frontend/lexer.cc.obj: CXX_COMPILER__licanc_unscanned_Release C$:/Users/jghig/projects/c/licanc/src/frontend/lexer.cc || cmake_object_order_depends_target_licanc
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\licanc.dir\src\frontend\lexer.cc.obj.d
+  FLAGS = -static-libgcc -static-libstdc++ -Wall -std=c++17
+  INCLUDES = -IC:/Users/jghig/projects/c/licanc/include
+  OBJECT_DIR = CMakeFiles\licanc.dir
+  OBJECT_FILE_DIR = CMakeFiles\licanc.dir\src\frontend
+
+build CMakeFiles/licanc.dir/src/licanc.cc.obj: CXX_COMPILER__licanc_unscanned_Release C$:/Users/jghig/projects/c/licanc/src/licanc.cc || cmake_object_order_depends_target_licanc
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\licanc.dir\src\licanc.cc.obj.d
   FLAGS = -static-libgcc -static-libstdc++ -Wall -std=c++17
   INCLUDES = -IC:/Users/jghig/projects/c/licanc/include
   OBJECT_DIR = CMakeFiles\licanc.dir
@@ -80,7 +96,7 @@ build CMakeFiles/licanc.dir/resources/resources.rc.obj: RC_COMPILER__licanc_unsc
 #############################################
 # Link the executable licanc.exe
 
-build licanc.exe: CXX_EXECUTABLE_LINKER__licanc_Release CMakeFiles/licanc.dir/src/fcore.cc.obj CMakeFiles/licanc.dir/src/main.cc.obj CMakeFiles/licanc.dir/resources/resources.rc.obj
+build licanc.exe: CXX_EXECUTABLE_LINKER__licanc_Release CMakeFiles/licanc.dir/src/frontend/fcore/fcore.cc.obj CMakeFiles/licanc.dir/src/frontend/lexer.cc.obj CMakeFiles/licanc.dir/src/licanc.cc.obj CMakeFiles/licanc.dir/src/main.cc.obj CMakeFiles/licanc.dir/resources/resources.rc.obj
   CONFIG = Release
   FLAGS = -static-libgcc -static-libstdc++ -Wall
   LINK_FLAGS = -static -static-libgcc -static-libstdc++

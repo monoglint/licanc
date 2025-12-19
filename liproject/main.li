@@ -1,0 +1,3 @@
+void main() {
+    io::write("Hello world")
+}
