@@ -37,11 +37,15 @@ main() {
 
 namespace tok {
     enum class e_token_type {
+        // A valid token set shouldn't contain these.
         NONE,
+
+        // * An EOF token isn't really needed because tokens are stored in vectors.
 
         IDENTIFIER,
 
-        // literals
+        // Literals
+
         INTEGER,
         CHARACTER,
         STRING,

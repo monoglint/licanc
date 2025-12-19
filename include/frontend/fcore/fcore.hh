@@ -33,6 +33,15 @@ namespace fcore {
         u32 end;
     };
 
+    struct s_log {
+        s_log(const s_spot& spot, std::string&& message)
+            : spot(spot), message(std::move(message)) {}
+
+        s_spot spot;
+        std::string message;
+    };
+
+    // FWD to pick up tok, ast, and sym
     struct s_file_process_state;
 
     // Underlying state of the entire compiler. Presents the final output of the program.
@@ -60,6 +69,8 @@ struct tok::s_token {
         : spot(spot), type(type) {}
     fcore::s_spot spot;
     tok::e_token_type type;
+
+
 };
 
 // This struct is the parent of more node structs in "ast_.hh".
@@ -74,6 +85,8 @@ struct ast::s_ast_node {
 struct fcore::s_file_process_state {
     s_file_process_state(const std::string& source_code)
         : source_code(source_code) {}
+
+    std::vector<
 
     const std::string source_code;
     std::vector<tok::s_token> token_list;

@@ -1,8 +1,8 @@
 # ninja log v7
 18	152	7869429986232312	CMakeFiles/licanc.dir/resources/resources.rc.obj	35956efd0476adcb
 9	255	7878065180879248	CMakeFiles/licanc.dir/src/main.cc.obj	57ec45ecf8a82c5e
-46	370	7878081376594161	build.ninja	1570740c1b5d3108
-46	370	7878081376554176	C:/Users/jghig/projects/c/licanc/out/release/cmake_install.cmake	1570740c1b5d3108
+46	370	7878540483896859	build.ninja	1570740c1b5d3108
+46	370	7878540483876872	C:/Users/jghig/projects/c/licanc/out/release/cmake_install.cmake	1570740c1b5d3108
 56	585	7873596751361612	CMakeFiles/licanc.dir/src/frontend/core/main.cc.obj	29fd9e287d41b547
 280	488	7878068222421556	licanc.exe	6e3c63614d48d7a3
 5	196	7878065651005646	CMakeFiles/licanc.dir/src/frontend/lexer.cc.obj	14858ccbf00b5a5a
