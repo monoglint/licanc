@@ -1,0 +1,6 @@
+C:/Users/jghig/projects/c/lican_loader/out/release/CMakeFiles/licanc_loader.dir
+C:/Users/jghig/projects/c/lican_loader/out/release/CMakeFiles/edit_cache.dir
+C:/Users/jghig/projects/c/lican_loader/out/release/CMakeFiles/rebuild_cache.dir
+C:/Users/jghig/projects/c/lican_loader/out/release/licanc/CMakeFiles/licanc.dir
+C:/Users/jghig/projects/c/lican_loader/out/release/licanc/CMakeFiles/edit_cache.dir
+C:/Users/jghig/projects/c/lican_loader/out/release/licanc/CMakeFiles/rebuild_cache.dir

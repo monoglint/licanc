@@ -1,0 +1,4 @@
+use "#io.li" ; a hash indicates a reference to the standard library for lican
+
+dec main()
+    stdio..writeln("Hello world")

@@ -1,0 +1,9 @@
+# ninja log v7
+28	372	7930859124321736	licanc/CMakeFiles/licanc.dir/src/frontend/semantic_analyzer.cc.obj	376ba213ec94be58
+25	381	7930859124291727	licanc/CMakeFiles/licanc.dir/src/frontend/parser.cc.obj	48f4e90a227fda27
+20	384	7930859124241729	licanc/CMakeFiles/licanc.dir/src/frontend/lexer.cc.obj	e51ef1f42961068c
+35	575	7930859124391731	CMakeFiles/licanc_loader.dir/src/main.cc.obj	31a7810de7361efe
+30	895	7930859124341737	licanc/CMakeFiles/licanc.dir/src/licanc.cc.obj	d49210de8016bc60
+23	1614	7930859124271725	licanc/CMakeFiles/licanc.dir/src/frontend/manager.cc.obj	93430727b264bfda
+1614	1719	7930859140181990	licanc/liblicanc.a	1e7c7bf1871374f1
+1720	1913	7930859141237101	licanc.exe	d8e7418f9eaeaa6

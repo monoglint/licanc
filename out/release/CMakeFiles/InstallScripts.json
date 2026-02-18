@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/jghig/projects/c/lican_loader/out/release/cmake_install.cmake",
+		"C:/Users/jghig/projects/c/lican_loader/out/release/licanc/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
