@@ -24,9 +24,12 @@ THAT IS HOW SYMBOL TYPE IS IDENTIFIED!
 #include "base.hh"
 #include "frontend/ast.hh"
 
+#include "frontend/manager_types.hh"
+
 namespace frontend::sym {
     // spec = specialized (instantiated)
-    // decl = declaration (templated / uninstantiated)
+    // tem = templated (not instantiated)
+    // decl = declaration (access to a templated symbol)
     // sym = uncategorized symbol
 
     enum class t_sym_type {
@@ -49,6 +52,16 @@ namespace frontend::sym {
     using t_sym_id = u64;
     using t_sym_ids = std::vector<t_sym_id>;
 
+    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
+
+    struct t_template {
+        
+    };
+
+    struct t_specialization {
+        t_sym_id template_id; // t_template
+    };
+
     struct t_sym_type_wrapper {
         t_sym_id wrapee_sym_id;
         ast::t_type_qualifier qualifier;
@@ -68,12 +81,16 @@ namespace frontend::sym {
         t_sym_id return_type_id;
     };
 
+    struct t_tem_function {
+        t_sym_id 
+    };
+
     struct t_decl_function {
-        t_sym_ids overload_ids; // 
+        t_sym_ids overload_ids; // t_tem_function
     };
 
     struct t_decl_module {
-        std::unordered_map<u64, t_sym_id> declaration_ids; // t_identifier_id, t_sym_id
+        t_declarations declaration_ids; // t_identifier_id, t_sym_id
     };
 
     struct t_symbol_table {

@@ -20,44 +20,6 @@ THAT IS HOW NODE TYPE IS IDENTIFIED!
 #include "frontend/token.hh"
 
 namespace frontend::ast {
-    enum class t_ast_node_type {
-        // -- EXPRESSIONS
-
-        // embeddable
-
-        EXPR_IDENTIFIER,
-        EXPR_STRING_LITERAL,
-        EXPR_UNARY,
-        EXPR_BINARY,
-        EXPR_TERNARY,
-
-        // -- EXPRESSION DEPENDENT MISC
-
-        TYPE,
-
-        // -- ITEMS
-
-        ITEM_IMPORT,
-        ITEM_DECLARATION,
-        ITEM_TYPE_DECLARATION,
-        
-        // -- STATEMENTS
-
-        // control flow
-
-        STMT_IF,
-        STMT_WHILE,
-        STMT_FOR,
-        STMT_EXPRESSION,
-
-        // instance
-
-        STMT_DECLARATION,
-        STMT_CHUNK,
-
-
-    };
-
     enum class t_type_qualifier {
         MUT,
         SOLID_REF,
@@ -74,7 +36,10 @@ namespace frontend::ast {
         base::t_span span;
     };
 
-    // -- EXPRESSIONS
+    struct t_none : t_node {
+        t_none(base::t_span span)
+            : t_node(std::move(span)) {}
+    };
 
     // upon instantiation of this struct, set its identifier_id to the index of an interned string value
     struct t_expr_identifier : t_node {
@@ -127,8 +92,6 @@ namespace frontend::ast {
         token::t_token_type qualifier;
     };
 
-    // -- ITEMS
-
     struct t_item_import : t_node {
         t_item_import(base::t_span span, t_node_id file_path)
             : t_node(std::move(span)), file_path(file_path) {}
@@ -136,8 +99,8 @@ namespace frontend::ast {
         t_node_id file_path; // t_expr_string
     };
 
-    struct t_item_declaration : t_node {
-        t_item_declaration(base::t_span span, t_node_id name, t_node_id type, t_node_id value)
+    struct t_item_global_declaration : t_node {
+        t_item_global_declaration(base::t_span span, t_node_id name, t_node_id type, t_node_id value)
             : t_node(std::move(span)), name(name), type(type), value(value) {}
 
         t_node_id name; // t_expr_identifier
@@ -145,6 +108,68 @@ namespace frontend::ast {
         t_node_id value; // t_expr
     };
 
+    struct t_template_parameter : t_node {
+        t_node_id name; // t_expr_identifier
+    };
+
+    struct t_function : t_node {
+        t_node_ids parameters; // ???
+        t_node_id body; // t_stmt
+        t_node_id return_type; // t_type
+
+        t_node_ids template_arguments; // {t_type}
+    };
+    
+    struct t_item_function_declaration : t_node {
+        t_node_id base; // t_function
+        t_node_ids specializations; // {t_function}
+        t_node_ids template_parameters; // {t_template_parameter}
+
+        t_node_id name; // t_identifier
+    };
+
+    struct t_constructor : t_node {
+        enum class t_constructor_type {
+            NORMAL,
+            SOLIDIFY, // move constructor
+            COPY,
+            DESTRUCTOR
+        };
+
+        t_node_id function; // t_function - NO DEPENDENT TYPES
+    };
+
+    enum class t_access_specifier {
+        PRIVATE,
+        PUBLIC
+    };
+
+    struct t_method : t_node {
+        t_access_specifier access_specifier;
+        t_node_id function_declaration; // t_item_function_declaration
+    };
+
+    struct t_property : t_node {
+        t_access_specifier access_specifier;
+        t_node_id type; // t_type
+    };
+
+    struct t_struct : t_node {
+        t_node_ids methods; // {t_method}
+        t_node_ids properties; // {t_property}
+
+        t_node_ids template_arguments; // {t_type}
+    };
+
+    struct t_item_struct_declaration : t_node {
+        t_node_id base; // t_struct
+        t_node_ids specializations; // {t_struct}
+        t_node_ids template_parameters; // {t_template_parameter}
+
+        t_node_id name; // t_identifier
+    };
+
+    // make this support templates later. save your life bro
     struct t_item_type_declaration : t_node {
         t_item_type_declaration(base::t_span span, t_node_id name, t_node_id type)
             : t_node(std::move(span)), name(name), type(type) {}
@@ -154,54 +179,17 @@ namespace frontend::ast {
 
     // -- STATEMENTS
 
-    struct t_stmt_if : t_node {
-
-    };
-
-    struct t_stmt_while : t_node {
-
-    };
-
-    struct t_stmt_for : t_node {
-
-    };
-
-    struct t_stmt_expression : t_node {
-
-    };
-
-    struct t_stmt_declaration : t_node {
-
-    };
-
-    struct t_stmt_chunk : t_node {
-
-    };
-
     //
     //
     //
 
     using t_node_variation = std::variant<
-        t_expr_identifier,
-        t_expr_string_literal,
-        t_expr_unary,
-        t_expr_binary,
-        t_expr_ternary,
 
-        t_type,
-
-        t_item_import,
-        t_item_declaration,
-        t_item_type_declaration,
-
-        t_stmt_if,
-        t_stmt_while,
-        t_stmt_for,
-        t_stmt_expression,
-        t_stmt_declaration,
-        t_stmt_chunk
     >;
+
+    enum class t_ast_node_type {
+
+    };
 
     // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
     struct t_ast {

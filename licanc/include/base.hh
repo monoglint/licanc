@@ -26,11 +26,20 @@ using f64 = double;
 using f128 = long double;
 
 namespace base {
-    struct t_span {
-        u32 start;
-        u32 end;
+    struct t_point {
+        t_point(u32 char_pos, u32 line, u32 column)
+            : char_pos(char_pos), line(line), column(column) {}
 
+        u32 char_pos;
         u32 line;
         u32 column;
+    };
+
+    struct t_span {
+        t_span(t_point start, t_point end)
+            : start(std::move(start)), end(std::move(end)) {}
+            
+        t_point start;
+        t_point end;
     };
 }

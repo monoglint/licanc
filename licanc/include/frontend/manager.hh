@@ -6,6 +6,8 @@ used for processing the frontend and spitting out something final for the code g
 
 #pragma once
 
+#include "manager_types.hh"
+
 #include <string>
 #include <expected>
 #include <optional>
@@ -17,8 +19,6 @@ used for processing the frontend and spitting out something final for the code g
 #include "util/intern_pool.hh"
 
 namespace frontend::manager {
-    using t_file_id = size_t; // index of t_compilation_file in t_compilation_unit::files
-
     enum class t_log_type {
         MESSAGE,
         WARNING,
@@ -95,8 +95,8 @@ namespace frontend::manager {
         t_frontend_config config;
         t_logger logger;
 
-        util::t_intern_pool<std::string> identifier_pool;
-        util::t_intern_pool<std::string> string_literal_pool;
+        util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
+        util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
 
         void process_file(t_file_id root_file_id);
 

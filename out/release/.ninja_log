@@ -7,3 +7,10 @@
 23	1614	7930859124271725	licanc/CMakeFiles/licanc.dir/src/frontend/manager.cc.obj	93430727b264bfda
 1614	1719	7930859140181990	licanc/liblicanc.a	1e7c7bf1871374f1
 1720	1913	7930859141237101	licanc.exe	d8e7418f9eaeaa6
+65	447	7930862799865393	licanc/CMakeFiles/licanc.dir/src/frontend/lexer.cc.obj	e51ef1f42961068c
+72	448	7930862799945399	licanc/CMakeFiles/licanc.dir/src/frontend/semantic_analyzer.cc.obj	376ba213ec94be58
+70	466	7930862799925398	licanc/CMakeFiles/licanc.dir/src/frontend/parser.cc.obj	48f4e90a227fda27
+74	998	7930862799965401	licanc/CMakeFiles/licanc.dir/src/licanc.cc.obj	d49210de8016bc60
+68	1755	7930862799905395	licanc/CMakeFiles/licanc.dir/src/frontend/manager.cc.obj	93430727b264bfda
+1755	1902	7930862816769632	licanc/liblicanc.a	1e7c7bf1871374f1
+1902	2103	7930862818244738	licanc.exe	d8e7418f9eaeaa6
