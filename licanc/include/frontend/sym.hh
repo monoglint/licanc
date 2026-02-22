@@ -28,21 +28,8 @@ THAT IS HOW SYMBOL TYPE IS IDENTIFIED!
 
 namespace frontend::sym {
     // spec = specialized (instantiated)
-    // tem = templated (not instantiated)
     // decl = declaration (access to a templated symbol)
     // sym = uncategorized symbol
-
-    enum class t_sym_type {
-        SYM_TYPE_WRAPPER,
-
-        SYM_REFERENCE,
-        SYM_TYPE_PARAMETER,
-
-        SPEC_FUNCTION,
- 
-        DECL_FUNCTION,
-        DECL_MODULE,
-    };
 
     enum class t_type_parameter_specifier {
         TYPE_NAME, // template <typename T>
@@ -53,14 +40,6 @@ namespace frontend::sym {
     using t_sym_ids = std::vector<t_sym_id>;
 
     using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
-
-    struct t_template {
-        
-    };
-
-    struct t_specialization {
-        t_sym_id template_id; // t_template
-    };
 
     struct t_sym_type_wrapper {
         t_sym_id wrapee_sym_id;
@@ -77,14 +56,6 @@ namespace frontend::sym {
         t_type_parameter_specifier specifier;
     };
 
-    struct t_spec_function {
-        t_sym_id return_type_id;
-    };
-
-    struct t_tem_function {
-        t_sym_id 
-    };
-
     struct t_decl_function {
         t_sym_ids overload_ids; // t_tem_function
     };
@@ -93,7 +64,14 @@ namespace frontend::sym {
         t_declarations declaration_ids; // t_identifier_id, t_sym_id
     };
 
-    struct t_symbol_table {
+    
+    using t_sym_variation = std::variant<
+        t_sym_type_wrapper
+    >;
 
+    enum class t_sym_type {
+        NONE,
     };
+
+    using t_symbol_table = util::t_variant_deque<t_sym_variation, t_sym_type, t_sym_id>;
 }

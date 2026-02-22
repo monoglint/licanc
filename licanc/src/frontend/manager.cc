@@ -6,7 +6,7 @@
 
 #include "frontend/lexer.hh"
 #include "frontend/parser.hh"
-#include "frontend/semantic_analyzer.hh"
+#include "frontend/sema/semantic_analyzer.hh"
 
 namespace {
     std::optional<std::string> read_file(std::string file_path) {
@@ -93,7 +93,7 @@ namespace {
 
         manager::t_compilation_file& file = get_file_result.value();
 
-        semantic_analyzer::analyze(unit, file_id);
+        sema::semantic_analyzer::analyze(unit, file_id);
 
         file.state = manager::t_file_state::DONE;
     }

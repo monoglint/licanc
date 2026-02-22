@@ -5,5 +5,5 @@ void frontend::parser::parse(manager::t_compilation_unit& compilation_unit, mana
 }
 
 void frontend::parser::build_test_ast(manager::t_compilation_unit& compilation_unit, manager::t_file_id file_id) {
-    // parser_state.ast.emplace<ast::t_expr_identifier>();
+    
 }

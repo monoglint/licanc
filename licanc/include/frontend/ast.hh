@@ -12,12 +12,13 @@ THAT IS HOW NODE TYPE IS IDENTIFIED!
 
 */
 
-#include <deque>
 #include <variant>
 #include <type_traits>
 
 #include "base.hh"
 #include "frontend/token.hh"
+
+#include "util/variant_deque.hh"
 
 namespace frontend::ast {
     enum class t_type_qualifier {
@@ -184,40 +185,47 @@ namespace frontend::ast {
     //
 
     using t_node_variation = std::variant<
-
+        t_none,
+        t_expr_identifier,
+        t_expr_string_literal,
+        t_expr_unary,
+        t_expr_binary,
+        t_expr_ternary,
+        t_type,
+        t_item_import,
+        t_item_global_declaration,
+        t_template_parameter,
+        t_function,
+        t_item_function_declaration,
+        t_constructor,
+        t_method,
+        t_property,
+        t_struct,
+        t_item_struct_declaration,
+        t_item_type_declaration
     >;
 
     enum class t_ast_node_type {
-
+        NONE,
+        EXPR_IDENTIFIER,
+        EXPR_STRING_LITERAL,
+        EXPR_UNARY,
+        EXPR_BINARY,
+        EXPR_TERNARY,
+        TYPE,
+        ITEM_IMPORT,
+        ITEM_GLOBAL_DECLARATION,
+        TEMPLATE_PARAMETER,
+        FUNCTION,
+        ITEM_FUNCTION_DECLARATION,
+        CONSTRUCTOR,
+        METHOD,
+        PROPERTY,
+        STRUCT,
+        ITEM_STRUCT_DECLARATION,
+        ITEM_TYPE_DECLARATION,
     };
 
     // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
-    struct t_ast {
-        std::deque<t_node_variation> raw;
-
-        inline t_node& get_base(t_node_id node_id) {
-            return std::visit([](auto& n) -> t_node& { return static_cast<t_node&>(n); }, raw[node_id]);
-        }
-
-        template <typename T>
-        inline T& get(t_node_id node_id) {
-            return std::get<T>(raw[node_id]);
-        }
-
-        inline t_ast_node_type get_type(t_node_id node_id) {
-            return (t_ast_node_type)raw[node_id].index();    
-        }
-
-        template <typename T, typename... ARGS>
-        inline t_node_id emplace(ARGS&&... args) {
-            raw.emplace_back(std::in_place_type<T>,std::forward<ARGS>(args)...);
-            return raw.size() - 1;
-        }
-
-        template <typename T>
-        inline t_node_id push(T node) {
-            raw.push_back(std::move(node));
-            return raw.size() - 1;
-        }
-    };
+    using t_ast = util::t_variant_base_deque<t_node_variation, t_node, t_node_id>;
 }
