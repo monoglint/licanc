@@ -18,10 +18,11 @@ THAT IS HOW SYMBOL TYPE IS IDENTIFIED!
 
 #pragma once
 
+#include "frontend/sym_types.hh"
+
 #include <deque>
 #include <unordered_map>
 
-#include "base.hh"
 #include "frontend/ast.hh"
 
 #include "frontend/manager_types.hh"
@@ -31,11 +32,6 @@ namespace frontend::sym {
     // decl = declaration (access to a templated symbol)
     // sym = uncategorized symbol
 
-    enum class t_type_parameter_specifier {
-        TYPE_NAME, // template <typename T>
-        VALUE, // template <int A>
-    };
-
     using t_sym_id = u64;
     using t_sym_ids = std::vector<t_sym_id>;
 
@@ -43,7 +39,7 @@ namespace frontend::sym {
 
     struct t_sym_type_wrapper {
         t_sym_id wrapee_sym_id;
-        ast::t_type_qualifier qualifier;
+        ast::t_type::t_qualifier qualifier;
     };
 
     struct t_sym_reference {
@@ -52,8 +48,13 @@ namespace frontend::sym {
     };
 
     struct t_sym_type_parameter {
+        enum class t_specifier {
+            TYPE_NAME, // template <typename T>
+            VALUE, // template <int A>
+        };
+
         t_sym_id value; // (specifier == TYPENAME) ? (string??) : (t_res_type) 
-        t_type_parameter_specifier specifier;
+        t_specifier specifier;
     };
 
     struct t_decl_function {

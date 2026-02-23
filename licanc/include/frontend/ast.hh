@@ -26,26 +26,30 @@ General rules:
   a specific semantic note isn't directly needed.
 - Always comment what the property of a node should be if it holds an id that references another node.
 
+
+Basic ast for testing
+t_ast:
+    t_function_declaration_item
+        name: "add"
+        function_template: t_function_template:
+            function
 */
+
+#include "frontend/ast_types.hh"
 
 #include <variant>
 #include <type_traits>
 
-#include "base.hh"
+#include "util/variant_deque.hh"
+
 #include "frontend/token.hh"
 
 #include "frontend/manager_types.hh"
 
-#include "util/variant_deque.hh"
-
 namespace frontend::ast {
-    enum class t_type_qualifier {
-        MUT,
-        SOLID_REF,
-        FLUID_REF,
-    };
-
     using t_node_id = u64;
+
+    // this is not declared in ast_types because it requires <vector>
     using t_node_ids = std::vector<t_node_id>;
 
     struct t_node {
@@ -119,10 +123,19 @@ namespace frontend::ast {
 
     // array<u8>
     struct t_type : t_node {
-        t_node_id source; // t_type | t_identifier | t_scope_resolution_expr
-        t_node_ids arguments;
+        enum class t_qualifier {
+            MUT,
+            SOLID_REF,
+            FLUID_REF,
+        };
 
-        t_type_qualifier qualifier;
+        t_type(base::t_span span, t_node_id source, t_node_ids arguments, t_qualifier qualifier)
+            : t_node(std::move(span)), source(source), arguments(arguments), qualifier(qualifier) {}
+
+        t_node_id source; // t_type | t_identifier | t_scope_resolution_expr
+        t_node_ids arguments; // {t_type}
+
+        t_qualifier qualifier;
     };
 
     // import "math"
@@ -133,6 +146,7 @@ namespace frontend::ast {
         t_node_id file_path; // t_string_literal_expr
     };
 
+    // 
     struct t_global_declaration_item : t_node {
         t_global_declaration_item(base::t_span span, t_node_id name, t_node_id type, t_node_id value)
             : t_node(std::move(span)), name(name), type(type), value(value) {}
@@ -143,28 +157,44 @@ namespace frontend::ast {
     };
 
     struct t_template_parameter : t_node {
+        t_template_parameter(base::t_span span, t_node_id name)
+            : t_node(std::move(span)), name(name) {}
+
         t_node_id name; // expr_identifier
     };
 
     struct t_function_parameter : t_node {
+        t_function_parameter(base::t_span span, t_node_id name, t_node_id type, t_node_id default_value)
+            : t_node(std::move(span)), name(name), type(type), default_value(default_value) {}
+
         t_node_id name; // t_identifier
         t_node_id type; // t_type
         t_node_id default_value; // expr?
     };
     
     struct t_function : t_node {
+        t_function(base::t_span span, t_node_ids parameters, t_node_id body, t_node_id return_type)
+            : t_node(std::move(span)), parameters(parameters), body(body), return_type(return_type) {}
+
         t_node_ids parameters; // t_function_parameter
         t_node_id body; // t_stmt
         t_node_id return_type; // t_type
+    };
 
-        t_node_ids template_arguments; // {t_type}
+    struct t_function_template : t_node {
+        t_function_template(base::t_span span, t_node_id function, t_node_ids template_parameters)
+            : t_node(std::move(span)), function(function), template_parameters(template_parameters) {}
+
+        t_node_id function; // t_function
+        t_node_ids template_parameters; // {t_template_parameter}
+        // SPECIALIZATIONS MAP STORED IN SYMBOL TABLE
     };
     
     struct t_function_declaration_item : t_node {
-        t_node_id base; // t_function
-        t_node_ids specializations; // {t_function}
-        t_node_ids template_parameters; // {t_template_parameter}
+        t_function_declaration_item(base::t_span span, t_node_id function_template, t_node_id name)
+            : t_node(std::move(span)), function_template(function_template), name(name) {}
 
+        t_node_id function_template; // t_function_template
         t_node_id name; // t_identifier
     };
 
@@ -176,6 +206,9 @@ namespace frontend::ast {
             DESTRUCTOR
         };
 
+        t_constructor(base::t_span span, t_node_id function, t_constructor_type type)
+            : t_node(std::move(span)), function(function), type(type) {}
+
         t_node_id function; // t_function - NO DEPENDENT TYPES
         t_constructor_type type;
     };
@@ -186,43 +219,79 @@ namespace frontend::ast {
     };
 
     struct t_method : t_node {
+        t_method(base::t_span span, t_access_specifier access_specifier, t_node_id function_declaration)
+            : t_node(std::move(span)), access_specifier(access_specifier), function_declaration(function_declaration) {}
+
         t_access_specifier access_specifier;
-        t_node_id function_declaration; // t_function_delcaration_item
+        t_node_id function_declaration; // t_function_template
     };
 
     struct t_property : t_node {
+        t_property(base::t_span span, t_access_specifier access_specifier, t_node_id type)
+            : t_node(std::move(span)), access_specifier(access_specifier), type(type) {}
+
         t_access_specifier access_specifier;
         t_node_id type; // t_type
     };
 
     struct t_struct : t_node {
+        t_struct(base::t_span span, t_node_ids methods, t_node_ids properties)
+            : t_node(std::move(span)), methods(methods), properties(properties) {}
+
         t_node_ids methods; // {t_method}
         t_node_ids properties; // {t_property}
 
-        t_node_ids template_arguments; // {t_type}
+    };
+
+    struct t_struct_template : t_node {
+        t_struct_template(base::t_span span, t_node_id base, t_node_ids template_parameters)
+            : t_node(std::move(span)), base(base), template_parameters(template_parameters) {}
+
+        t_node_id base; // t_struct
+        t_node_ids template_parameters; // {t_template_parameter}
+        // SPECIALIZATIONS MAP STORED IN SYMBOL TABLE
     };
 
     struct t_struct_declaration_item : t_node {
-        t_node_id base; // t_struct
-        t_node_ids specializations; // {t_struct}
-        t_node_ids template_parameters; // {t_template_parameter}
+        t_struct_declaration_item(base::t_span span, t_node_id struct_template, t_node_id name)
+            : t_node(std::move(span)), struct_template(struct_template), name(name) {}
 
+        t_node_id struct_template; // t_struct_template
         t_node_id name; // t_identifier
     };
 
-    // make this support templates later. save your life bro
-    struct t_type_declaration_item : t_node {
-        t_type_declaration_item(base::t_span span, t_node_id name, t_node_id type)
-            : t_node(std::move(span)), name(name), type(type) {}
+    struct t_type_alias_template : t_node {
+        t_type_alias_template(base::t_span span, t_node_id type, t_node_ids specializations, t_node_ids template_parameters)
+            : t_node(std::move(span)), type(type), specializations(specializations), template_parameters(template_parameters) {}
 
-        t_node_id name; // t_identifier
         t_node_id type; // t_type
+        t_node_ids specializations; // {t_type}
+        t_node_ids template_parameters; // {t_template_parameters}
+    };
+
+    // make this support templates later. save your life bro
+    struct t_type_alias_declaration_item : t_node {
+        t_type_alias_declaration_item(base::t_span span, t_node_id type_alias_template, t_node_id name)
+            : t_node(std::move(span)), type_alias_template(type_alias_template), name(name) {}
+
+        t_node_id type_alias_template; // t_type_alias_template
+        t_node_id name; // t_identifier
     };
 
     // -- STATEMENTS
 
     struct t_return_stmt : t_node {
+        t_return_stmt(base::t_span span, t_node_id value)
+            : t_node(std::move(span)), value(value) {}
+
         t_node_id value; // expr
+    };
+
+    struct t_body_stmt : t_node {
+        t_body_stmt(base::t_span span, t_node_ids stmts)
+            : t_node(std::move(span)), stmts(stmts) {}
+
+        t_node_ids stmts; // {stmt}
     };
 
     //
@@ -243,14 +312,18 @@ namespace frontend::ast {
         t_template_parameter,
         t_function_parameter,
         t_function,
+        t_function_template,
         t_function_declaration_item,
         t_constructor,
         t_method,
         t_property,
         t_struct,
+        t_struct_template,
         t_struct_declaration_item,
-        t_type_declaration_item,
-        t_return_stmt
+        t_type_alias_template,
+        t_type_alias_declaration_item,
+        t_return_stmt,
+        t_body_stmt
     >;
 
     // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
