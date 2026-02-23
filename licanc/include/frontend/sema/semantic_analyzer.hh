@@ -1,3 +1,9 @@
+/*
+
+Takes all of the semantic analyzer workers and condenses them into one function that can be called by the manager.
+
+*/
+
 #pragma once
 
 #include <string>

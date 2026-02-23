@@ -2,8 +2,7 @@
 
 #include <string>
 
-#include "frontend/sym.hh"
-#include "frontend/ast.hh"
+#include "frontend/sema/sym.hh"
 
 #include "frontend/manager.hh"
 

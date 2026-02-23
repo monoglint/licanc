@@ -27,22 +27,54 @@ General rules:
 - Always comment what the property of a node should be if it holds an id that references another node.
 
 
-Basic ast for testing
+Basic ast for non template testing
 t_ast:
     t_function_declaration_item
         name: "add"
         function_template: t_function_template:
-            function
-*/
+            function: t_function
+                parameters:
+                    t_parameter:
+                        name: "a"
+                        type: "u8"
+                        default_value: t_none
+                    t_parameter:
+                        name: "b"
+                        type: "u8"
+                        default_value: t_none
+                return_type: "u8"
 
-#include "frontend/ast_types.hh"
+Basic ast for TEMPLATE testing
+t_ast:
+    t_function_declaration_item
+        name: "add"
+        function_template: t_function_template:
+            template_parameters:
+                t_template_parameter:
+                    name: 
+            function: t_function
+                parameters:
+                    t_parameter:
+                        name: "a"
+                        type: "u8"
+                        default_value: t_none
+                    t_parameter:
+                        name: "b"
+                        type: "u8"
+                        default_value: t_none
+                return_type: "u8"
+
+
+*/
 
 #include <variant>
 #include <type_traits>
 
 #include "util/variant_deque.hh"
 
-#include "frontend/token.hh"
+#include "frontend/scan/token.hh"
+
+#include "base.hh"
 
 #include "frontend/manager_types.hh"
 
@@ -80,6 +112,14 @@ namespace frontend::ast {
 
         // reference to within manager::t_compilation_unit.
         manager::t_string_literal_id string_literal_id;
+    };
+
+    struct t_number_literal : t_node {
+        t_number_literal(base::t_span span, manager::t_number_literal_id number_literal_id, token::t_token_type suffix)
+            : t_node(std::move(span)), number_literal_id(number_literal_id), suffix(suffix) {}
+
+        manager::t_number_literal_id number_literal_id;
+        token::t_token_type suffix;
     };
 
     // -5
@@ -124,7 +164,7 @@ namespace frontend::ast {
     // array<u8>
     struct t_type : t_node {
         enum class t_qualifier {
-            MUT,
+            IMMUT,
             SOLID_REF,
             FLUID_REF,
         };
@@ -157,10 +197,16 @@ namespace frontend::ast {
     };
 
     struct t_template_parameter : t_node {
-        t_template_parameter(base::t_span span, t_node_id name)
-            : t_node(std::move(span)), name(name) {}
+        enum class t_parameter_type {
+            TYPENAME,
+            
+        };
+
+        t_template_parameter(base::t_span span, t_node_id name, t_parameter_type parameter_type)
+            : t_node(std::move(span)), name(name), parameter_type(parameter_type) {}
 
         t_node_id name; // expr_identifier
+        t_parameter_type parameter_type;
     };
 
     struct t_function_parameter : t_node {
@@ -182,10 +228,10 @@ namespace frontend::ast {
     };
 
     struct t_function_template : t_node {
-        t_function_template(base::t_span span, t_node_id function, t_node_ids template_parameters)
-            : t_node(std::move(span)), function(function), template_parameters(template_parameters) {}
+        t_function_template(base::t_span span, t_node_id base, t_node_ids template_parameters)
+            : t_node(std::move(span)), base(base), template_parameters(template_parameters) {}
 
-        t_node_id function; // t_function
+        t_node_id base; // t_function
         t_node_ids template_parameters; // {t_template_parameter}
         // SPECIALIZATIONS MAP STORED IN SYMBOL TABLE
     };
@@ -198,49 +244,47 @@ namespace frontend::ast {
         t_node_id name; // t_identifier
     };
 
-    struct t_constructor : t_node {
-        enum class t_constructor_type {
-            NORMAL,
-            SOLIDIFY, // move constructor
-            COPY,
-            DESTRUCTOR
-        };
+    struct t_initializer : t_node {
+        t_initializer(base::t_span span, t_node_id name, t_node_id function)
+            : t_node(std::move(span)), name(name), function(function) {}
 
-        t_constructor(base::t_span span, t_node_id function, t_constructor_type type)
-            : t_node(std::move(span)), function(function), type(type) {}
-
+        t_node_id name; // t_identifier
         t_node_id function; // t_function - NO DEPENDENT TYPES
-        t_constructor_type type;
     };
 
-    enum class t_access_specifier {
-        PRIVATE,
-        PUBLIC
+    struct t_finalizer : t_node {
+        t_finalizer(base::t_span span, t_node_id function)
+            : t_node(std::move(span)), function(function) {}
+
+        t_node_id function; // t_function - NO DEPENDENT TYPES
     };
 
     struct t_method : t_node {
-        t_method(base::t_span span, t_access_specifier access_specifier, t_node_id function_declaration)
-            : t_node(std::move(span)), access_specifier(access_specifier), function_declaration(function_declaration) {}
+        t_method(base::t_span span, token::t_token_type access_specifier, t_node_id name, t_node_id function_template)
+            : t_node(std::move(span)), access_specifier(access_specifier), name(name), function_template(function_template) {}
 
-        t_access_specifier access_specifier;
-        t_node_id function_declaration; // t_function_template
+        token::t_token_type access_specifier;
+        t_node_id name; // t_identifier
+        t_node_id function_template; // t_function_template
     };
 
     struct t_property : t_node {
-        t_property(base::t_span span, t_access_specifier access_specifier, t_node_id type)
-            : t_node(std::move(span)), access_specifier(access_specifier), type(type) {}
+        t_property(base::t_span span, token::t_token_type access_specifier, t_node_id name, t_node_id type)
+            : t_node(std::move(span)), access_specifier(access_specifier), name(name), type(type) {}
 
-        t_access_specifier access_specifier;
+        token::t_token_type access_specifier;
+        t_node_id name; // t_identifier
         t_node_id type; // t_type
     };
 
     struct t_struct : t_node {
-        t_struct(base::t_span span, t_node_ids methods, t_node_ids properties)
-            : t_node(std::move(span)), methods(methods), properties(properties) {}
+        t_struct(base::t_span span, t_node_ids methods, t_node_ids properties, t_node_ids initializers, t_node_id finalizer)
+            : t_node(std::move(span)), methods(methods), properties(properties), initializers(initializers), finalizer(finalizer) {}
 
         t_node_ids methods; // {t_method}
         t_node_ids properties; // {t_property}
-
+        t_node_ids initializers; // {t_initializer}
+        t_node_id finalizer; // t_finalizer?
     };
 
     struct t_struct_template : t_node {
@@ -302,6 +346,7 @@ namespace frontend::ast {
         t_none,
         t_identifier,
         t_string_literal,
+        t_number_literal,
         t_unary_expr,
         t_binary_expr,
         t_scope_resolution_expr,
@@ -314,7 +359,8 @@ namespace frontend::ast {
         t_function,
         t_function_template,
         t_function_declaration_item,
-        t_constructor,
+        t_initializer,
+        t_finalizer,
         t_method,
         t_property,
         t_struct,

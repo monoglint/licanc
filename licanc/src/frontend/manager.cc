@@ -4,8 +4,8 @@
 #include <iostream>
 #include <iterator>
 
-#include "frontend/lexer.hh"
-#include "frontend/parser.hh"
+#include "frontend/scan/lexer.hh"
+#include "frontend/scan/parser.hh"
 #include "frontend/sema/semantic_analyzer.hh"
 
 namespace {
@@ -27,8 +27,8 @@ namespace {
 
         for (ast::t_node_id import_node_id : file.import_node_ids) {
             // check if there is an include item anywhere in the ast.
-            ast::t_node_id file_path_node_id = file.ast.get<ast::t_item_import>(import_node_id).file_path;
-            ast::t_expr_string_literal& file_path_node = file.ast.get<ast::t_expr_string_literal>(file_path_node_id);
+            ast::t_node_id file_path_node_id = file.ast.get<ast::t_import_item>(import_node_id).file_path;
+            ast::t_string_literal& file_path_node = file.ast.get<ast::t_string_literal>(file_path_node_id);
             
             util::t_intern_pool<std::string>::t_get_result get_string_result = unit.string_literal_pool.get(file_path_node.string_literal_id);
 

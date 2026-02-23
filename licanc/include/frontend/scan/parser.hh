@@ -3,7 +3,7 @@
 #include <string>
 
 #include "base.hh"
-#include "frontend/ast.hh"
+#include "frontend/scan/ast.hh"
 
 #include "frontend/manager.hh"
 

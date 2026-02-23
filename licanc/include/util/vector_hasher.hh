@@ -1,0 +1,50 @@
+#pragma once
+
+#include <vector>
+
+/*
+
+// Source - https://stackoverflow.com/a/27216842
+// Posted by HolKann, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-02-23, License - CC BY-SA 4.0
+// Adapted by @monoglint to support templates
+
+*/
+namespace util {
+    template <typename T>
+    struct vector_hasher {
+        using vector_of_t = std::vector<T>;
+
+        size_t operator()(const vector_of_t& vec) const {
+            size_t hash_val = vec.size();
+            
+            for (const T& i : vec) {
+                hash_val ^= std::hash<T>{}(i) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
+            }
+
+            return hash_val;
+        }
+    };
+}
+
+/*
+
+note: hasher above apparently has high collision rates according to @see (stack overflow id: 5302813)
+he proposes this solution:
+
+// Source - https://stackoverflow.com/a/72073933
+// Posted by see
+// Retrieved 2026-02-23, License - CC BY-SA 4.0
+
+std::size_t operator()(std::vector<uint32_t> const& vec) const {
+  std::size_t seed = vec.size();
+  for(auto x : vec) {
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = (x >> 16) ^ x;
+    seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+  return seed;
+}
+
+*/

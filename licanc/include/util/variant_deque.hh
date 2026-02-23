@@ -10,6 +10,9 @@ AST and symbol table
 Is this the best way to do things?
 Probably not
 
+Is it like an arena enough?
+Yes
+
 */
 
 #pragma once
@@ -17,7 +20,14 @@ Probably not
 #include <deque>
 
 namespace util {
-    template <typename VARIANT, typename VARIANT_ENUM, typename ID = size_t>
+    /*
+   
+    Note for both structs:
+    VARIANT_ENUM removed due to promoting volitility in code.
+    
+    */
+
+    template <typename VARIANT, typename ID = size_t>
     struct t_variant_deque {
         std::deque<VARIANT> raw;
 
@@ -31,9 +41,9 @@ namespace util {
             return std::get<T>(raw[node_id]);
         }
 
-        inline VARIANT_ENUM get_type(ID node_id) {
-            return static_cast<VARIANT_ENUM>(raw[node_id].index());    
-        }
+        // inline VARIANT_ENUM get_type(ID node_id) {
+        //     return static_cast<VARIANT_ENUM>(raw[node_id].index());    
+        // }
 
         template <typename T, typename... ARGS>
         inline ID emplace(ARGS&&... args) {
@@ -48,7 +58,7 @@ namespace util {
         }
     };
 
-    template <typename VARIANT, typename VARIANT_ENUM, typename BASE, typename ID = size_t>
+    template <typename VARIANT, typename BASE, typename ID = size_t>
     struct t_variant_base_deque {
         std::deque<VARIANT> raw;
 
@@ -70,9 +80,9 @@ namespace util {
             return std::get<T>(raw[node_id]);
         }
 
-        inline VARIANT_ENUM get_type(ID node_id) {
-            return static_cast<VARIANT_ENUM>(raw[node_id].index());    
-        }
+        // inline VARIANT_ENUM get_type(ID node_id) {
+        //     return static_cast<VARIANT_ENUM>(raw[node_id].index());    
+        // }
 
         template <typename T, typename... ARGS>
         inline ID emplace(ARGS&&... args) {

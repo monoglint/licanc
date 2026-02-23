@@ -12,9 +12,9 @@ used for processing the frontend and spitting out something final for the code g
 #include <expected>
 #include <optional>
 
-#include "frontend/token.hh"
-#include "frontend/ast.hh"
-#include "frontend/sym.hh"
+#include "frontend/scan/token.hh"
+#include "frontend/scan/ast.hh"
+#include "frontend/sema/sym.hh"
 
 #include "util/intern_pool.hh"
 
@@ -97,6 +97,7 @@ namespace frontend::manager {
 
         util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
         util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
+        util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
 
         void process_file(t_file_id root_file_id);
 
