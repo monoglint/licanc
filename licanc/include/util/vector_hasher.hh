@@ -15,7 +15,7 @@ namespace util {
     struct vector_hasher {
         using vector_of_t = std::vector<T>;
 
-        size_t operator()(const vector_of_t& vec) const {
+        size_t operator()(const vector_of_t& vec) const noexcept {
             size_t hash_val = vec.size();
             
             for (const T& i : vec) {

@@ -26,28 +26,22 @@ Append the new struct type to the variant at the bottom of the file.
 
 #include "util/vector_hasher.hh"
 
-namespace frontend::sym {
+namespace frontend::sema::sym {
     using t_sym_id = u64;
     using t_sym_ids = std::vector<t_sym_id>;
 
     using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
 
-     // <{t_type_wrapper}, t_x_specialization>
+     // <{t_template_argument}, t_x_specialization>
     using t_specializations = std::unordered_map<t_sym_ids, t_sym_id, util::vector_hasher<t_sym_id>>;
-
-    // canonical type representation 
-    struct t_type_wrapper {
-        t_sym_id wrapee_sym_id; // t_type_wrapper || t_
-        ast::t_type::t_qualifier qualifier;
-    };
-
+    
     struct t_sym_reference {
-        u64 file_id; // do not reference another header just for a type name that is an alias of u64 lol. no matter what, we'll store highest precision just in case
+        manager::t_file_id file_id;
         t_sym_id sym_id;
     };
 
     struct t_function {
-        ast::t_node_id syntactic_function;
+        scan::ast::t_node_id syntactic_function;
         t_sym_ids parameter_types; // {t_type}
         t_sym_id return_type; // t_type
     };
@@ -61,16 +55,23 @@ namespace frontend::sym {
         t_sym_id function_template; // t_function_template
     };
 
+    enum class t_access_specifier {
+        PUBLIC,
+        PRIVATE,
+    };
+
     struct t_property {
         t_sym_id property_type; // t_type_wrapper
+        t_access_specifier access_specifier;
     };
 
     struct t_method {
         t_sym_id function_template; // t_function_template
+        t_access_specifier access_specifier;
     };
 
     struct t_struct {
-        ast::t_node_id syntactic_struct;
+        scan::ast::t_node_id syntactic_struct;
         t_declarations properties; // {t_property}
         t_declarations methods; // {t_method}
 
@@ -89,11 +90,11 @@ namespace frontend::sym {
     };
 
     struct t_alias_specialization {
-        ast::t_node_id specialization_node; // ast::t_alias
+        scan::ast::t_node_id specialization_node; // ast::t_alias
     };
 
     struct t_alias_template {
-        ast::t_node_id syntactic_alias_template;
+        scan::ast::t_node_id syntactic_alias_template;
         t_specializations specializations;
     };
 
@@ -106,7 +107,6 @@ namespace frontend::sym {
     };
 
     using t_sym_variation = std::variant<
-        t_type_wrapper,
         t_sym_reference,
         t_function,
         t_function_template,

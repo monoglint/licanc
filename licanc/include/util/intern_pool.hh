@@ -6,7 +6,7 @@
 #include <deque>
 
 namespace util {
-    template <typename T, typename ID = size_t>
+    template <typename T, typename ID = size_t, typename HASH = std::hash<T>>
     struct t_intern_pool {
         using t_get_result = std::optional<std::reference_wrapper<T>>;
 
@@ -32,7 +32,7 @@ namespace util {
             return itr->second;
         }
     private:
-        std::unordered_map<T, ID> reverse_list;
+        std::unordered_map<T, ID, HASH> reverse_list;
         std::deque<T> list;
     };
 }

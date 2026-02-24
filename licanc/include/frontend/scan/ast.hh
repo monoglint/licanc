@@ -51,18 +51,19 @@ t_ast:
         function_template: t_function_template:
             template_parameters:
                 t_template_parameter:
-                    name: 
+                    name: "T"
+                    is_const_value: false // T is a typename
             function: t_function
                 parameters:
                     t_parameter:
                         name: "a"
-                        type: "u8"
+                        type: "T"
                         default_value: t_none
                     t_parameter:
                         name: "b"
-                        type: "u8"
+                        type: "T"
                         default_value: t_none
-                return_type: "u8"
+                return_type: "T"
 
 
 */
@@ -78,7 +79,7 @@ t_ast:
 
 #include "frontend/manager_types.hh"
 
-namespace frontend::ast {
+namespace frontend::scan::ast {
     using t_node_id = u64;
 
     // this is not declared in ast_types because it requires <vector>
@@ -143,11 +144,13 @@ namespace frontend::ast {
 
     // math..pi
     struct t_scope_resolution_expr : t_node {
-        t_scope_resolution_expr(base::t_span span, t_node_id operand0, t_node_id operand1)
-            : t_node(std::move(span)), operand0(operand0), operand1(operand1) {}
+        t_scope_resolution_expr(base::t_span span, t_node_id operand0, t_node_id operand1, t_node_ids template_arguments = {})
+            : t_node(std::move(span)), operand0(operand0), operand1(operand1), template_arguments(template_arguments) {}
 
         t_node_id operand0; // expr
         t_node_id operand1; // t_identifier
+
+        t_node_ids template_arguments; // {t_template_argument}
     };
 
     // a > b ? x : y
@@ -161,6 +164,30 @@ namespace frontend::ast {
         token::t_token_type opr;
     };
 
+    // a::b || a()
+    struct t_scope_reference : t_node {
+        t_scope_reference(base::t_span span, t_node_id reference)
+            : t_node(std::move(span)), reference(reference) {}
+
+        t_node_id reference; // t_identifier || t_scope_resolution_expr
+    };
+
+    /*
+    
+    templated initializer in templated struct scenario
+    util..reference_wrapper<int>..new<float>()
+
+    */
+
+    struct t_call_expr : t_node {
+        t_call_expr(base::t_span span, t_node_id callee, t_node_ids arguments = {}, t_node_ids template_arguments = {})
+            : t_node(std::move(span)), callee(callee), arguments(arguments), template_arguments(template_arguments) {}
+
+        t_node_id callee; // t_scope_reference
+        t_node_ids arguments; // {t_expr}
+        t_node_ids template_arguments; // {t_template_argument}
+    };
+
     // array<u8>
     struct t_type : t_node {
         enum class t_qualifier {
@@ -169,11 +196,11 @@ namespace frontend::ast {
             FLUID_REF,
         };
 
-        t_type(base::t_span span, t_node_id source, t_node_ids arguments, t_qualifier qualifier)
-            : t_node(std::move(span)), source(source), arguments(arguments), qualifier(qualifier) {}
+        t_type(base::t_span span, t_node_id source, t_node_ids template_arguments, t_qualifier qualifier)
+            : t_node(std::move(span)), source(source), template_arguments(template_arguments), qualifier(qualifier) {}
 
-        t_node_id source; // t_type | t_identifier | t_scope_resolution_expr
-        t_node_ids arguments; // {t_type}
+        t_node_id source; // t_type | t_scope_reference
+        t_node_ids template_arguments; // {t_template_argument}
 
         t_qualifier qualifier;
     };
@@ -197,16 +224,21 @@ namespace frontend::ast {
     };
 
     struct t_template_parameter : t_node {
-        enum class t_parameter_type {
-            TYPENAME,
-            
-        };
+        t_template_parameter(base::t_span span, t_node_id name, bool is_const_value, t_node_id const_value_type)
+            : t_node(std::move(span)), name(name), is_const_value(is_const_value), const_value_type(const_value_type) {}
 
-        t_template_parameter(base::t_span span, t_node_id name, t_parameter_type parameter_type)
-            : t_node(std::move(span)), name(name), parameter_type(parameter_type) {}
+        t_node_id name; // t_identifier
 
-        t_node_id name; // expr_identifier
-        t_parameter_type parameter_type;
+        bool is_const_value;
+        t_node_id const_value_type; // t_type? - only if parameter_type is CONST_VALUE
+    };
+
+    struct t_template_argument : t_node {
+        t_template_argument(base::t_span span, t_node_id value)
+            : t_node(std::move(span)), value(value) {}
+
+        // note: if value is a t_expr, then the value of the template argument must be proven to be a compile time constant
+        t_node_id value; // t_type || t_expr
     };
 
     struct t_function_parameter : t_node {

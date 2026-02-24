@@ -14,7 +14,7 @@ used for processing the frontend and spitting out something final for the code g
 
 #include "frontend/scan/token.hh"
 #include "frontend/scan/ast.hh"
-#include "frontend/sema/sym.hh"
+#include "frontend/sema/sema.hh"
 
 #include "util/intern_pool.hh"
 
@@ -59,11 +59,11 @@ namespace frontend::manager {
 
         std::string path;
         std::string source_code;
-        ast::t_ast ast;
-        sym::t_symbol_table symbol_table;
+        scan::ast::t_ast ast;
+        sema::sym::t_symbol_table symbol_table;
 
         // quick access to all import nodes
-        std::vector<ast::t_node_id> import_node_ids;
+        std::vector<scan::ast::t_node_id> import_node_ids;
 
         // whether or not the file is the root or has been included
         // used to prevent double inclusion or interdependency
@@ -97,7 +97,11 @@ namespace frontend::manager {
 
         util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
         util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
+
+        // not a mistake. only string representations of numbers are stored, not the suffix.
         util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
+
+        util::t_intern_pool<sema::t_type_name, t_type_name_id, sema::t_type_name_hasher> typename_pool;
 
         void process_file(t_file_id root_file_id);
 

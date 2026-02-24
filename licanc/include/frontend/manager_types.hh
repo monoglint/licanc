@@ -14,4 +14,6 @@ namespace frontend::manager {
 
     // index of std::string in t_compilation_unit::number_literal_pool
     using t_number_literal_id = size_t;
+
+    using t_type_name_id = size_t;
 };

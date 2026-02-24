@@ -25,10 +25,10 @@ namespace {
     void handle_file_imports(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, frontend::manager::t_compilation_file& file, std::vector<frontend::manager::t_file_id>& file_stack) {
         using namespace frontend;
 
-        for (ast::t_node_id import_node_id : file.import_node_ids) {
+        for (scan::ast::t_node_id import_node_id : file.import_node_ids) {
             // check if there is an include item anywhere in the ast.
-            ast::t_node_id file_path_node_id = file.ast.get<ast::t_import_item>(import_node_id).file_path;
-            ast::t_string_literal& file_path_node = file.ast.get<ast::t_string_literal>(file_path_node_id);
+            scan::ast::t_node_id file_path_node_id = file.ast.get<scan::ast::t_import_item>(import_node_id).file_path;
+            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(file_path_node_id);
             
             util::t_intern_pool<std::string>::t_get_result get_string_result = unit.string_literal_pool.get(file_path_node.string_literal_id);
 
@@ -75,8 +75,8 @@ namespace {
 
         manager::t_compilation_file& file = unit.get_file(file_id).value();
 
-        lexer::lex(unit, file_id);
-        parser::parse(unit, file_id);
+        scan::lexer::lex(unit, file_id);
+        scan::parser::parse(unit, file_id);
 
         handle_file_imports(unit, file_id, file, file_stack);
         
