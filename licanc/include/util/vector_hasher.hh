@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "util/hash.hh"
 
 /*
 
@@ -11,7 +12,7 @@
 
 */
 namespace util {
-    template <typename T>
+    template <typename T, class T_HASHER = std::hash<T>>
     struct vector_hasher {
         using vector_of_t = std::vector<T>;
 
@@ -19,7 +20,7 @@ namespace util {
             size_t hash_val = vec.size();
             
             for (const T& i : vec) {
-                hash_val ^= std::hash<T>{}(i) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
+                util::hash_combine(hash_val, T_HASHER{}(i));
             }
 
             return hash_val;

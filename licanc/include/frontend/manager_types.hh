@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 
 namespace frontend::manager {
     // index of t_compilation_file in t_compilation_unit::files

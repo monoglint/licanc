@@ -19,16 +19,25 @@
 
     #include "licanc/include/licanc.hh"
 
-    int main() {
+    int main(int argc, char* argv[]) {
+        std::cout << std::to_string(argc) << '\n';
+
         // do not modify this print statement, it is sacred
         std::cout << "Hello world, this is Lican!\n";
 
         licanc::t_lican_config config;
-        config.project_path = "C:/Users/jghig/projects/c/licanc_loader/hello_world";
-        config.start_subpath = "main.li";
 
-        std::cout << "Calling licanc.\n";
-        licanc::compile(config);
+        if (argc == 1) {
+            config.project_path = "C:/Users/jghig/projects/c/lican_loader/hello_world";
+            config.start_subpath = "main.li";
+        }
+        else if (argc == 3) {
+            config.project_path = argv[1];
+            config.start_subpath = argv[2];
+        }        
+
+
+        licanc::compile(std::move(config));
         
         return 0;
     }

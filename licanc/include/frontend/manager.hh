@@ -27,32 +27,36 @@ namespace frontend::manager {
     };
 
     struct t_log {
-        t_log(t_file_id file_id, base::t_span span, t_log_type log_type, std::string message)
-            : span(span), log_type(log_type), message(message) {}
+        t_log(t_file_id file_id, util::t_span span, t_log_type log_type, std::string message)
+            : file_id(file_id), span(span), log_type(log_type), message(message) {}
             
         t_file_id file_id;
-        base::t_span span;
+        util::t_span span;
         t_log_type log_type;
         std::string message;
+
+        std::string to_string() const;
     };
 
     struct t_logger {
         std::vector<t_log> logs;
 
-        inline void add_log(t_file_id file_id, t_log_type log_type, base::t_span span, std::string message) { logs.emplace_back(file_id, span, log_type, message); }
+        inline void add_log(t_file_id file_id, t_log_type log_type, util::t_span span, std::string message) { logs.emplace_back(file_id, span, log_type, message); }
         
-        inline void add_message(t_file_id file_id, base::t_span span, std::string message)          { add_log(file_id, t_log_type::MESSAGE, span, message); }
-        inline void add_warning(t_file_id file_id, base::t_span span, std::string message)          { add_log(file_id, t_log_type::WARNING, span, message); }
-        inline void add_error(t_file_id file_id, base::t_span span, std::string message)            { add_log(file_id, t_log_type::ERROR, span, message); }
-        inline void add_internal_error(t_file_id file_id, base::t_span span, std::string message)   { add_log(file_id, t_log_type::INTERNAL_ERROR, span, message); }
-    };
+        inline void add_message(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::MESSAGE, span, message); }
+        inline void add_warning(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::WARNING, span, message); }
+        inline void add_error(t_file_id file_id, util::t_span span, std::string message)            { add_log(file_id, t_log_type::ERROR, span, message); }
+        inline void add_internal_error(t_file_id file_id, util::t_span span, std::string message)   { add_log(file_id, t_log_type::INTERNAL_ERROR, span, message); }
 
+        void print() const;
+    };
+    
     enum class t_file_state {
         PARSE_READY, // includes lexing and parsing
         ANALYZE_READY,
         DONE,
     };
-
+    
     struct t_compilation_file {
         t_compilation_file(std::string path, std::string source_code)
             : path(std::move(path)), source_code(std::move(source_code)) {}
@@ -63,7 +67,7 @@ namespace frontend::manager {
         sema::sym::t_symbol_table symbol_table;
 
         // quick access to all import nodes
-        std::vector<scan::ast::t_node_id> import_node_ids;
+        scan::ast::t_node_ids import_node_ids;
 
         // whether or not the file is the root or has been included
         // used to prevent double inclusion or interdependency
@@ -90,9 +94,10 @@ namespace frontend::manager {
 
         using t_get_file_result = std::optional<std::reference_wrapper<t_compilation_file>>;
 
-        t_compilation_unit(t_frontend_config config);
+        t_compilation_unit(t_frontend_config _config);
 
         t_frontend_config config;
+        
         t_logger logger;
 
         util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
@@ -101,6 +106,7 @@ namespace frontend::manager {
         // not a mistake. only string representations of numbers are stored, not the suffix.
         util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
 
+        // the 0th index is not valid. it just refers to a type that needs to be filled later.
         util::t_intern_pool<sema::t_type_name, t_type_name_id, sema::t_type_name_hasher> typename_pool;
 
         void process_file(t_file_id root_file_id);

@@ -12,7 +12,7 @@ void licanc::compile(licanc::t_lican_config config) {
     frontend_config.project_path = config.project_path;
     frontend_config.start_subpath = config.start_subpath;
 
-    frontend::manager::t_compilation_unit unit(frontend_config);
+    frontend::manager::t_compilation_unit unit(std::move(frontend_config));
 
 
 }

@@ -3,16 +3,19 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 
 #include "frontend/scan/lexer.hh"
 #include "frontend/scan/parser.hh"
 #include "frontend/sema/semantic_analyzer.hh"
 
+#include "util/stream_format.hh"
+
 namespace {
-    std::optional<std::string> read_file(std::string file_path) {
+    std::optional<std::string> open_file(std::string file_path) {
         std::ifstream input_file(file_path);
 
-        if (!input_file)
+        if (!input_file || !input_file.is_open())
             return std::nullopt;
 
         return std::string(std::istreambuf_iterator<char>(input_file), std::istreambuf_iterator<char>());    
@@ -99,6 +102,40 @@ namespace {
     }
 }
 
+std::string frontend::manager::t_log::to_string() const {
+    std::stringstream buffer;
+
+    buffer << '[' << std::to_string(file_id) << '-' << span.start.to_string() << "]: ";
+
+    switch (log_type) {
+        case t_log_type::MESSAGE:
+            buffer << util::t_stream_format<util::t_format::WHITE>{};
+            break;
+        case t_log_type::WARNING:
+            buffer << util::t_stream_format<util::t_format::YELLOW>{} << util::t_stream_format<util::t_format::BOLD>{} << "Warning: ";
+            break;
+        case t_log_type::ERROR:
+            buffer << util::t_stream_format<util::t_format::RED>{} << util::t_stream_format<util::t_format::BOLD>{} << "Error: ";
+            break;
+        case t_log_type::INTERNAL_ERROR:
+            buffer << util::t_stream_format<util::t_format::RED>{} << util::t_stream_format<util::t_format::BOLD>{} << util::t_stream_format<util::t_format::UNDERLINE>{} << "Internal Error: ";
+            break;
+    }
+
+    buffer << message;
+    
+    buffer << util::t_stream_format<util::t_format::RESET>{};
+
+    return buffer.str();
+}
+
+void frontend::manager::t_logger::print() const {
+    std::cout << "Logs:\n";
+    for (const t_log& log : logs) {
+        std::cout << log.to_string() << '\n';
+    }
+}
+
 // base function for parse_file(), analyze_file(), and others
 void frontend::manager::t_compilation_unit::process_file(frontend::manager::t_file_id start_file_id) {
     std::vector<manager::t_file_id> file_stack;
@@ -143,12 +180,12 @@ frontend::manager::t_compilation_unit::t_add_file_result frontend::manager::t_co
     if (file_exists)
         return std::unexpected(t_compilation_unit::t_add_file_error::FILE_ALREADY_EXISTS);
     
-    std::optional<std::string> read_file_result = read_file(path);
+    std::optional<std::string> open_file_result = open_file(path);
 
-    if (!read_file_result.has_value())
+    if (!open_file_result.has_value())
         return std::unexpected(t_compilation_unit::t_add_file_error::PATH_INVALID);
 
-    files.emplace_back(path, read_file_result.value());
+    files.emplace_back(path, open_file_result.value());
     return files.size() - 1;
 }
 
@@ -161,15 +198,19 @@ frontend::manager::t_compilation_unit::t_get_file_result frontend::manager::t_co
 
 // -> namespace bound
 
-frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config config) {
-    std::cout << "Running compilation unit.\n";
+frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _config) 
+    : config(std::move(_config)) {
+        std::string start_path = config.project_path + '/' + config.start_subpath;
+        
+        logger.add_log(0, t_log_type::MESSAGE, util::t_span(), std::string("Compiling ") + config.project_path + "\nStart path: " + config.start_subpath);
 
-    this->config = std::move(config);
-    
-    t_add_file_result add_file_result = add_file(config.project_path + '/' + config.start_subpath);
+        t_add_file_result add_file_result = add_file(start_path);
 
-    if (add_file_result.has_value())
-        process_file(add_file_result.value());
-
-    
+        if (add_file_result.has_value())
+            process_file(add_file_result.value());
+        else if (add_file_result.error() == t_add_file_error::PATH_INVALID)
+            logger.add_error(0, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
+        
+        std::cout << "Compilation finished.\n";
+        logger.print();
 }

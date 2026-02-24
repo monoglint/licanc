@@ -19,10 +19,10 @@ namespace frontend::sema {
 
     struct t_type_name_hasher {
         size_t operator()(const t_type_name& type_name) const noexcept {
-            size_t hash_val = (size_t)type_name.qualifier;
+            size_t hash_val = std::hash<size_t>{}((size_t)type_name.qualifier);
 
-            hash_val ^= std::hash<sym::t_sym_reference>{}(type_name.declaration) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
-            hash_val ^= util::vector_hasher<sym::t_sym_reference>{}(type_name.template_arguments) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
+            util::hash_combine(hash_val, sym::t_sym_reference_hasher{}(type_name.declaration));
+            util::hash_combine(hash_val, sym::t_sym_reference_hasher{}(type_name.template_arguments));
             
             return hash_val;
         }

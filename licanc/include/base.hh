@@ -1,45 +1,20 @@
 /*
 
-a core component that the licanc library is based on. 
-in previous projects, cstdint was used almost everywhere just for exact numeric types,
-which is why this library was made
+fixed width types
 
 */
 
 #pragma once
 
-// for typing
-#include <cstdint>
+using u8 = __UINT8_TYPE__;
+using u16 = __UINT16_TYPE__;
+using u32 = __UINT32_TYPE__;
+using u64 = __UINT64_TYPE__;
 
-using u8 = uint8_t;
-using u16 = uint16_t;
-using u32 = uint32_t;
-using u64 = uint64_t;
-
-using i8 = int8_t;
-using i16 = int16_t;
-using i32 = int32_t;
-using i64 = int64_t;
+using i8 = __INT8_TYPE__;
+using i16 = __INT16_TYPE__;
+using i32 = __INT32_TYPE__;
+using i64 = __INT64_TYPE__;
 
 using f32 = float;
 using f64 = double;
-using f128 = long double;
-
-namespace base {
-    struct t_point {
-        t_point(u32 char_pos, u32 line, u32 column)
-            : char_pos(char_pos), line(line), column(column) {}
-
-        u32 char_pos;
-        u32 line;
-        u32 column;
-    };
-
-    struct t_span {
-        t_span(t_point start, t_point end)
-            : start(std::move(start)), end(std::move(end)) {}
-            
-        t_point start;
-        t_point end;
-    };
-}

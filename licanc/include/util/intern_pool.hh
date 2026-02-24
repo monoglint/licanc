@@ -6,24 +6,24 @@
 #include <deque>
 
 namespace util {
-    template <typename T, typename ID = size_t, typename HASH = std::hash<T>>
+    template <typename T, typename T_ID = size_t, typename T_HASH = std::hash<T>>
     struct t_intern_pool {
         using t_get_result = std::optional<std::reference_wrapper<T>>;
 
-        inline t_get_result get(ID index) {
+        inline t_get_result get(T_ID index) {
             if (index >= list.size())
                 return std::nullopt;
 
             return list[index];
         }
 
-        inline ID intern(T value) {
+        inline T_ID intern(T value) {
             auto& itr = reverse_list.find(value);
 
             if (itr == reverse_list.end()) {
                 list.push_back(std::move(value));
 
-                ID new_index = list.size() - 1;
+                T_ID new_index = list.size() - 1;
 
                 reverse_list[list.back()] = new_index;
                 return new_index;
@@ -32,7 +32,7 @@ namespace util {
             return itr->second;
         }
     private:
-        std::unordered_map<T, ID, HASH> reverse_list;
+        std::unordered_map<T, T_ID, T_HASH> reverse_list;
         std::deque<T> list;
     };
 }
