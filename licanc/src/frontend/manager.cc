@@ -242,7 +242,7 @@ frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _con
     : config(std::move(_config)) {
         std::string start_path = config.project_path + '/' + config.start_subpath;
         
-        logger.add_log(0, t_log_type::MESSAGE, util::t_span(), std::string("Compiling ") + config.project_path + "\nStart path: " + config.start_subpath);
+        logger.add_log(0, t_log_type::MESSAGE, util::t_span(), std::string("Project path: ") + config.project_path + "\nStart path: " + config.start_subpath);
 
         t_add_file_result add_file_result = add_file(start_path);
 

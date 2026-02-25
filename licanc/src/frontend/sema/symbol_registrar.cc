@@ -23,7 +23,7 @@ namespace {
         // note: lican is okay with same named declarations in nested modules because there is still a way to resolve them based on the context of where
         // the declaration is being accessed
 
-        module_declaration_sym.declarations.insert(identifier_node.identifier_id, declaration_sym_id);
+        module_declaration_sym.declarations.insert({identifier_node.identifier_id, declaration_sym_id});
     }
 
     void walk(t_unit_file_pair& ufp, sema::sym::t_module_declaration& parent_module_sym, scan::ast::t_global_declaration_item& declaration_node) {
