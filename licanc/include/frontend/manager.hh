@@ -25,31 +25,6 @@ namespace frontend::manager {
         ERROR,
         INTERNAL_ERROR,
     };
-
-    struct t_log {
-        t_log(t_file_id file_id, util::t_span span, t_log_type log_type, std::string message)
-            : file_id(file_id), span(span), log_type(log_type), message(message) {}
-            
-        t_file_id file_id;
-        util::t_span span;
-        t_log_type log_type;
-        std::string message;
-
-        std::string to_string() const;
-    };
-
-    struct t_logger {
-        std::vector<t_log> logs;
-
-        inline void add_log(t_file_id file_id, t_log_type log_type, util::t_span span, std::string message) { logs.emplace_back(file_id, span, log_type, message); }
-        
-        inline void add_message(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::MESSAGE, span, message); }
-        inline void add_warning(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::WARNING, span, message); }
-        inline void add_error(t_file_id file_id, util::t_span span, std::string message)            { add_log(file_id, t_log_type::ERROR, span, message); }
-        inline void add_internal_error(t_file_id file_id, util::t_span span, std::string message)   { add_log(file_id, t_log_type::INTERNAL_ERROR, span, message); }
-
-        void print() const;
-    };
     
     enum class t_file_state {
         PARSE_READY, // includes lexing and parsing
@@ -72,6 +47,33 @@ namespace frontend::manager {
         // whether or not the file is the root or has been included
         // used to prevent double inclusion or interdependency
         t_file_state state = t_file_state::PARSE_READY;
+    };
+
+    using t_compilation_files = std::deque<t_compilation_file>;
+
+    struct t_log {
+        t_log(t_file_id file_id, util::t_span span, t_log_type log_type, std::string message)
+            : file_id(file_id), span(span), log_type(log_type), message(message) {}
+            
+        t_file_id file_id;
+        util::t_span span;
+        t_log_type log_type;
+        std::string message;
+
+        std::string to_string(const t_compilation_files& files, bool format = true) const;
+    };
+
+    struct t_logger {
+        std::vector<t_log> logs;
+
+        inline void add_log(t_file_id file_id, t_log_type log_type, util::t_span span, std::string message) { logs.emplace_back(file_id, span, log_type, message); }
+        
+        inline void add_message(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::MESSAGE, span, message); }
+        inline void add_warning(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::WARNING, span, message); }
+        inline void add_error(t_file_id file_id, util::t_span span, std::string message)            { add_log(file_id, t_log_type::ERROR, span, message); }
+        inline void add_internal_error(t_file_id file_id, util::t_span span, std::string message)   { add_log(file_id, t_log_type::INTERNAL_ERROR, span, message); }
+
+        std::string to_string(const t_compilation_files& files, bool format = true) const;
     };
 
     // DELIVERY INPUT
@@ -114,6 +116,6 @@ namespace frontend::manager {
         t_add_file_result add_file(std::string path);
         t_get_file_result get_file(size_t file_id);
     private:
-        std::vector<t_compilation_file> files;
+        t_compilation_files files;
     };
 };

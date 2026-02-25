@@ -20,8 +20,6 @@
     #include "licanc/include/licanc.hh"
 
     int main(int argc, char* argv[]) {
-        std::cout << std::to_string(argc) << '\n';
-
         // do not modify this print statement, it is sacred
         std::cout << "Hello world, this is Lican!\n";
 
@@ -35,7 +33,6 @@
             config.project_path = argv[1];
             config.start_subpath = argv[2];
         }        
-
 
         licanc::compile(std::move(config));
         

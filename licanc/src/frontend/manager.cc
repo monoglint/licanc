@@ -102,38 +102,78 @@ namespace {
     }
 }
 
-std::string frontend::manager::t_log::to_string() const {
+std::string frontend::manager::t_log::to_string(const t_compilation_files& files, bool format) const {
     std::stringstream buffer;
 
-    buffer << '[' << std::to_string(file_id) << '-' << span.start.to_string() << "]: ";
+    if (format) {
+        buffer 
+            << util::t_stream_format<util::t_format::LIGHT_GRAY>
+            << '[' 
+            << files[file_id].path 
+            << " - "
+            << span.start.to_string()
+            << "]:\n"
+            << util::t_stream_format<util::t_format::RESET>;
 
-    switch (log_type) {
-        case t_log_type::MESSAGE:
-            buffer << util::t_stream_format<util::t_format::WHITE>{};
-            break;
-        case t_log_type::WARNING:
-            buffer << util::t_stream_format<util::t_format::YELLOW>{} << util::t_stream_format<util::t_format::BOLD>{} << "Warning: ";
-            break;
-        case t_log_type::ERROR:
-            buffer << util::t_stream_format<util::t_format::RED>{} << util::t_stream_format<util::t_format::BOLD>{} << "Error: ";
-            break;
-        case t_log_type::INTERNAL_ERROR:
-            buffer << util::t_stream_format<util::t_format::RED>{} << util::t_stream_format<util::t_format::BOLD>{} << util::t_stream_format<util::t_format::UNDERLINE>{} << "Internal Error: ";
-            break;
+        switch (log_type) {
+            case t_log_type::MESSAGE:
+                buffer << util::t_stream_format<util::t_format::CYAN>;
+                break;
+            case t_log_type::WARNING:
+                buffer 
+                    << util::t_stream_format<util::t_format::YELLOW> 
+                    << util::t_stream_format<util::t_format::BOLD> 
+                    << "Warning: ";
+                break;
+            case t_log_type::ERROR:
+                buffer 
+                    << util::t_stream_format<util::t_format::RED> 
+                    << util::t_stream_format<util::t_format::BOLD> 
+                    << "Error: ";
+                break;
+            case t_log_type::INTERNAL_ERROR:
+                buffer 
+                    << util::t_stream_format<util::t_format::RED> 
+                    << util::t_stream_format<util::t_format::BOLD> 
+                    << util::t_stream_format<util::t_format::UNDERLINE> 
+                    << "Internal Error: ";
+                break;
+        }
     }
-
+    else {
+        buffer << '[' << files[file_id].path << " - " << span.start.to_string() << "]:\n";
+        switch (log_type) {
+            case t_log_type::MESSAGE:
+                break;
+            case t_log_type::WARNING:
+                buffer << "Warning: ";
+                break;
+            case t_log_type::ERROR:
+                buffer << "Error: ";
+                break;
+            case t_log_type::INTERNAL_ERROR:
+                buffer << "Internal Error: ";
+                break;
+        }
+    }
+        
     buffer << message;
     
-    buffer << util::t_stream_format<util::t_format::RESET>{};
+    if (format)
+        buffer << util::t_stream_format<util::t_format::RESET>;
 
     return buffer.str();
 }
 
-void frontend::manager::t_logger::print() const {
-    std::cout << "Logs:\n";
+std::string frontend::manager::t_logger::to_string(const t_compilation_files& files, bool format) const {
+    std::stringstream buffer;
+
+    buffer << "Logs:\n";
     for (const t_log& log : logs) {
-        std::cout << log.to_string() << '\n';
+        buffer << log.to_string(files, format) << "\n\n";
     }
+
+    return buffer.str();
 }
 
 // base function for parse_file(), analyze_file(), and others
@@ -212,5 +252,5 @@ frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _con
             logger.add_error(0, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
         
         std::cout << "Compilation finished.\n";
-        logger.print();
+        std::cout << logger.to_string(files);
 }

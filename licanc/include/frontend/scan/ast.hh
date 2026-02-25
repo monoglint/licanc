@@ -80,15 +80,12 @@ t_ast:
 #include "frontend/manager_types.hh"
 
 namespace frontend::scan::ast {
-    using t_node_id = u64;
+    using t_node_id = size_t;
 
     // this is not declared in ast_types because it requires <vector>
     using t_node_ids = std::vector<t_node_id>;
 
     struct t_node {
-        t_node(util::t_span span)
-            : span(std::move(span)) {}
-
         util::t_span span;
     };
 
@@ -96,7 +93,8 @@ namespace frontend::scan::ast {
         t_root()
             : t_node(util::t_span()) {}
 
-        t_node_ids nodes; // {item}
+        t_node_id global_module; // t_module_declaration_item
+        // ^^^^ though technically not syntactic, it will make ast reading much easier.
     };
 
     struct t_none : t_node {
@@ -361,6 +359,16 @@ namespace frontend::scan::ast {
         t_node_id name; // t_identifier
     };
 
+    struct t_module_declaration_item : t_node {
+        t_module_declaration_item(util::t_span span, t_node_id name, t_node_ids items)
+            : t_node(std::move(span)), name(name), items(items) {}
+        
+        t_node_id name; // t_identifier
+        t_node_ids items; // {t_item}
+
+        // ^^^ in the symbol table, a module declaration's items are split into declarations and references.
+    };
+
     // -- STATEMENTS
 
     struct t_return_stmt : t_node {
@@ -408,6 +416,7 @@ namespace frontend::scan::ast {
         t_struct_declaration_item,
         t_type_alias_template,
         t_type_alias_declaration_item,
+        t_module_declaration_item,
         t_return_stmt,
         t_body_stmt
     >;
