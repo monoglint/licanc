@@ -11,5 +11,3 @@ target_include_directories(licanc
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
     INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
-
-target_precompile_headers(licanc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/base.hh")

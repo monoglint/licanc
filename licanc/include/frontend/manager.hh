@@ -86,6 +86,17 @@ namespace frontend::manager {
         // more info like flags etc.
     };
 
+    struct t_compile_time_data {
+        util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
+        util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
+
+        // not a mistake. only string representations of numbers are stored, not the suffix.
+        util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
+
+        // the 0th index is not valid. it just refers to a type that needs to be filled later.
+        util::t_intern_pool<sema::t_type_name, t_type_name_id, sema::t_type_name_hasher> typename_pool;
+    };
+
     // DELIVERY OUTPUT
     struct t_compilation_unit {
         enum class t_add_file_error {
@@ -99,22 +110,14 @@ namespace frontend::manager {
         t_compilation_unit(t_frontend_config _config);
 
         t_frontend_config config;
+        t_compile_time_data compile_time_data;
         
         t_logger logger;
-
-        util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
-        util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
-
-        // not a mistake. only string representations of numbers are stored, not the suffix.
-        util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
-
-        // the 0th index is not valid. it just refers to a type that needs to be filled later.
-        util::t_intern_pool<sema::t_type_name, t_type_name_id, sema::t_type_name_hasher> typename_pool;
 
         void process_file(t_file_id root_file_id);
 
         t_add_file_result add_file(std::string path);
-        t_get_file_result get_file(size_t file_id);
+        t_get_file_result get_file(t_file_id file_id);
     private:
         t_compilation_files files;
     };

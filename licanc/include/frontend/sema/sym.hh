@@ -21,27 +21,31 @@ there is a minor consistency flaw in that decision, i think the upsides outweigh
 
 #include <deque>
 #include <unordered_map>
+#include <functional>
 
 #include "util/span.hh"
+#include "util/vector_hasher.hh"
+#include "util/safe_id.hh"
+#include "util/hash.hh"
 
 #include "frontend/scan/ast.hh"
-
 #include "frontend/manager_types.hh"
-
-#include "util/vector_hasher.hh"
 
 namespace frontend::manager {
     using t_type_name_ids = std::vector<t_type_name_id>;
 }
 
 namespace frontend::sema::sym {
-    using t_sym_id = size_t;
+    using t_sym_id = util::t_safe_id<struct t_sym_id_tag>;
     using t_sym_ids = std::vector<t_sym_id>;
 
-    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
+    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id, util::t_safe_id_hasher<manager::t_identifier_id>>;
 
-     // <{t_template_argument}, t_x_specialization>
-    using t_specializations = std::unordered_map<t_sym_ids, t_sym_id, util::vector_hasher<t_sym_id>>;
+    // {t_template_argument}
+    using t_template_arguments = t_sym_ids;
+
+     // <_, t_x_specialization>
+    using t_specializations = std::unordered_map<t_template_arguments, t_sym_id, util::t_vector_hasher<t_sym_id>>;
     
     struct t_root { // index 0
         t_sym_id global_module; // t_module_declaration
@@ -56,12 +60,13 @@ namespace frontend::sema::sym {
         t_sym_id sym_id;
     };
 
-    struct t_reference_hasher {
-        u64 operator()(const t_reference& sym_reference) const noexcept {
-            u64 hash_value = std::hash<manager::t_file_id>{}(sym_reference.file_id);
-            util::hash_combine(hash_value, std::hash<t_sym_id>{}(sym_reference.sym_id));
-            return hash_value;
-        }
+    struct t_template_parameter {
+        bool is_constexpr;
+        manager::t_constexpr_id constexpr_id;
+    };
+
+    struct t_template_argument {
+        t_sym_id argument_value; // sema::t_type_name || sema::t_ct_value
     };
 
     struct t_function {
@@ -71,8 +76,11 @@ namespace frontend::sema::sym {
     };
     
     struct t_function_template {
-        t_sym_id base;
-        t_specializations specializations; // <_, t_function_specializaiton> 
+        //  base is not 100% concrete unless len(specializations) is 0 
+        //  /
+        // v
+        t_sym_id base; // t_function
+        t_specializations specializations; // <_, t_function> 
     };
 
     struct t_function_declaration {
@@ -128,17 +136,22 @@ namespace frontend::sema::sym {
 
     struct t_module_declaration {
         t_declarations declarations;
-        t_sym_ids references; // {t_reference}
     };
 
     struct t_global_declaration {
         manager::t_type_name_id global_type;
     };
 
+    struct t_reference_declaration {
+        t_sym_id reference; // t_reference
+    };
+
     using t_sym_variation = std::variant<
         t_root,
         t_none,
         t_reference,
+        t_template_parameter,
+        t_template_argument,
         t_function,
         t_function_template,
         t_function_declaration,
@@ -151,8 +164,21 @@ namespace frontend::sema::sym {
         t_alias_template,
         t_alias_declaration,
         t_module_declaration,
-        t_global_declaration
+        t_global_declaration,
+        t_reference_declaration
     >;
 
     using t_symbol_table = util::t_arena<t_sym_variation, t_sym_id>;
+}
+
+namespace std {
+    template<>
+    struct hash<frontend::sema::sym::t_reference> {
+        std::size_t operator()(const frontend::sema::sym::t_reference& reference_sym) const noexcept {
+            std::size_t file_id = util::t_safe_id_hasher<frontend::manager::t_file_id>{}(reference_sym.file_id);
+            std::size_t sym_id = util::t_safe_id_hasher<frontend::sema::sym::t_sym_id>{}(reference_sym.sym_id);
+
+            return util::make_combined_hash(file_id, sym_id);
+        }
+    };
 }

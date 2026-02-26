@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include "util/hash.hh"
 
 /*
 
@@ -13,18 +12,10 @@
 */
 namespace util {
     template <typename T, class T_HASHER = std::hash<T>>
-    struct vector_hasher {
+    struct t_vector_hasher {
         using vector_of_t = std::vector<T>;
 
-        size_t operator()(const vector_of_t& vec) const noexcept {
-            size_t hash_val = vec.size();
-            
-            for (const T& i : vec) {
-                util::hash_combine(hash_val, T_HASHER{}(i));
-            }
-
-            return hash_val;
-        }
+        std::size_t operator()(const vector_of_t& vec) const noexcept;
     };
 }
 
@@ -37,8 +28,8 @@ he proposes this solution:
 // Posted by see
 // Retrieved 2026-02-23, License - CC BY-SA 4.0
 
-std::size_t operator()(std::vector<uint32_t> const& vec) const {
-  std::size_t seed = vec.size();
+std::std::size_t operator()(std::vector<uint32_t> const& vec) const {
+  std::std::size_t seed = vec.size();
   for(auto x : vec) {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;

@@ -76,11 +76,12 @@ t_ast:
 #include "frontend/scan/token.hh"
 
 #include "util/span.hh"
+#include "util/safe_id.hh"
 
 #include "frontend/manager_types.hh"
 
 namespace frontend::scan::ast {
-    using t_node_id = size_t;
+    using t_node_id = util::t_safe_id<struct t_node_id_tag>;
 
     // this is not declared in ast_types because it requires <vector>
     using t_node_ids = std::vector<t_node_id>;
@@ -92,6 +93,8 @@ namespace frontend::scan::ast {
     struct t_root : t_node {
         t_root()
             : t_node(util::t_span()) {}
+
+        virtual ~t_root() = default;
 
         t_node_id global_module; // t_module_declaration_item
         // ^^^^ though technically not syntactic, it will make ast reading much easier.
@@ -247,12 +250,11 @@ namespace frontend::scan::ast {
     };
 
     struct t_function_parameter : t_node {
-        t_function_parameter(util::t_span span, t_node_id name, t_node_id type, t_node_id default_value)
-            : t_node(std::move(span)), name(name), type(type), default_value(default_value) {}
+        t_function_parameter(util::t_span span, t_node_id name, t_node_id type)
+            : t_node(std::move(span)), name(name), type(type) {}
 
         t_node_id name; // t_identifier
         t_node_id type; // t_type
-        t_node_id default_value; // expr?
     };
     
     struct t_function : t_node {
@@ -422,5 +424,5 @@ namespace frontend::scan::ast {
     >;
 
     // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
-    using t_ast = util::t_base_arena<t_node_variation, t_node, t_node_id>;
+    using t_ast = util::t_base_arena<t_node_variation, t_node_id, t_node>;
 }

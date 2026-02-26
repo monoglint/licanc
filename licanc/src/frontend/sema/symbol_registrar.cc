@@ -4,6 +4,7 @@
 
 #include "frontend/sema/sema.hh"
 
+// utility
 namespace {
     using namespace frontend;
 
@@ -13,46 +14,67 @@ namespace {
         manager::t_file_id file_id;
     };
 
-    void declare_symbol(t_unit_file_pair& ufp, sema::sym::t_module_declaration& module_declaration_sym, scan::ast::t_identifier& identifier_node, sema::sym::t_sym_id declaration_sym_id) {
-        if (module_declaration_sym.declarations.find(identifier_node.identifier_id) != module_declaration_sym.declarations.end()) {
-            std::string identifier = ufp.unit.identifier_pool.get(identifier_node.identifier_id).value().get();
+    bool check_identifier_declarability(sema::sym::t_module_declaration& module_declaration_sym, scan::ast::t_identifier& identifier_node) {
+        return module_declaration_sym.declarations.find(identifier_node.identifier_id) == module_declaration_sym.declarations.end();
+    }
+
+    bool assert_identifier_declarability(t_unit_file_pair& ufp, sema::sym::t_module_declaration& module_declaration_sym, scan::ast::t_identifier& identifier_node) {
+        if (!check_identifier_declarability(module_declaration_sym, identifier_node)) {
+            std::string identifier = ufp.unit.compile_time_data.identifier_pool.get(identifier_node.identifier_id).value().get();
             ufp.unit.logger.add_error(ufp.file_id, identifier_node.span, "Multiple declarations of " + identifier);
-            return;
+            return false;
         }
 
-        // note: lican is okay with same named declarations in nested modules because there is still a way to resolve them based on the context of where
-        // the declaration is being accessed
+        return true;
+    }
+
+    void declare_symbol(t_unit_file_pair& ufp, sema::sym::t_module_declaration& module_declaration_sym, scan::ast::t_identifier& identifier_node, sema::sym::t_sym_id declaration_sym_id) {
+        if (!assert_identifier_declarability(ufp, module_declaration_sym, identifier_node))
+            return;
 
         module_declaration_sym.declarations.insert({identifier_node.identifier_id, declaration_sym_id});
     }
+}
+
+// walkers
+namespace {
+    using namespace frontend;
 
     void walk(t_unit_file_pair& ufp, sema::sym::t_module_declaration& parent_module_sym, scan::ast::t_global_declaration_item& declaration_node) {
-        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_global_declaration>(0);
-        scan::ast::t_identifier& declaration_name_node = ufp.file.ast.get<scan::ast::t_identifier>(declaration_node.name);
+        // note a symbol will always be made no matter the conditions. it will only fail to be appended if its declarability is nulled
+        
+        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_global_declaration>(sema::sym::t_sym_id::INVALID);
+        scan::ast::t_identifier& declaration_name_node = ufp.file.ast.get<scan::ast::t_identifier>(declaration_node.name).value().get(); // bypass because main walker function verified existence
 
         declare_symbol(ufp, parent_module_sym, declaration_name_node, declaration_sym_id);
     }
 
-    void walk(t_unit_file_pair& ufp, scan::ast::t_function_declaration_item& declaration_node) {
-        // leave off here for tonight. you know what to do tomorrow!
+    void walk(t_unit_file_pair& ufp, sema::sym::t_module_declaration& parent_module_sym, scan::ast::t_function_declaration_item& declaration_node) {
+        sema::sym::t_sym_id template_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_function_template>();
+        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_function_declaration>(template_sym_id);
+        scan::ast::t_identifier& declaration_name_node = ufp.file.ast.get<scan::ast::t_identifier>(declaration_node.name).value().get();
+        
+        declare_symbol(ufp, parent_module_sym, declaration_name_node, declaration_sym_id);
     }
+
+// macro will be gone by production
+#define TEST_TYPE(T) if (ufp.file.ast.is<T>(node_id)) walk(ufp, declaration_sym, ufp.file.ast.get<T>(node_id).value().get());
 
     void walk(t_unit_file_pair& ufp, scan::ast::t_module_declaration_item& declaration_node) {
-        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_module_declaration>();
-        sema::sym::t_module_declaration& declaration_sym = ufp.file.symbol_table.get<sema::sym::t_module_declaration>(declaration_sym_id);
+        sema::sym::t_module_declaration& declaration_sym = ufp.file.symbol_table.emplace_get<sema::sym::t_module_declaration>();
 
         for (scan::ast::t_node_id node_id : declaration_node.items) {
-            if (ufp.file.ast.is<scan::ast::t_global_declaration_item>(node_id))
-                walk(ufp, declaration_sym, ufp.file.ast.get<scan::ast::t_global_declaration_item>(node_id));
-            else if (ufp.file.ast.is<scan::ast::t_function_declaration_item>(node_id))
-                walk(ufp, ufp.file.ast.get<scan::ast::t_function_declaration_item>(node_id));
+            TEST_TYPE(scan::ast::t_global_declaration_item)
+            else TEST_TYPE(scan::ast::t_function_declaration_item)
         }
     }
+
+#undef TEST_TYPE
 
     void walk(t_unit_file_pair& ufp, scan::ast::t_root& node) {
         ufp.file.symbol_table.emplace<sema::sym::t_root>(1); // points to the module that will be made in the next statement
 
-        walk(ufp, ufp.file.ast.get<scan::ast::t_module_declaration_item>(node.global_module));
+        walk(ufp, ufp.file.ast.get<scan::ast::t_module_declaration_item>(node.global_module).value().get());
     }
 }
 
@@ -67,5 +89,5 @@ void frontend::sema::symbol_registrar::register_symbols(manager::t_compilation_u
     
     t_unit_file_pair ufp(unit, file, file_id);
 
-    walk(ufp, file.ast.get<scan::ast::t_root>(0));
+    walk(ufp, file.ast.get<scan::ast::t_root>(0).value().get());
 }

@@ -7,7 +7,7 @@ void frontend::sema::semantic_analyzer::analyze(manager::t_compilation_unit& uni
     manager::t_compilation_unit::t_get_file_result get_file_result = unit.get_file(file_id);
     
     if (!get_file_result.has_value()) {
-        unit.logger.add_internal_error(file_id, util::t_span(), "Symbol registrar attempted to access nonexistent file_id: \"" + std::to_string(file_id) + "\".");
+        unit.logger.add_internal_error(file_id, util::t_span(), "Symbol registrar attempted to access nonexistent file_id: \"" + std::to_string(file_id.get()) + "\".");
         return;
     }
 

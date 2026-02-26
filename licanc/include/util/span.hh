@@ -4,9 +4,9 @@
 
 namespace util {
     struct t_point {
-        u32 char_pos = 0;
-        u32 line = 0;
-        u32 column = 0;
+        std::size_t char_pos = 0;
+        std::size_t line = 0;
+        std::size_t column = 0;
 
         std::string to_string() const;
     };

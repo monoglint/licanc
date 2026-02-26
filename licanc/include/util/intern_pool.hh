@@ -5,16 +5,18 @@
 #include <unordered_map>
 #include <deque>
 
+#include "util/safe_id.hh"
+
 namespace util {
-    template <typename T, typename T_ID = size_t, typename T_HASH = std::hash<T>>
+    template <typename T, class T_ID, typename T_HASH = std::hash<T>>
     struct t_intern_pool {
         using t_get_result = std::optional<std::reference_wrapper<T>>;
 
         inline t_get_result get(T_ID index) {
-            if (index >= list.size())
+            if (static_cast<std::size_t>(index) >= list.size())
                 return std::nullopt;
 
-            return list[index];
+            return list[static_cast<std::size_t>(index)];
         }
 
         inline T_ID intern(T value) {

@@ -9,7 +9,7 @@
 #include "frontend/scan/parser.hh"
 #include "frontend/sema/semantic_analyzer.hh"
 
-#include "util/stream_format.hh"
+#include "util/ansi_format.hh"
 
 namespace {
     std::optional<std::string> open_file(std::string file_path) {
@@ -28,12 +28,13 @@ namespace {
     void handle_file_imports(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, frontend::manager::t_compilation_file& file, std::vector<frontend::manager::t_file_id>& file_stack) {
         using namespace frontend;
 
+        // check if there is an include item anywhere in the ast.
         for (scan::ast::t_node_id import_node_id : file.import_node_ids) {
-            // check if there is an include item anywhere in the ast.
-            scan::ast::t_node_id file_path_node_id = file.ast.get<scan::ast::t_import_item>(import_node_id).file_path;
-            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(file_path_node_id);
             
-            util::t_intern_pool<std::string>::t_get_result get_string_result = unit.string_literal_pool.get(file_path_node.string_literal_id);
+            scan::ast::t_node_id file_path_node_id = file.ast.get<scan::ast::t_import_item>(import_node_id).value().get().file_path; // bypass optional guard because import_node_ids only contains valid nodes ever
+            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(file_path_node_id).value().get(); // ^^
+            
+            auto get_string_result = unit.compile_time_data.string_literal_pool.get(file_path_node.string_literal_id);
 
             if (!get_string_result.has_value()) {
                 unit.logger.add_internal_error(file_id, file_path_node.span, "Failed to find an interned string in the string literal pool. If you see this error message, start praying for monoglint.");
@@ -107,41 +108,41 @@ std::string frontend::manager::t_log::to_string(const t_compilation_files& files
 
     if (format) {
         buffer 
-            << util::t_stream_format<util::t_format::LIGHT_GRAY>
+            << util::ansi_format::LIGHT_GRAY
             << '[' 
-            << files[file_id].path 
+            << files[file_id.get()].path 
             << " - "
             << span.start.to_string()
             << "]:\n"
-            << util::t_stream_format<util::t_format::RESET>;
+            << util::ansi_format::RESET;
 
         switch (log_type) {
             case t_log_type::MESSAGE:
-                buffer << util::t_stream_format<util::t_format::CYAN>;
+                buffer << util::ansi_format::CYAN;
                 break;
             case t_log_type::WARNING:
                 buffer 
-                    << util::t_stream_format<util::t_format::YELLOW> 
-                    << util::t_stream_format<util::t_format::BOLD> 
+                    << util::ansi_format::YELLOW
+                    << util::ansi_format::BOLD
                     << "Warning: ";
                 break;
             case t_log_type::ERROR:
                 buffer 
-                    << util::t_stream_format<util::t_format::RED> 
-                    << util::t_stream_format<util::t_format::BOLD> 
+                    << util::ansi_format::RED
+                    << util::ansi_format::BOLD
                     << "Error: ";
                 break;
             case t_log_type::INTERNAL_ERROR:
                 buffer 
-                    << util::t_stream_format<util::t_format::RED> 
-                    << util::t_stream_format<util::t_format::BOLD> 
-                    << util::t_stream_format<util::t_format::UNDERLINE> 
+                    << util::ansi_format::RED
+                    << util::ansi_format::BOLD
+                    << util::ansi_format::UNDERLINE
                     << "Internal Error: ";
                 break;
         }
     }
     else {
-        buffer << '[' << files[file_id].path << " - " << span.start.to_string() << "]:\n";
+        buffer << '[' << files[file_id.get()].path << " - " << span.start.to_string() << "]:\n";
         switch (log_type) {
             case t_log_type::MESSAGE:
                 break;
@@ -160,7 +161,7 @@ std::string frontend::manager::t_log::to_string(const t_compilation_files& files
     buffer << message;
     
     if (format)
-        buffer << util::t_stream_format<util::t_format::RESET>;
+        buffer << util::ansi_format::RESET;
 
     return buffer.str();
 }
@@ -204,7 +205,7 @@ void frontend::manager::t_compilation_unit::process_file(frontend::manager::t_fi
 
             case manager::t_file_state::DONE:
                 file_stack.pop_back();
-                std::cout << "Finished frontend for file #" << std::to_string(file_id) << ".\n"; 
+                std::cout << "Finished frontend for file #" << std::to_string(file_id.get()) << ".\n"; 
                 break;
         }
     }
@@ -229,11 +230,11 @@ frontend::manager::t_compilation_unit::t_add_file_result frontend::manager::t_co
     return files.size() - 1;
 }
 
-frontend::manager::t_compilation_unit::t_get_file_result frontend::manager::t_compilation_unit::get_file(size_t file_id) {
-    if (file_id >= files.size())
+frontend::manager::t_compilation_unit::t_get_file_result frontend::manager::t_compilation_unit::get_file(t_file_id file_id) {
+    if (static_cast<std::size_t>(file_id) >= files.size())
         return std::nullopt;
 
-    return files.at(file_id);
+    return files.at(static_cast<std::size_t>(file_id));
 }
 
 // -> namespace bound
