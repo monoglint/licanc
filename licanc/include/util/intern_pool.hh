@@ -8,7 +8,7 @@
 #include "util/safe_id.hh"
 
 namespace util {
-    template <typename T, class T_ID, typename T_HASH = std::hash<T>>
+    template <typename T, util::c_is_safe_id T_ID, typename T_HASH = std::hash<T>>
     struct t_intern_pool {
         using t_get_result = std::optional<std::reference_wrapper<T>>;
 

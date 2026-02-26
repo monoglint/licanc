@@ -227,7 +227,7 @@ frontend::manager::t_compilation_unit::t_add_file_result frontend::manager::t_co
         return std::unexpected(t_compilation_unit::t_add_file_error::PATH_INVALID);
 
     files.emplace_back(path, open_file_result.value());
-    return files.size() - 1;
+    return t_file_id{files.size() - 1};
 }
 
 frontend::manager::t_compilation_unit::t_get_file_result frontend::manager::t_compilation_unit::get_file(t_file_id file_id) {
@@ -243,14 +243,14 @@ frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _con
     : config(std::move(_config)) {
         std::string start_path = config.project_path + '/' + config.start_subpath;
         
-        logger.add_log(0, t_log_type::MESSAGE, util::t_span(), std::string("Project path: ") + config.project_path + "\nStart path: " + config.start_subpath);
+        logger.add_log(t_file_id{0}, t_log_type::MESSAGE, util::t_span(), std::string("Project path: ") + config.project_path + "\nStart path: " + config.start_subpath);
 
         t_add_file_result add_file_result = add_file(start_path);
 
         if (add_file_result.has_value())
             process_file(add_file_result.value());
         else if (add_file_result.error() == t_add_file_error::PATH_INVALID)
-            logger.add_error(0, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
+            logger.add_error(t_file_id{0}, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
         
         std::cout << "Compilation finished.\n";
         std::cout << logger.to_string(files);

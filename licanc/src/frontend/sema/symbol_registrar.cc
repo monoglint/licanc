@@ -43,7 +43,7 @@ namespace {
     void walk(t_unit_file_pair& ufp, sema::sym::t_module_declaration& parent_module_sym, scan::ast::t_global_declaration_item& declaration_node) {
         // note a symbol will always be made no matter the conditions. it will only fail to be appended if its declarability is nulled
         
-        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_global_declaration>(sema::sym::t_sym_id::INVALID);
+        sema::sym::t_sym_id declaration_sym_id = ufp.file.symbol_table.emplace<sema::sym::t_global_declaration>(manager::t_type_name_id{manager::t_type_name_id::INVALID_VALUE});
         scan::ast::t_identifier& declaration_name_node = ufp.file.ast.get<scan::ast::t_identifier>(declaration_node.name).value().get(); // bypass because main walker function verified existence
 
         declare_symbol(ufp, parent_module_sym, declaration_name_node, declaration_sym_id);
@@ -72,7 +72,8 @@ namespace {
 #undef TEST_TYPE
 
     void walk(t_unit_file_pair& ufp, scan::ast::t_root& node) {
-        ufp.file.symbol_table.emplace<sema::sym::t_root>(1); // points to the module that will be made in the next statement
+        // normally we do children first then base, but the root should be indexed at 0 for easier access than the last
+        ufp.file.symbol_table.emplace<sema::sym::t_root>(sema::sym::t_sym_id{1});
 
         walk(ufp, ufp.file.ast.get<scan::ast::t_module_declaration_item>(node.global_module).value().get());
     }
@@ -82,12 +83,12 @@ void frontend::sema::symbol_registrar::register_symbols(manager::t_compilation_u
     manager::t_compilation_unit::t_get_file_result get_file_result = unit.get_file(file_id); // confirmed by semantic_analyzer.cc
     manager::t_compilation_file& file = get_file_result.value();
     
-    if (!file.ast.is<scan::ast::t_root>(0)) {
+    if (!file.ast.is<scan::ast::t_root>(scan::ast::t_node_id{0})) {
         unit.logger.add_internal_error(file_id, util::t_span(), "Symbol registrar discovered a malformed AST - root node is not in the right place.");
         return;
     }
     
     t_unit_file_pair ufp(unit, file, file_id);
 
-    walk(ufp, file.ast.get<scan::ast::t_root>(0).value().get());
+    walk(ufp, file.ast.get<scan::ast::t_root>(scan::ast::t_node_id{0}).value().get());
 }
