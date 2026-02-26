@@ -11,10 +11,6 @@ void frontend::sema::semantic_analyzer::analyze(manager::t_compilation_unit& uni
         return;
     }
 
-    manager::t_compilation_file& file = get_file_result.value();
-    file.symbol_table.emplace<sym::t_root>(); // index 0
-    file.symbol_table.emplace<sym::t_none>(); // index 1
-
     symbol_registrar::register_symbols(unit, file_id);
     full_passer::full_pass(unit, file_id);
 }

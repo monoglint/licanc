@@ -20,9 +20,20 @@
     #include "licanc/include/licanc.hh"
 
     int main(int argc, char* argv[]) {
-        // do not modify this print statement, it is sacred
-        std::cout << "Hello world, this is Lican!\n";
+        // this is the first line of statement code i am pretty sure was written in this project. DO NOT DELETE
 
+        
+        // DO NOT DELETE ---------v
+        std::cout << "Hello world, this is Lican!\n";// <-------------------_______
+        // DO NOT DELETE          ^ DO NOT DELETE         \    \__                 \__________ 
+        // DO NOT DELETE          |      ^               /        \                           \
+        // DO NOT DELETE          \      |       DO NOT DELETE     `                           \
+        // DO NOT DELETE           \     |                        DO NOT DELETE                 \
+        // DO NOT DELETE            |   DO NOT DELETE                                           |
+        //                         DO NOT DELETE            DO NOT DELETE       DO NOT DELETE   |
+        //                                                      \                   |          /
+        //                                                       `----------------------------`
+        
         licanc::t_lican_config config;
 
         if (argc == 1) {

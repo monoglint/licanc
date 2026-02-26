@@ -39,7 +39,6 @@ namespace frontend::manager {
         std::string path;
         std::string source_code;
         scan::ast::t_ast ast;
-        sema::sym::t_symbol_table symbol_table;
 
         // quick access to all import nodes
         scan::ast::t_node_ids import_node_ids;
@@ -48,8 +47,26 @@ namespace frontend::manager {
         // used to prevent double inclusion or interdependency
         t_file_state state = t_file_state::PARSE_READY;
     };
+    
+    struct t_compilation_files {
+        enum class t_add_file_error {
+            FILE_ALREADY_EXISTS,
+            PATH_INVALID,
+        };
 
-    using t_compilation_files = std::deque<t_compilation_file>;
+        using t_add_file_result = std::expected<t_file_id, t_add_file_error>; 
+        using t_get_file_result = std::optional<std::reference_wrapper<t_compilation_file>>;
+        using t_get_const_file_result = std::optional<std::reference_wrapper<const t_compilation_file>>;
+        using t_find_file_result = std::optional<t_file_id>;
+
+        t_add_file_result add_file(std::string path);
+        t_get_file_result get_file(t_file_id file_id);
+        t_get_const_file_result get_file(t_file_id file_id) const;
+        t_find_file_result find_file(std::string path);
+
+    private:
+        std::deque<t_compilation_file> files;
+    };
 
     struct t_log {
         t_log(t_file_id file_id, util::t_span span, t_log_type log_type, std::string message)
@@ -94,31 +111,21 @@ namespace frontend::manager {
         util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
 
         // the 0th index is not valid. it just refers to a type that needs to be filled later.
-        util::t_intern_pool<sema::t_type_name, t_type_name_id, sema::t_type_name_hasher> typename_pool;
+        util::t_intern_pool<sema::t_type_name, t_type_name_id> typename_pool;
     };
 
     // DELIVERY OUTPUT
     struct t_compilation_unit {
-        enum class t_add_file_error {
-            FILE_ALREADY_EXISTS,
-            PATH_INVALID,
-        };
-        using t_add_file_result = std::expected<t_file_id, t_add_file_error>; 
-
-        using t_get_file_result = std::optional<std::reference_wrapper<t_compilation_file>>;
-
         t_compilation_unit(t_frontend_config _config);
 
         t_frontend_config config;
         t_compile_time_data compile_time_data;
+
+        sema::sym::t_symbol_table symbol_table;
         
         t_logger logger;
-
-        void process_file(t_file_id root_file_id);
-
-        t_add_file_result add_file(std::string path);
-        t_get_file_result get_file(t_file_id file_id);
-    private:
         t_compilation_files files;
+
+        void process_file(t_file_id root_file_id); 
     };
 };

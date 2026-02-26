@@ -12,17 +12,24 @@ namespace frontend::sema {
 
     // interned in t_compilation_unit. this is NOT A SYMBOL.
     struct t_type_name {
-        sym::t_reference declaration; // t_struct_declaration || t_primative_declaration
+        sym::t_sym_id declaration; // t_struct_declaration || t_primative_declaration
         t_type_name_qualifier qualifier;
-        sym::t_reference template_arguments; // {t_template_argument}
+        sym::t_sym_id template_arguments; // {t_template_argument}
     };
 
-    struct t_type_name_hasher {
-        std::size_t operator()(const t_type_name& type_name) const noexcept {
-            std::size_t hash_val = std::hash<t_type_name_qualifier>{}(type_name.qualifier);
+    struct t_ast_reference {
+        scan::ast::t_node_id node_id;
+    };
+}
 
-            util::combine_hashes(hash_val, std::hash<sym::t_reference>{}(type_name.declaration));
-            util::combine_hashes(hash_val, std::hash<sym::t_reference>{}(type_name.template_arguments));
+namespace std {
+    template<>
+    struct hash<frontend::sema::t_type_name> {
+        std::size_t operator()(const frontend::sema::t_type_name& type_name) const noexcept {
+            std::size_t hash_val = std::hash<frontend::sema::t_type_name_qualifier>{}(type_name.qualifier);
+
+            util::combine_hashes(hash_val, std::hash<frontend::sema::sym::t_sym_id>{}(type_name.declaration));
+            util::combine_hashes(hash_val, std::hash<frontend::sema::sym::t_sym_id>{}(type_name.template_arguments));
             
             return hash_val;
         }

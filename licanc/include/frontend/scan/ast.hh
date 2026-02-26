@@ -7,9 +7,6 @@ INSTRUCTIONS FOR MODDING
 Add a new t_ast_node_type value. Create a new struct that inherits from t_node.
 Append the new struct type to the variant at the bottom of the file.
 
-ENSURE THAT THE ORDER OF THE TYPE IN THE VARIANT LIST IS CONGRUENT TO THE ORDER OF THE ENUMS.
-THAT IS HOW NODE TYPE IS IDENTIFIED!
-
 
 General rules:
 - Assume syntax follows C-style paradigm (Rust allows many different traditionally statement based keywords to create expressions)
@@ -27,44 +24,8 @@ General rules:
 - Always comment what the property of a node should be if it holds an id that references another node.
 
 
-Basic ast for non template testing
-t_ast:
-    t_function_declaration_item
-        name: "add"
-        function_template: t_function_template:
-            function: t_function
-                parameters:
-                    t_parameter:
-                        name: "a"
-                        type: "u8"
-                        default_value: t_none
-                    t_parameter:
-                        name: "b"
-                        type: "u8"
-                        default_value: t_none
-                return_type: "u8"
-
-Basic ast for TEMPLATE testing
-t_ast:
-    t_function_declaration_item
-        name: "add"
-        function_template: t_function_template:
-            template_parameters:
-                t_template_parameter:
-                    name: "T"
-                    is_const_value: false // T is a typename
-            function: t_function
-                parameters:
-                    t_parameter:
-                        name: "a"
-                        type: "T"
-                        default_value: t_none
-                    t_parameter:
-                        name: "b"
-                        type: "T"
-                        default_value: t_none
-                return_type: "T"
-
+Basic ast for non template testing:
+- nothing yet
 
 */
 
@@ -98,11 +59,6 @@ namespace frontend::scan::ast {
 
         t_node_id global_module; // t_module_declaration_item
         // ^^^^ though technically not syntactic, it will make ast reading much easier.
-    };
-
-    struct t_none : t_node {
-        t_none(util::t_span span)
-            : t_node(std::move(span)) {}
     };
 
     // x
@@ -198,20 +154,34 @@ namespace frontend::scan::ast {
 
     // array<u8>
     struct t_type : t_node {
-        enum class t_qualifier {
-            IMMUT,
-            SOLID_REF,
-            FLUID_REF,
-        };
-
-        t_type(util::t_span span, t_node_id source, t_node_ids template_arguments, t_qualifier qualifier)
+        t_type(util::t_span span, t_node_id source, t_node_ids template_arguments, token::t_token_type qualifier)
             : t_node(std::move(span)), source(source), template_arguments(template_arguments), qualifier(qualifier) {}
 
         t_node_id source; // t_type | t_scope_reference
         t_node_ids template_arguments; // {t_template_argument}
 
-        t_qualifier qualifier;
+        token::t_token_type qualifier;
     };
+
+    /*
+
+    ; file: "color.li"
+    struct color {
+        r: u8 = 0
+        g: u8 = 0
+        b: u8 = 0
+    }
+
+    ; file: "main.li"
+    import "io.li" ; if io has its own module, then that module will be dumped into the global module here
+    
+    module art {
+        import "color.li" ; imports can be oranized into local modules
+    }
+
+    art..color()
+    
+    */
 
     // import "math"
     struct t_import_item : t_node {
@@ -219,6 +189,7 @@ namespace frontend::scan::ast {
             : t_node(std::move(span)), file_path(file_path) {}
 
         t_node_id file_path; // t_string_literal_expr
+        /* manager.cc */ manager::t_file_id resolved_file_id;
     };
 
     // 
@@ -393,7 +364,6 @@ namespace frontend::scan::ast {
 
     using t_node_variation = std::variant<
         t_root,
-        t_none,
         t_identifier,
         t_string_literal,
         t_number_literal,
@@ -424,5 +394,11 @@ namespace frontend::scan::ast {
     >;
 
     // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
-    using t_ast = util::t_base_arena<t_node_variation, t_node_id, t_node>;
+    using t_ast_arena = util::t_base_arena<t_node_variation, t_node_id, t_node>;
+
+    struct t_ast : t_ast_arena {
+        t_ast() {
+            emplace<t_root>();
+        }
+    };
 }

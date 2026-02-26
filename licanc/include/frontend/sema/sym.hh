@@ -15,6 +15,22 @@ semantic note: all of the properties of symbols and nodes don't have an _id even
 suffix to differenciate indexes from actual values. in the context of being in this file, adding _id is just going to be extra useless characters. even though
 there is a minor consistency flaw in that decision, i think the upsides outweigh
 
+other semantic note:
+the note before each property denotes when that property is set based on the given layer of the analyzer
+
+if there is a format like \* 0, 2 *\
+then there are different contexts in which the given property can be set. 
+    e.g. when a base function is set vs when a specialization is set.
+    - the base function's ast connection can obviously be done in 0,
+      but a specialized function being instantiated in a later pass will obviously have it's ast connection set in that later pass and not 0
+
+0 - symbol_registrar
+1? - type_resolver
+2? - full_passer
+
+^^
+THESE ARE NOT FULLY CONCRETELY SET. ONLY USE A NUMBER THAT CORRELATES TO A WORKER THAT IS BEING BUILT OR IS COMPLETE
+
 */
 
 #pragma once
@@ -39,7 +55,7 @@ namespace frontend::sema::sym {
     using t_sym_id = util::t_safe_id<struct t_sym_id_tag>;
     using t_sym_ids = std::vector<t_sym_id>;
 
-    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id, util::t_safe_id_hasher<manager::t_identifier_id>>;
+    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
 
     // {t_template_argument}
     using t_template_arguments = t_sym_ids;
@@ -48,43 +64,35 @@ namespace frontend::sema::sym {
     using t_specializations = std::unordered_map<t_template_arguments, t_sym_id, util::t_vector_hasher<t_sym_id>>;
     
     struct t_root { // index 0
-        t_sym_id global_module; // t_module_declaration
-    };
-
-    struct t_none { // index 1
-        t_none() {}
-    };
-    
-    struct t_reference {
-        manager::t_file_id file_id;
-        t_sym_id sym_id;
+        /* 0 */ t_sym_id global_module; // t_module_declaration
     };
 
     struct t_template_parameter {
-        bool is_constexpr;
-        manager::t_constexpr_id constexpr_id;
+        /* _ */ bool is_constexpr;
+        /* _ */ manager::t_constexpr_id constexpr_id;
     };
 
     struct t_template_argument {
-        t_sym_id argument_value; // sema::t_type_name || sema::t_ct_value
+        /* _ */ t_sym_id argument_value; // sema::t_type_name || sema::t_ct_value
     };
 
     struct t_function {
-        scan::ast::t_node_id syntactic_function;
-        manager::t_type_name_ids parameter_types; // {t_type}
-        manager::t_type_name_id return_type;
+        /* 0 */ scan::ast::t_node_id syntactic_function;
+        /* _ */ manager::t_type_name_ids parameter_types; // {t_type}
+        /* _ */ manager::t_type_name_id return_type;
     };
     
     struct t_function_template {
         //  base is not 100% concrete unless len(specializations) is 0 
         //  /
         // v
-        t_sym_id base; // t_function
-        t_specializations specializations; // <_, t_function> 
+        /* 0 */ t_sym_id base; // t_function
+        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
+        /* _ */ t_specializations specializations; // <_, t_function> 
     };
 
     struct t_function_declaration {
-        t_sym_id function_template; // t_function_template
+        /* 0 */ t_sym_id function_template; // t_function_template
     };
 
     enum class t_access_specifier {
@@ -93,63 +101,65 @@ namespace frontend::sema::sym {
     };
 
     struct t_property {
-        manager::t_type_name_id property_type;
-        t_access_specifier access_specifier;
+        /* _ */ manager::t_type_name_id property_type;
+        /* _ */ t_access_specifier access_specifier;
     };
 
     struct t_method {
-        t_sym_id function_template; // t_function_template
-        t_access_specifier access_specifier;
+        /* _ */ t_sym_id function_template; // t_function_template
+        /* _ */ t_access_specifier access_specifier;
     };
 
     struct t_struct {
-        scan::ast::t_node_id syntactic_struct;
-        t_declarations properties; // {t_property}
-        t_declarations methods; // {t_method}
+        /* 0 */ sema::t_ast_reference syntactic_struct;
+        /* _ */ t_declarations properties; // {t_property}
+        /* _ */ t_declarations methods; // {t_method}
 
         // implementation should be fixed here. you can technically access different initializer types by name because a copy constructor
         // will always be called copy, but just be careful. 
-        t_declarations initializers; // {t_initializer}
+        /* _ */ t_declarations initializers; // {t_initializer}
     };
 
     struct t_struct_template {
-        t_sym_id base; // t_struct
-        t_specializations specializations; // <_, t_struct>
+        /* 0 */ t_sym_id base; // t_struct
+        /* _ */ t_specializations specializations; // <_, t_struct>
+        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
     };
 
     struct t_struct_declaration {
-        t_sym_id struct_template; // t_struct_template
+        /* 0 */ t_sym_id struct_template; // t_struct_template
     };
 
     struct t_alias_specialization {
-        scan::ast::t_node_id specialization_node; // ast::t_alias
+        /* _ */ sema::t_ast_reference specialization_node; // ast::t_alias
     };
 
     struct t_alias_template {
-        scan::ast::t_node_id syntactic_alias_template;
-        t_specializations specializations;
+        /* 0 */ sema::t_ast_reference syntactic_alias_template;
+        /* _ */ t_specializations specializations;
+        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
     };
 
     struct t_alias_declaration {
-        t_sym_id alias_template; // t_alias_template
+        /* 0 */ t_sym_id alias_template; // t_alias_template
     };
 
     struct t_module_declaration {
-        t_declarations declarations;
+        /* 0 */ t_declarations declarations;
+        /* 0 */ t_sym_ids import_markers; // {t_import_marker}
     };
 
     struct t_global_declaration {
-        manager::t_type_name_id global_type;
+        /* _ */ manager::t_type_name_id global_type;
     };
 
-    struct t_reference_declaration {
-        t_sym_id reference; // t_reference
+    struct t_import_marker { 
+        // this target module is essentially any module that is a direct child of t_root. 
+        t_sym_id target_file_module;
     };
 
     using t_sym_variation = std::variant<
         t_root,
-        t_none,
-        t_reference,
         t_template_parameter,
         t_template_argument,
         t_function,
@@ -165,20 +175,14 @@ namespace frontend::sema::sym {
         t_alias_declaration,
         t_module_declaration,
         t_global_declaration,
-        t_reference_declaration
+        t_import_marker
     >;
 
-    using t_symbol_table = util::t_arena<t_sym_variation, t_sym_id>;
-}
+    using t_symbol_table_arena = util::t_arena<t_sym_variation, t_sym_id>;
 
-namespace std {
-    template<>
-    struct hash<frontend::sema::sym::t_reference> {
-        std::size_t operator()(const frontend::sema::sym::t_reference& reference_sym) const noexcept {
-            std::size_t file_id = util::t_safe_id_hasher<frontend::manager::t_file_id>{}(reference_sym.file_id);
-            std::size_t sym_id = util::t_safe_id_hasher<frontend::sema::sym::t_sym_id>{}(reference_sym.sym_id);
-
-            return util::make_combined_hash(file_id, sym_id);
+    struct t_symbol_table : t_symbol_table_arena {
+        t_symbol_table() {
+            emplace<t_root>();
         }
     };
 }

@@ -25,28 +25,29 @@ namespace {
 // everything in this namespace could be a method of t_compilation_file
 // they are not methods to maintain encapsulation, and so manager.hh doesn't need to #include <stack>
 namespace {
+    /*
+
+    lazily loading in all of the files we need should occur after parsing because we have just enough information to know what files we need to use.
+
+    the semantic analyzer will take care of linking references between files together, but actually loading included files can occur
+    after parsing. this lessens complexity
+    
+    */
     void handle_file_imports(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, frontend::manager::t_compilation_file& file, std::vector<frontend::manager::t_file_id>& file_stack) {
         using namespace frontend;
 
         // check if there is an include item anywhere in the ast.
         for (scan::ast::t_node_id import_node_id : file.import_node_ids) {
             
-            scan::ast::t_node_id file_path_node_id = file.ast.get<scan::ast::t_import_item>(import_node_id).value().get().file_path; // bypass optional guard because import_node_ids only contains valid nodes ever
-            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(file_path_node_id).value().get(); // ^^
+            scan::ast::t_import_item& import_item_node = file.ast.get<scan::ast::t_import_item>(import_node_id).value().get(); // explicit bypass <-------__
+            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(import_item_node.file_path).value().get(); //           \
             
             auto get_string_result = unit.compile_time_data.string_literal_pool.get(file_path_node.string_literal_id);
-
-            if (!get_string_result.has_value()) {
-                unit.logger.add_internal_error(file_id, file_path_node.span, "Failed to find an interned string in the string literal pool. If you see this error message, start praying for monoglint.");
-                // attempt to import other files while at it. ultimately, the program is not going to build properly, but getting more errors is worth it.
-                continue;
-            }
-
-            std::string& file_path = get_string_result.value();
+            std::string& file_path = get_string_result.value(); // explicit bypass
 
             // we're calling the file frame_file since we're iterating through indexes of a stack
             bool interdependency_found = std::find_if(file_stack.begin(), file_stack.end(), [&file_path, &unit](manager::t_file_id frame_file_id) -> bool {
-                manager::t_compilation_unit::t_get_file_result frame_get_file_result = unit.get_file(frame_file_id);
+                manager::t_compilation_files::t_get_file_result frame_get_file_result = unit.files.get_file(frame_file_id);
                 manager::t_compilation_file& frame_file = frame_get_file_result.value();
 
                 return frame_file.path == file_path;
@@ -54,22 +55,27 @@ namespace {
             }) != file_stack.end();
 
             if (interdependency_found) {
-                unit.logger.add_error(file_id, file_path_node.span, std::string("Including \\" + file_path + "\" results in interdependency."));
+                unit.logger.add_error(file_id, file_path_node.span, std::string("Including \\" + file_path + "\" results in interdependency (strictly forbidden!!!!)."));
 
                 // although continuing with a caught and non-inserted interdependency will lead to unresolved symbols later on,
                 // it is necessary to keep execution going so we can add those errors to the log pool.
                 return;
             }
 
-            manager::t_compilation_unit::t_add_file_result add_file_result = unit.add_file(file_path);
+            manager::t_compilation_files::t_add_file_result add_file_result = unit.files.add_file(file_path);
             
-            if (add_file_result.has_value())
+            if (add_file_result.has_value()) {
                 file_stack.emplace_back(add_file_result.value());
+                import_item_node.resolved_file_id = add_file_result.value();
+
+            }
+            else if (add_file_result.error() == manager::t_compilation_files::t_add_file_error::FILE_ALREADY_EXISTS)
+                import_item_node.resolved_file_id = std::find_if(unit.)
 
             // the other error reason (file already exists) should not generate an error.
             // the file was already added, and the fact that nothing new was appended
             // means no compilation was affected.
-            else if (add_file_result.error() == manager::t_compilation_unit::t_add_file_error::PATH_INVALID)
+            else if (add_file_result.error() == manager::t_compilation_files::t_add_file_error::PATH_INVALID)
                 unit.logger.add_error(file_id, file_path_node.span, "The file \\" + file_path + "\" does not exist.");
         }
     }
@@ -77,7 +83,7 @@ namespace {
     void parse_file(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, std::vector<frontend::manager::t_file_id>& file_stack) {
         using namespace frontend;
 
-        manager::t_compilation_file& file = unit.get_file(file_id).value();
+        manager::t_compilation_file& file = unit.files.get_file(file_id).value();
 
         scan::lexer::lex(unit, file_id);
         scan::parser::parse(unit, file_id);
@@ -91,7 +97,7 @@ namespace {
     void analyze_file(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id) {
         using namespace frontend;
 
-        manager::t_compilation_unit::t_get_file_result get_file_result = unit.get_file(file_id);
+        manager::t_compilation_files::t_get_file_result get_file_result = unit.files.get_file(file_id);
 
         // GET_FILE_RESULT IS CONFIRMED TO EXIST BY THE STACK LOOP THIS FUNCITON IS CALLED IN
 
@@ -106,11 +112,16 @@ namespace {
 std::string frontend::manager::t_log::to_string(const t_compilation_files& files, bool format) const {
     std::stringstream buffer;
 
+    t_compilation_files::t_get_const_file_result get_file_result = files.get_file(file_id);
+
+    const t_compilation_file& file = get_file_result.value();
+    const std::string source_file_path = file.path; 
+
     if (format) {
         buffer 
             << util::ansi_format::LIGHT_GRAY
             << '[' 
-            << files[file_id.get()].path 
+            << source_file_path
             << " - "
             << span.start.to_string()
             << "]:\n"
@@ -142,7 +153,7 @@ std::string frontend::manager::t_log::to_string(const t_compilation_files& files
         }
     }
     else {
-        buffer << '[' << files[file_id.get()].path << " - " << span.start.to_string() << "]:\n";
+        buffer << '[' << source_file_path << " - " << span.start.to_string() << "]:\n";
         switch (log_type) {
             case t_log_type::MESSAGE:
                 break;
@@ -185,7 +196,7 @@ void frontend::manager::t_compilation_unit::process_file(frontend::manager::t_fi
     while (!file_stack.empty()) {
         manager::t_file_id file_id = file_stack.back();
 
-        manager::t_compilation_unit::t_get_file_result get_file_result = get_file(file_id);
+        manager::t_compilation_files::t_get_file_result get_file_result = files.get_file(file_id);
         // sanity recheck
         if (!get_file_result.has_value()) {
             file_stack.pop_back();
@@ -213,45 +224,58 @@ void frontend::manager::t_compilation_unit::process_file(frontend::manager::t_fi
 
 // -> t_compilation_unit
 
-frontend::manager::t_compilation_unit::t_add_file_result frontend::manager::t_compilation_unit::add_file(std::string path) {
+frontend::manager::t_compilation_files::t_add_file_result frontend::manager::t_compilation_files::add_file(std::string path) {
     bool file_exists = std::find_if(files.begin(), files.end(), [&path](t_compilation_file& file) -> bool {
         return file.path == path;
     }) != files.end();
     
     if (file_exists)
-        return std::unexpected(t_compilation_unit::t_add_file_error::FILE_ALREADY_EXISTS);
+        return std::unexpected(t_add_file_error::FILE_ALREADY_EXISTS);
     
     std::optional<std::string> open_file_result = open_file(path);
 
     if (!open_file_result.has_value())
-        return std::unexpected(t_compilation_unit::t_add_file_error::PATH_INVALID);
+        return std::unexpected(t_add_file_error::PATH_INVALID);
 
     files.emplace_back(path, open_file_result.value());
     return t_file_id{files.size() - 1};
 }
 
-frontend::manager::t_compilation_unit::t_get_file_result frontend::manager::t_compilation_unit::get_file(t_file_id file_id) {
+frontend::manager::t_compilation_files::t_get_file_result frontend::manager::t_compilation_files::get_file(t_file_id file_id) {
     if (static_cast<std::size_t>(file_id) >= files.size())
         return std::nullopt;
 
     return files.at(static_cast<std::size_t>(file_id));
 }
 
+frontend::manager::t_compilation_files::t_get_const_file_result frontend::manager::t_compilation_files::get_file(t_file_id file_id) const {
+    if (static_cast<std::size_t>(file_id) >= files.size())
+        return std::nullopt;
+
+    return std::cref(files.at(static_cast<std::size_t>(file_id)));
+}
+
+frontend::manager::t_compilation_files::t_find_file_result frontend::manager::t_compilation_files::find_file(std::string path) {
+    for (std::size_t i = 0; i < files.size(); i++) {
+        if 
+    }
+}
+
 // -> namespace bound
 
 frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _config) 
     : config(std::move(_config)) {
-        std::string start_path = config.project_path + '/' + config.start_subpath;
-        
-        logger.add_log(t_file_id{0}, t_log_type::MESSAGE, util::t_span(), std::string("Project path: ") + config.project_path + "\nStart path: " + config.start_subpath);
+    std::string start_path = config.project_path + '/' + config.start_subpath;
+    
+    logger.add_log(t_file_id{0}, t_log_type::MESSAGE, util::t_span(), std::string("Project path: ") + config.project_path + "\nStart path: " + config.start_subpath);
 
-        t_add_file_result add_file_result = add_file(start_path);
+    t_compilation_files::t_add_file_result add_file_result = files.add_file(start_path);
 
-        if (add_file_result.has_value())
-            process_file(add_file_result.value());
-        else if (add_file_result.error() == t_add_file_error::PATH_INVALID)
-            logger.add_error(t_file_id{0}, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
-        
-        std::cout << "Compilation finished.\n";
-        std::cout << logger.to_string(files);
+    if (add_file_result.has_value())
+        process_file(add_file_result.value());
+    else if (add_file_result.error() == t_compilation_files::t_add_file_error::PATH_INVALID)
+        logger.add_error(t_file_id{0}, util::t_span(), "Failed to add \"" + start_path + "\" to the compilation unit - path is invalid.");
+    
+    std::cout << "Compilation finished.\n";
+    std::cout << logger.to_string(files);
 }

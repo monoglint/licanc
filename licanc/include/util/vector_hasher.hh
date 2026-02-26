@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "util/hash.hh"
 
 /*
 
@@ -15,7 +16,15 @@ namespace util {
     struct t_vector_hasher {
         using vector_of_t = std::vector<T>;
 
-        std::size_t operator()(const vector_of_t& vec) const noexcept;
+        inline std::size_t operator()(const vector_of_t& vec) const noexcept {
+            std::size_t hash_val = vec.size();
+            
+            for (const T& i : vec) {
+                util::combine_hashes(hash_val, T_HASHER{}(i));
+            }
+
+            return hash_val;
+        }
     };
 }
 
