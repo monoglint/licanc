@@ -15,10 +15,8 @@ namespace frontend::sema {
         sym::t_sym_id declaration; // t_struct_declaration || t_primative_declaration
         t_type_name_qualifier qualifier;
         sym::t_sym_id template_arguments; // {t_template_argument}
-    };
 
-    struct t_ast_reference {
-        scan::ast::t_node_id node_id;
+        constexpr inline auto operator<=>(const t_type_name& other) const = default;
     };
 }
 

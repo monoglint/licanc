@@ -20,6 +20,7 @@ namespace util {
         using t_tag_type = T_TAG;
 
         inline static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
+        inline static const t_safe_id<T_TAG, T_VALUE> INVALID_ID;
         
         constexpr explicit inline operator T_VALUE() const {
             return value;

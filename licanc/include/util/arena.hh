@@ -155,6 +155,14 @@ namespace util {
             raw.push_back(std::move(node));
             return T_ID{raw.size() - 1};
         }
+
+        inline std::deque<T_VARIANT>::iterator begin() {
+            return raw.begin();
+        }
+
+        inline std::deque<T_VARIANT>::iterator end() {
+            return raw.end();
+        }
     protected:
         std::deque<T_VARIANT> raw;
     };

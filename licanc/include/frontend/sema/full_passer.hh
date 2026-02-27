@@ -7,5 +7,9 @@
 #include "frontend/manager.hh"
 
 namespace frontend::sema::full_passer {
-    void full_pass(manager::t_compilation_unit& unit, manager::t_file_id file_id);
+    struct t_full_passer_context {
+
+    };
+
+    void full_pass(t_full_passer_context context);
 }

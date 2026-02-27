@@ -13,5 +13,13 @@ the symbol registrar should not fill out struct or function bodies
 */
 
 namespace frontend::sema::symbol_registrar {
-    void register_symbols(manager::t_compilation_unit& unit, manager::t_file_id file_id);
+    struct t_registrar_context {
+        manager::t_file_id file_id;
+        manager::t_logger& logger;
+        manager::t_compile_time_data compile_time_data;
+        sema::sym::t_symbol_table& symbol_table;
+        scan::ast::t_ast& ast;
+    };
+
+    void register_symbols(t_registrar_context context);
 }

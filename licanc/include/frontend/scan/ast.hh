@@ -57,8 +57,7 @@ namespace frontend::scan::ast {
 
         virtual ~t_root() = default;
 
-        t_node_id global_module; // t_module_declaration_item
-        // ^^^^ though technically not syntactic, it will make ast reading much easier.
+        t_node_ids items;
     };
 
     // x
@@ -79,13 +78,14 @@ namespace frontend::scan::ast {
         manager::t_string_literal_id string_literal_id;
     };
 
-    struct t_number_literal : t_node {
-        t_number_literal(util::t_span span, manager::t_number_literal_id number_literal_id, token::t_token_type suffix)
-            : t_node(std::move(span)), number_literal_id(number_literal_id), suffix(suffix) {}
+    // struct t_number_literal : t_node {
+    //     t_number_literal(util::t_span span, manager::t_number_literal_id number_literal_id, token::t_token_type suffix)
+    //         : t_node(std::move(span)), number_literal_id(number_literal_id), suffix(suffix) {}
 
-        manager::t_number_literal_id number_literal_id;
-        token::t_token_type suffix;
-    };
+    //     manager::t_number_literal_id number_literal_id;
+    //     token::t_token_type suffix;
+    // };
+    // ^^^^^^^^ update how number literals are stored during scan time before re-enabling this
 
     // -5
     struct t_unary_expr : t_node {
@@ -189,7 +189,7 @@ namespace frontend::scan::ast {
             : t_node(std::move(span)), file_path(file_path) {}
 
         t_node_id file_path; // t_string_literal_expr
-        /* manager.cc */ manager::t_file_id resolved_file_id;
+        /* manager.cc */ manager::t_file_id resolved_file_id; // parser ensures this will always be an absolute path
     };
 
     // 
@@ -366,7 +366,7 @@ namespace frontend::scan::ast {
         t_root,
         t_identifier,
         t_string_literal,
-        t_number_literal,
+        // t_number_literal,
         t_unary_expr,
         t_binary_expr,
         t_scope_resolution_expr,
@@ -399,6 +399,11 @@ namespace frontend::scan::ast {
     struct t_ast : t_ast_arena {
         t_ast() {
             emplace<t_root>();
+        }
+
+        [[nodiscard]]
+        constexpr inline t_node_id get_root_id() const {
+            return t_node_id{0}; // always the first thing
         }
     };
 }

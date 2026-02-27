@@ -13,6 +13,7 @@ struct color3<T> {
 }
 
 */
+
 namespace frontend::scan::token {
     enum class t_token_type {
         NONE,

@@ -62,9 +62,18 @@ namespace frontend::sema::sym {
 
      // <_, t_x_specialization>
     using t_specializations = std::unordered_map<t_template_arguments, t_sym_id, util::t_vector_hasher<t_sym_id>>;
+
+    // DIRECT MEMBER - NOT A SYMBOL
+    struct t_ast_reference {
+        scan::ast::t_node_id node_id;
+    };
+
+
+
+    // SYMBOLS v vvv vv vv
     
     struct t_root { // index 0
-        /* 0 */ t_sym_id global_module; // t_module_declaration
+        /* 0 */ t_sym_ids file_modules; // {t_module_declaration}
     };
 
     struct t_template_parameter {
@@ -111,7 +120,7 @@ namespace frontend::sema::sym {
     };
 
     struct t_struct {
-        /* 0 */ sema::t_ast_reference syntactic_struct;
+        /* 0 */ t_ast_reference syntactic_struct;
         /* _ */ t_declarations properties; // {t_property}
         /* _ */ t_declarations methods; // {t_method}
 
@@ -131,11 +140,11 @@ namespace frontend::sema::sym {
     };
 
     struct t_alias_specialization {
-        /* _ */ sema::t_ast_reference specialization_node; // ast::t_alias
+        /* _ */ t_ast_reference specialization_node; // ast::t_alias
     };
 
     struct t_alias_template {
-        /* 0 */ sema::t_ast_reference syntactic_alias_template;
+        /* 0 */ t_ast_reference syntactic_alias_template;
         /* _ */ t_specializations specializations;
         /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
     };
@@ -183,6 +192,11 @@ namespace frontend::sema::sym {
     struct t_symbol_table : t_symbol_table_arena {
         t_symbol_table() {
             emplace<t_root>();
+        }
+
+        [[nodiscard]]
+        constexpr inline t_sym_id get_root_id() const {
+            return t_sym_id{0}; // always the first thing
         }
     };
 }

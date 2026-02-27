@@ -22,9 +22,6 @@ namespace frontend::manager {
     // index of std::string in t_compilation_unit::string_literal_pool
     using t_string_literal_id = util::t_safe_id<struct t_string_literal_id_tag>;
 
-    // index of std::string in t_compilation_unit::number_literal_pool
-    using t_number_literal_id = util::t_safe_id<struct t_number_literal_id_tag>;
-
     using t_type_name_id = util::t_safe_id<struct t_type_name_id_tag>;
 
     using t_constexpr_id = util::t_safe_id<struct t_constexpr_id_tag>;

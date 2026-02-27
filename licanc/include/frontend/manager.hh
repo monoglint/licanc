@@ -27,8 +27,8 @@ namespace frontend::manager {
     };
     
     enum class t_file_state {
-        PARSE_READY, // includes lexing and parsing
-        ANALYZE_READY,
+        SCAN_READY, // includes lexing and parsing
+        SEMA_READY,
         DONE,
     };
     
@@ -40,12 +40,7 @@ namespace frontend::manager {
         std::string source_code;
         scan::ast::t_ast ast;
 
-        // quick access to all import nodes
-        scan::ast::t_node_ids import_node_ids;
-
-        // whether or not the file is the root or has been included
-        // used to prevent double inclusion or interdependency
-        t_file_state state = t_file_state::PARSE_READY;
+        t_file_state state = t_file_state::SCAN_READY;
     };
     
     struct t_compilation_files {
@@ -62,7 +57,7 @@ namespace frontend::manager {
         t_add_file_result add_file(std::string path);
         t_get_file_result get_file(t_file_id file_id);
         t_get_const_file_result get_file(t_file_id file_id) const;
-        t_find_file_result find_file(std::string path);
+        t_find_file_result find_file(std::string path) const;
 
     private:
         std::deque<t_compilation_file> files;
@@ -106,11 +101,6 @@ namespace frontend::manager {
     struct t_compile_time_data {
         util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
         util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
-
-        // not a mistake. only string representations of numbers are stored, not the suffix.
-        util::t_intern_pool<std::string, t_number_literal_id> number_literal_pool;
-
-        // the 0th index is not valid. it just refers to a type that needs to be filled later.
         util::t_intern_pool<sema::t_type_name, t_type_name_id> typename_pool;
     };
 
