@@ -7,25 +7,9 @@ INSTRUCTIONS FOR MODDING
 Add a new t_ast_node_type value. Create a new struct that inherits from t_node.
 Append the new struct type to the variant at the bottom of the file.
 
-
-General rules:
-- Assume syntax follows C-style paradigm (Rust allows many different traditionally statement based keywords to create expressions)
-- Naming an AST node a statment or expression does not directly affect functionality. It is only for reader understanding
-    * which in turn indirectly affects functionality.
-    - More specifically, the functionality of an AST node is ingrained in how the parser generates it, and how the semantic
-      analyzer reads and modifies it. The naming of the struct itself is purely semantic.
-
-- A statement or expression should be anything that operates in runtime.
-    - Statements exist to perform an action like declaring a variable.
-    - Expressions exist to evaluate to a certain value. Expressions can sometimes exist on statement level like calling a function.
-- An item should be anything that directly affects the compile-time environment.
-- If there is a node like an identifier or function parameter where its use is more complicated,
-  a specific semantic note isn't directly needed.
-- Always comment what the property of a node should be if it holds an id that references another node.
-
-
-Basic ast for non template testing:
-- nothing yet
+note: only have ast nodes inherit from decl, stmt, or expr if they can be guaranteed to be one. by that, imagine
+a function argument ast node. its value can be any type of expression. only label an ast node as an expr if you want
+it to be passable as a funciton argument
 
 */
 
@@ -42,39 +26,92 @@ Basic ast for non template testing:
 #include "frontend/manager_types.hh"
 
 namespace frontend::scan::ast {
-    using t_node_id = util::t_safe_id<struct t_node_id_tag>;
-
-    // this is not declared in ast_types because it requires <vector>
-    using t_node_ids = std::vector<t_node_id>;
-
     struct t_node {
+        t_node(util::t_span span)
+            : span(std::move(span)) {}
+
         util::t_span span;
     };
 
+    enum class t_decl_type {
+        IMPORT,
+        GLOBAL,
+        FUNCTION,
+        RECORD,
+        MODULE,
+    };
+
+    struct t_decl : t_node {
+        t_decl(util::t_span span, t_decl_type decl_type)
+            : t_node(span), decl_type(decl_type) {}
+
+        t_decl_type decl_type;
+    };
+
+    enum class t_stmt_type {
+        RETURN,
+        COMPOUND,
+    };
+        
+    struct t_stmt : t_node {
+        t_stmt(util::t_span span, t_stmt_type stmt_type)
+            : t_node(span), stmt_type(stmt_type) {}
+
+        t_stmt_type stmt_type;
+    };
+
+    enum class t_expr_type {
+        IDENTIFIER,
+        STRING_LITERAL,
+        UNARY,
+        BINARY,
+        SCOPE_RESOLUTION,
+        TERNARY,
+        SCOPE_REFERENCE,
+        CALL,
+    };
+
+    struct t_expr : t_node {
+        t_expr(util::t_span span, t_expr_type expr_type)
+            : t_node(span), expr_type(expr_type) {}
+
+        t_expr_type expr_type;
+    };
+    
+    template <typename T>
+    using t_ptrs = std::vector<T*>;
+
+    using t_node_ptrs = t_ptrs<t_node>;
+    using t_decl_ptrs = t_ptrs<t_decl>;
+    using t_stmt_ptrs = t_ptrs<t_stmt>;
+    using t_expr_ptrs = t_ptrs<t_expr>;
+
+    //            ||||||
+    //            ||||||
+    // real nodes vvvvvv
+    //
+    //
     struct t_root : t_node {
-        t_root()
-            : t_node(util::t_span()) {}
+        t_root(util::t_span span)
+            : t_node(std::move(span)) {}
 
-        virtual ~t_root() = default;
-
-        t_node_ids items;
+        t_decl_ptrs decls;
     };
 
     // x
-    struct t_identifier : t_node {
+    struct t_identifier : t_expr {
         t_identifier(util::t_span span, manager::t_identifier_id identifier_id)
-            : t_node(std::move(span)), identifier_id(identifier_id) {}
+            : t_expr(std::move(span), t_expr_type::IDENTIFIER), identifier_id(identifier_id) {}
         
         // reference to within manager::t_compilation_unit
-        manager::t_identifier_id identifier_id; // t_identifier_id
+        manager::t_identifier_id identifier_id;
     };
 
     // "hello world"
-    struct t_string_literal : t_node {
+    struct t_string_literal : t_expr {
         t_string_literal(util::t_span span, manager::t_string_literal_id string_literal_id)
-            : t_node(std::move(span)), string_literal_id(string_literal_id) {}
+            : t_expr(std::move(span), t_expr_type::STRING_LITERAL), string_literal_id(string_literal_id) {}
 
-        // reference to within manager::t_compilation_unit.
         manager::t_string_literal_id string_literal_id;
     };
 
@@ -88,52 +125,55 @@ namespace frontend::scan::ast {
     // ^^^^^^^^ update how number literals are stored during scan time before re-enabling this
 
     // -5
-    struct t_unary_expr : t_node {
-        t_unary_expr(util::t_span span, t_node_id operand, token::t_token_type opr)
-            : t_node(std::move(span)), operand(operand), opr(opr) {}
+    struct t_unary_expr : t_expr {
+        t_unary_expr(util::t_span span, t_expr* operand, token::t_token_type opr)
+            : t_expr(std::move(span), t_expr_type::UNARY), operand(operand), opr(opr) {}
 
-        t_node_id operand; // expr
+        t_expr* operand;
         token::t_token_type opr;
     };
 
     // 5 + 2
-    struct t_binary_expr : t_node {
-        t_binary_expr(util::t_span span, t_node_id operand0, t_node_id operand1, token::t_token_type opr)
-            : t_node(std::move(span)), operand0(operand0), operand1(operand1), opr(opr) {}
+    struct t_binary_expr : t_expr {
+        t_binary_expr(util::t_span span, t_expr* operand0, t_expr* operand1, token::t_token_type opr)
+            : t_expr(std::move(span), t_expr_type::BINARY), operand0(operand0), operand1(operand1), opr(opr) {}
 
-        t_node_id operand0; // expr
-        t_node_id operand1; // expr
+        t_expr* operand0;
+        t_expr* operand1;
         token::t_token_type opr;
     };
 
+    struct t_template_argument;
+
     // math..pi
-    struct t_scope_resolution_expr : t_node {
-        t_scope_resolution_expr(util::t_span span, t_node_id operand0, t_node_id operand1, t_node_ids template_arguments = {})
-            : t_node(std::move(span)), operand0(operand0), operand1(operand1), template_arguments(template_arguments) {}
+    struct t_scope_resolution_expr : t_expr {
+        t_scope_resolution_expr(util::t_span span, t_expr* operand0, t_identifier* operand1, std::vector<t_template_argument*> template_arguments = {})
+            : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1), template_arguments(std::move(template_arguments)) {}
 
-        t_node_id operand0; // expr
-        t_node_id operand1; // t_identifier
+        t_expr* operand0;
+        t_identifier* operand1;
 
-        t_node_ids template_arguments; // {t_template_argument}
+        std::vector<t_template_argument*> template_arguments; // {t_template_argument}
     };
 
     // a > b ? x : y
-    struct t_ternary_expr : t_node {
-        t_ternary_expr(util::t_span span, t_node_id condition, t_node_id consequent, t_node_id alternate, token::t_token_type opr)
-            : t_node(std::move(span)), condition(condition), consequent(consequent), alternate(alternate), opr(opr) {}
+    struct t_ternary_expr : t_expr {
+        t_ternary_expr(util::t_span span, t_expr* condition, t_expr* consequent, t_expr* alternate, token::t_token_type opr)
+            : t_expr(std::move(span), t_expr_type::TERNARY), condition(condition), consequent(consequent), alternate(alternate), opr(opr) {}
 
-        t_node_id condition; // expr
-        t_node_id consequent; // expr
-        t_node_id alternate; // expr
+        t_expr* condition;
+        t_expr* consequent;
+        t_expr* alternate;
         token::t_token_type opr;
     };
 
-    // a::b || a()
-    struct t_scope_reference : t_node {
-        t_scope_reference(util::t_span span, t_node_id reference)
-            : t_node(std::move(span)), reference(reference) {}
+    using t_scope_reference_variant = std::variant<t_identifier*, t_scope_resolution_expr*>;
+    // a::b() || a()
+    struct t_scope_reference_expr : t_expr {
+        t_scope_reference_expr(util::t_span span, t_scope_reference_variant reference)
+            : t_expr(std::move(span), t_expr_type::SCOPE_REFERENCE), reference(std::move(reference)) {}
 
-        t_node_id reference; // t_identifier || t_scope_resolution_expr
+        t_scope_reference_variant reference;
     };
 
     /*
@@ -143,22 +183,24 @@ namespace frontend::scan::ast {
 
     */
 
-    struct t_call_expr : t_node {
-        t_call_expr(util::t_span span, t_node_id callee, t_node_ids arguments = {}, t_node_ids template_arguments = {})
-            : t_node(std::move(span)), callee(callee), arguments(arguments), template_arguments(template_arguments) {}
+    struct t_call_expr : t_expr {
+        t_call_expr(util::t_span span, t_scope_reference_expr* callee, t_expr_ptrs arguments = {}, std::vector<t_template_argument*> template_arguments = {})
+            : t_expr(std::move(span), t_expr_type::CALL), callee(callee), arguments(std::move(arguments)), template_arguments(std::move(template_arguments)) {}
 
-        t_node_id callee; // t_scope_reference
-        t_node_ids arguments; // {t_expr}
-        t_node_ids template_arguments; // {t_template_argument}
+        t_scope_reference_expr* callee; // t_scope_reference
+        t_expr_ptrs arguments; // {t_expr}
+        std::vector<t_template_argument*> template_arguments;
     };
 
+    struct t_type;
+    using t_type_source_variant = std::variant<t_type*, t_scope_reference_expr*>;
     // array<u8>
     struct t_type : t_node {
-        t_type(util::t_span span, t_node_id source, t_node_ids template_arguments, token::t_token_type qualifier)
-            : t_node(std::move(span)), source(source), template_arguments(template_arguments), qualifier(qualifier) {}
+        t_type(util::t_span span, t_type_source_variant source, std::vector<t_template_argument*> template_arguments, token::t_token_type qualifier)
+            : t_node(std::move(span)), source(std::move(source)), template_arguments(std::move(template_arguments)), qualifier(qualifier) {}
 
-        t_node_id source; // t_type | t_scope_reference
-        t_node_ids template_arguments; // {t_template_argument}
+        t_type_source_variant source;
+        std::vector<t_template_argument*> template_arguments;
 
         token::t_token_type qualifier;
     };
@@ -184,226 +226,211 @@ namespace frontend::scan::ast {
     */
 
     // import "math"
-    struct t_import_item : t_node {
-        t_import_item(util::t_span span, t_node_id file_path)
-            : t_node(std::move(span)), file_path(file_path) {}
+    struct t_import_decl : t_decl {
+        t_import_decl(util::t_span span, t_string_literal* file_path, t_string_literal* absolute_file_path)
+            : t_decl(std::move(span), t_decl_type::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path) {}
 
-        t_node_id file_path; // t_string_literal_expr
+        t_string_literal* file_path;
+        t_string_literal* absolute_file_path;
         /* manager.cc */ manager::t_file_id resolved_file_id; // parser ensures this will always be an absolute path
     };
 
     // 
-    struct t_global_declaration_item : t_node {
-        t_global_declaration_item(util::t_span span, t_node_id name, t_node_id type, t_node_id value)
-            : t_node(std::move(span)), name(name), type(type), value(value) {}
+    struct t_global_decl : t_decl {
+        t_global_decl(util::t_span span, t_identifier* name, t_type* type, t_expr* value)
+            : t_decl(std::move(span), t_decl_type::GLOBAL), name(name), type(type), value(value) {}
 
-        t_node_id name; // expr_identifier
-        t_node_id type; // t_type
-        t_node_id value; // expr
+        t_identifier* name;
+        t_type* type; // t_type
+        t_expr* value; // expr
     };
 
+    struct t_type_name_template_parameter : t_node {
+        t_identifier* name;
+    };
+
+    struct t_value_template_parameter : t_node {
+        t_identifier* name;
+        t_type* type;
+    };
+
+    using t_template_parameter_variant = std::variant<t_type_name_template_parameter*, t_value_template_parameter*>;
     struct t_template_parameter : t_node {
-        t_template_parameter(util::t_span span, t_node_id name, bool is_const_value, t_node_id const_value_type)
-            : t_node(std::move(span)), name(name), is_const_value(is_const_value), const_value_type(const_value_type) {}
+        t_template_parameter(util::t_span span, t_template_parameter_variant value)
+            : t_node(std::move(span)), value(std::move(value)) {}
 
-        t_node_id name; // t_identifier
-
-        bool is_const_value;
-        t_node_id const_value_type; // t_type? - only if parameter_type is CONST_VALUE
+        t_template_parameter_variant value;
     };
 
+    using t_template_argument_variant = std::variant<t_type*, t_expr*>;
     struct t_template_argument : t_node {
-        t_template_argument(util::t_span span, t_node_id value)
-            : t_node(std::move(span)), value(value) {}
+        t_template_argument(util::t_span span, t_template_argument_variant value)
+            : t_node(std::move(span)), value(std::move(value)) {}
 
         // note: if value is a t_expr, then the value of the template argument must be proven to be a compile time constant
-        t_node_id value; // t_type || t_expr
+        t_template_argument_variant value;
     };
 
     struct t_function_parameter : t_node {
-        t_function_parameter(util::t_span span, t_node_id name, t_node_id type)
+        t_function_parameter(util::t_span span, t_identifier* name, t_type* type)
             : t_node(std::move(span)), name(name), type(type) {}
 
-        t_node_id name; // t_identifier
-        t_node_id type; // t_type
+        t_identifier* name;
+        t_type* type;
     };
     
     struct t_function : t_node {
-        t_function(util::t_span span, t_node_ids parameters, t_node_id body, t_node_id return_type)
-            : t_node(std::move(span)), parameters(parameters), body(body), return_type(return_type) {}
+        t_function(util::t_span span, std::vector<t_function_parameter*> parameters, t_stmt* body, t_type* return_type)
+            : t_node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type) {}
 
-        t_node_ids parameters; // t_function_parameter
-        t_node_id body; // t_stmt
-        t_node_id return_type; // t_type
+        std::vector<t_function_parameter*> parameters;
+        t_stmt* body;
+        t_type* return_type;
     };
 
     struct t_function_template : t_node {
-        t_function_template(util::t_span span, t_node_id base, t_node_ids template_parameters)
-            : t_node(std::move(span)), base(base), template_parameters(template_parameters) {}
+        t_function_template(util::t_span span, t_function* base, std::vector<t_template_parameter*> template_parameters)
+            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) {}
 
-        t_node_id base; // t_function
-        t_node_ids template_parameters; // {t_template_parameter}
-        // SPECIALIZATIONS MAP STORED IN SYMBOL TABLE
+        t_function* base;
+        std::vector<t_template_parameter*> template_parameters; // {t_template_parameter}
     };
     
-    struct t_function_declaration_item : t_node {
-        t_function_declaration_item(util::t_span span, t_node_id function_template, t_node_id name)
-            : t_node(std::move(span)), function_template(function_template), name(name) {}
+    struct t_function_decl : t_decl {
+        t_function_decl(util::t_span span, t_function_template* function_template, t_identifier* name)
+            : t_decl(std::move(span), t_decl_type::FUNCTION), function_template(function_template), name(name) {}
 
-        t_node_id function_template; // t_function_template
-        t_node_id name; // t_identifier
+        t_function_template* function_template;
+        t_identifier* name;
     };
 
     struct t_initializer : t_node {
-        t_initializer(util::t_span span, t_node_id name, t_node_id function)
+        t_initializer(util::t_span span, t_identifier* name, t_function* function)
             : t_node(std::move(span)), name(name), function(function) {}
 
-        t_node_id name; // t_identifier
-        t_node_id function; // t_function - NO DEPENDENT TYPES
+        t_identifier* name; // t_identifier
+        t_function* function; // NO DEPENDENT TYPES
     };
 
     struct t_finalizer : t_node {
-        t_finalizer(util::t_span span, t_node_id function)
+        t_finalizer(util::t_span span, t_function* function)
             : t_node(std::move(span)), function(function) {}
 
-        t_node_id function; // t_function - NO DEPENDENT TYPES
+        t_function* function; // NO DEPENDENT TYPES
     };
 
     struct t_method : t_node {
-        t_method(util::t_span span, token::t_token_type access_specifier, t_node_id name, t_node_id function_template)
+        t_method(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_function_template* function_template)
             : t_node(std::move(span)), access_specifier(access_specifier), name(name), function_template(function_template) {}
 
         token::t_token_type access_specifier;
-        t_node_id name; // t_identifier
-        t_node_id function_template; // t_function_template
+        t_identifier* name;
+        t_function_template* function_template;
     };
 
     struct t_property : t_node {
-        t_property(util::t_span span, token::t_token_type access_specifier, t_node_id name, t_node_id type)
+        t_property(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_type* type)
             : t_node(std::move(span)), access_specifier(access_specifier), name(name), type(type) {}
 
         token::t_token_type access_specifier;
-        t_node_id name; // t_identifier
-        t_node_id type; // t_type
+        t_identifier* name;
+        t_type* type;
     };
 
-    struct t_struct : t_node {
-        t_struct(util::t_span span, t_node_ids methods, t_node_ids properties, t_node_ids initializers, t_node_id finalizer)
-            : t_node(std::move(span)), methods(methods), properties(properties), initializers(initializers), finalizer(finalizer) {}
+    struct t_record : t_node {
+        t_record(util::t_span span, std::vector<t_method*> methods, std::vector<t_property*> properties, std::vector<t_initializer*> initializers, t_finalizer* finalizer)
+            : t_node(std::move(span)), methods(std::move(methods)), properties(std::move(properties)), initializers(std::move(initializers)), finalizer(finalizer) {}
 
-        t_node_ids methods; // {t_method}
-        t_node_ids properties; // {t_property}
-        t_node_ids initializers; // {t_initializer}
-        t_node_id finalizer; // t_finalizer?
+        std::vector<t_method*> methods;
+        std::vector<t_property*> properties;
+        std::vector<t_initializer*> initializers;
+        t_finalizer* finalizer; // t_finalizer?
     };
 
-    struct t_struct_template : t_node {
-        t_struct_template(util::t_span span, t_node_id base, t_node_ids template_parameters)
-            : t_node(std::move(span)), base(base), template_parameters(template_parameters) {}
+    struct t_record_template : t_node {
+        t_record_template(util::t_span span, t_record* base, std::vector<t_template_parameter*> template_parameters)
+            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) {}
 
-        t_node_id base; // t_struct
-        t_node_ids template_parameters; // {t_template_parameter}
-        // SPECIALIZATIONS MAP STORED IN SYMBOL TABLE
+        t_record* base;
+        std::vector<t_template_parameter*> template_parameters;
     };
 
-    struct t_struct_declaration_item : t_node {
-        t_struct_declaration_item(util::t_span span, t_node_id struct_template, t_node_id name)
-            : t_node(std::move(span)), struct_template(struct_template), name(name) {}
+    struct t_record_decl : t_decl {
+        t_record_decl(util::t_span span, t_record_template* record_template, t_identifier* name)
+            : t_decl(std::move(span), t_decl_type::RECORD), record_template(record_template), name(name) {}
 
-        t_node_id struct_template; // t_struct_template
-        t_node_id name; // t_identifier
+        t_record_template* record_template;
+        t_identifier* name;
     };
 
-    struct t_type_alias_template : t_node {
-        t_type_alias_template(util::t_span span, t_node_id type, t_node_ids specializations, t_node_ids template_parameters)
-            : t_node(std::move(span)), type(type), specializations(specializations), template_parameters(template_parameters) {}
+    // struct t_type_alias_template : t_node {
+    //     t_type_alias_template(util::t_span span, t_type* type, std::vector<t_type*> instantiations, std::vector<t_template_parameter*> template_parameters)
+    //         : t_node(std::move(span)), type(type), instantiations(std::move(instantiations)), template_parameters(std::move(template_parameters)) {}
 
-        t_node_id type; // t_type
-        t_node_ids specializations; // {t_type}
-        t_node_ids template_parameters; // {t_template_parameters}
-    };
+    //     t_type* type;
+    //     std::vector<t_type*> instantiations;
+    //     std::vector<t_template_parameter*> template_parameters;
+    // };
 
-    // make this support templates later. save your life bro
-    struct t_type_alias_declaration_item : t_node {
-        t_type_alias_declaration_item(util::t_span span, t_node_id type_alias_template, t_node_id name)
-            : t_node(std::move(span)), type_alias_template(type_alias_template), name(name) {}
+    // struct t_type_alias_decl : t_item {
+    //     t_type_alias_decl(util::t_span span, t_type_alias_template* type_alias_template, t_identifier* name)
+    //         : t_item(std::move(span)), type_alias_template(type_alias_template), name(name) {}
 
-        t_node_id type_alias_template; // t_type_alias_template
-        t_node_id name; // t_identifier
-    };
+    //     t_type_alias_template* type_alias_template;
+    //     t_identifier* name;
+    // };
 
-    struct t_module_declaration_item : t_node {
-        t_module_declaration_item(util::t_span span, t_node_id name, t_node_ids items)
-            : t_node(std::move(span)), name(name), items(items) {}
+    struct t_module_decl : t_decl {
+        t_module_decl(util::t_span span, t_identifier* name, t_decl_ptrs decls)
+            : t_decl(std::move(span), t_decl_type::MODULE), name(name), decls(std::move(decls)) {}
         
-        t_node_id name; // t_identifier
-        t_node_ids items; // {t_item}
+        t_identifier* name; // t_identifier
+        t_decl_ptrs decls; // {t_item}
 
-        // ^^^ in the symbol table, a module declaration's items are split into declarations and references.
+        // ^^^ in the symbol table, a module declaration's decls are split into declarations and references.
     };
 
     // -- STATEMENTS
 
-    struct t_return_stmt : t_node {
-        t_return_stmt(util::t_span span, t_node_id value)
-            : t_node(std::move(span)), value(value) {}
+    struct t_return_stmt : t_stmt {
+        t_return_stmt(util::t_span span, t_expr* value)
+            : t_stmt(std::move(span), t_stmt_type::RETURN), value(value) {}
 
-        t_node_id value; // expr
+        t_expr* value;
     };
 
-    struct t_body_stmt : t_node {
-        t_body_stmt(util::t_span span, t_node_ids stmts)
-            : t_node(std::move(span)), stmts(stmts) {}
+    struct t_compound_stmt : t_stmt {
+        t_compound_stmt(util::t_span span, t_stmt_ptrs stmts)
+            : t_stmt(std::move(span), t_stmt_type::COMPOUND), stmts(std::move(stmts)) {}
 
-        t_node_ids stmts; // {stmt}
+        t_stmt_ptrs stmts;
     };
 
     //
     //
     //
 
-    using t_node_variation = std::variant<
-        t_root,
-        t_identifier,
-        t_string_literal,
-        // t_number_literal,
-        t_unary_expr,
-        t_binary_expr,
-        t_scope_resolution_expr,
-        t_ternary_expr,
-        t_type,
-        t_import_item,
-        t_global_declaration_item,
-        t_template_parameter,
-        t_function_parameter,
-        t_function,
-        t_function_template,
-        t_function_declaration_item,
-        t_initializer,
-        t_finalizer,
-        t_method,
-        t_property,
-        t_struct,
-        t_struct_template,
-        t_struct_declaration_item,
-        t_type_alias_template,
-        t_type_alias_declaration_item,
-        t_module_declaration_item,
-        t_return_stmt,
-        t_body_stmt
-    >;
+    struct t_ast {
+        t_ast()
+            : root_ptr(arena.emplace<t_root>()) {}
 
-    // note: this is initialized before parsing or even lexing occurs. DESIGN IT TO WORK THAT WAY, FUTURE ME!!
-    using t_ast_arena = util::t_base_arena<t_node_variation, t_node_id, t_node>;
+        // if an import node is allocated into the arena, its important to add it to the "imports" vector
+        
+    private:
+        util::t_arena<> arena;
 
-    struct t_ast : t_ast_arena {
-        t_ast() {
-            emplace<t_root>();
-        }
+    public:
+        t_root* root_ptr;
+        std::vector<t_import_decl*> import_nodes;
+    
+        template <std::derived_from<t_node> T>
+        inline T* push(T node) {
+            T* ptr = arena.push<T>(std::move(node));
 
-        [[nodiscard]]
-        constexpr inline t_node_id get_root_id() const {
-            return t_node_id{0}; // always the first thing
-        }
+            if constexpr (std::is_same_v<T, t_import_item>)
+                import_nodes.push_back(ptr);
+            
+            return ptr; 
+        } 
     };
 }

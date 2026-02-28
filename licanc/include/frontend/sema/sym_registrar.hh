@@ -12,12 +12,12 @@ the symbol registrar should not fill out struct or function bodies
 
 */
 
-namespace frontend::sema::symbol_registrar {
+namespace frontend::sema::sym_registrar {
     struct t_registrar_context {
         manager::t_file_id file_id;
         manager::t_logger& logger;
         manager::t_compile_time_data compile_time_data;
-        sema::sym::t_symbol_table& symbol_table;
+        sema::sym::t_sym_table& sym_table;
         scan::ast::t_ast& ast;
     };
 

@@ -10,6 +10,7 @@
 #include "frontend/sema/semantic_analyzer.hh"
 
 #include "util/ansi_format.hh"
+#include "util/panic.hh"
 
 namespace {
     std::optional<std::string> open_file(std::string file_path) {
@@ -37,46 +38,40 @@ namespace {
         using namespace frontend;
 
         // check if there is an include item anywhere in the ast.
-        for (std::size_t index = 0; index < file.ast.get_size(); index++) {
-            scan::ast::t_node_id import_node_id(index);
+        for (scan::ast::t_import_decl* import_decl_node : file.ast.import_nodes) {
+            manager::t_compile_time_data::t_string_literal_pool::t_get_result get_string_result = 
+                unit.compile_time_data.string_literal_pool.get(import_decl_node->absolute_file_path->string_literal_id);
 
-            if (!file.ast.is<scan::ast::t_import_item>(import_node_id))
-                continue;
-
-            scan::ast::t_import_item& import_item_node = file.ast.get<scan::ast::t_import_item>(import_node_id).value().get(); // explicit bypass <-------__
-            scan::ast::t_string_literal& file_path_node = file.ast.get<scan::ast::t_string_literal>(import_item_node.file_path).value().get(); //           \        -no multiline
-            
-            auto get_string_result = unit.compile_time_data.string_literal_pool.get(file_path_node.string_literal_id);
-            std::string& file_path = get_string_result.value(); // explicit bypass
+            std::string& absolute_file_path = get_string_result.value(); // explicit bypass
 
             // we're calling the file frame_file since we're iterating through indexes of a stack
-            bool interdependency_found = std::find_if(file_stack.begin(), file_stack.end(), [&file_path, &unit](manager::t_file_id frame_file_id) -> bool {
+            bool interdependency_found = std::find_if(file_stack.begin(), file_stack.end(), [&absolute_file_path, &unit](manager::t_file_id frame_file_id) -> bool {
                 manager::t_compilation_files::t_get_file_result frame_get_file_result = unit.files.get_file(frame_file_id);
                 manager::t_compilation_file& frame_file = frame_get_file_result.value();
 
-                return frame_file.path == file_path;
+                return frame_file.path == absolute_file_path;
 
             }) != file_stack.end();
 
             if (interdependency_found) {
-                unit.logger.add_error(file_id, file_path_node.span, std::string("Including \\" + file_path + "\" results in interdependency (strictly forbidden!!!!)."));
+                unit.logger.add_error(file_id, import_decl_node->span, std::string("Including \\" + absolute_file_path + "\" results in interdependency (strictly forbidden!!!!)."));
 
                 // although continuing with a caught and non-inserted interdependency will lead to unresolved symbols later on,
                 // it is necessary to keep execution going so we can add those errors to the log pool.
                 return;
             }
 
-            manager::t_compilation_files::t_add_file_result add_file_result = unit.files.add_file(file_path);
+            manager::t_compilation_files::t_add_file_result add_file_result = unit.files.add_file(absolute_file_path);
             
             if (add_file_result.has_value()) {
                 file_stack.emplace_back(add_file_result.value());
-                import_item_node.resolved_file_id = add_file_result.value();
+                import_decl_node->resolved_file_id = add_file_result.value();
             }
             else if (add_file_result.error() == manager::t_compilation_files::t_add_file_error::FILE_ALREADY_EXISTS)
-                import_item_node.resolved_file_id = unit.files.find_file(file_path).value(); // explicit bypass
+                import_decl_node->resolved_file_id = unit.files.find_file(absolute_file_path).value(); // explicit bypass
 
             else if (add_file_result.error() == manager::t_compilation_files::t_add_file_error::PATH_INVALID)
-                unit.logger.add_error(file_id, file_path_node.span, "The file \\" + file_path + "\" does not exist.");
+                unit.logger.add_error(file_id, import_decl_node->span, "The file \\" + absolute_file_path + "\" does not exist.");
         }
     }
 
@@ -126,9 +121,6 @@ std::string frontend::manager::t_log::to_string(const t_compilation_files& files
             case t_log_type::ERROR:
                 buffer << util::ansi_format::RED << util::ansi_format::BOLD << "Error: ";
                 break;
-            case t_log_type::INTERNAL_ERROR:
-                buffer << util::ansi_format::RED << util::ansi_format::BOLD << util::ansi_format::UNDERLINE << "Internal Error: ";
-                break;
         }
     }
     else {
@@ -141,9 +133,6 @@ std::string frontend::manager::t_log::to_string(const t_compilation_files& files
                 break;
             case t_log_type::ERROR:
                 buffer << "Error: ";
-                break;
-            case t_log_type::INTERNAL_ERROR:
-                buffer << "Internal Error: ";
                 break;
         }
     }

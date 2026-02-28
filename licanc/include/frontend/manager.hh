@@ -23,7 +23,6 @@ namespace frontend::manager {
         MESSAGE,
         WARNING,
         ERROR,
-        INTERNAL_ERROR,
     };
     
     enum class t_file_state {
@@ -83,7 +82,6 @@ namespace frontend::manager {
         inline void add_message(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::MESSAGE, span, message); }
         inline void add_warning(t_file_id file_id, util::t_span span, std::string message)          { add_log(file_id, t_log_type::WARNING, span, message); }
         inline void add_error(t_file_id file_id, util::t_span span, std::string message)            { add_log(file_id, t_log_type::ERROR, span, message); }
-        inline void add_internal_error(t_file_id file_id, util::t_span span, std::string message)   { add_log(file_id, t_log_type::INTERNAL_ERROR, span, message); }
 
         std::string to_string(const t_compilation_files& files, bool format = true) const;
     };
@@ -99,9 +97,13 @@ namespace frontend::manager {
     };
 
     struct t_compile_time_data {
-        util::t_intern_pool<std::string, t_identifier_id> identifier_pool;
-        util::t_intern_pool<std::string, t_string_literal_id> string_literal_pool;
-        util::t_intern_pool<sema::t_type_name, t_type_name_id> typename_pool;
+        using t_identifier_pool = util::t_intern_pool<std::string, t_identifier_id>;
+        using t_string_literal_pool =util::t_intern_pool<std::string, t_string_literal_id>;
+        using t_typename_pool = util::t_intern_pool<sema::t_type_name, t_type_name_id>;
+
+        t_identifier_pool identifier_pool;
+        t_string_literal_pool string_literal_pool;
+        t_typename_pool typename_pool;
     };
 
     // DELIVERY OUTPUT
@@ -111,7 +113,7 @@ namespace frontend::manager {
         t_frontend_config config;
         t_compile_time_data compile_time_data;
 
-        sema::sym::t_symbol_table symbol_table;
+        sema::sym::t_sym_table sym_table;
         
         t_logger logger;
         t_compilation_files files;

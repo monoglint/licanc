@@ -24,7 +24,7 @@ then there are different contexts in which the given property can be set.
     - the base function's ast connection can obviously be done in 0,
       but a specialized function being instantiated in a later pass will obviously have it's ast connection set in that later pass and not 0
 
-0 - symbol_registrar
+0 - sym_registrar
 1? - type_resolver
 2? - full_passer
 
@@ -52,56 +52,79 @@ namespace frontend::manager {
 }
 
 namespace frontend::sema::sym {
-    using t_sym_id = util::t_safe_id<struct t_sym_id_tag>;
-    using t_sym_ids = std::vector<t_sym_id>;
+    struct t_sym { };
 
-    using t_declarations = std::unordered_map<manager::t_identifier_id, t_sym_id>;
-
-    // {t_template_argument}
-    using t_template_arguments = t_sym_ids;
-
-     // <_, t_x_specialization>
-    using t_specializations = std::unordered_map<t_template_arguments, t_sym_id, util::t_vector_hasher<t_sym_id>>;
-
-    // DIRECT MEMBER - NOT A SYMBOL
-    struct t_ast_reference {
-        scan::ast::t_node_id node_id;
+    enum class t_decl_type {
+        FUNCTION,
+        RECORD,
+        MODULE,
+        GLOBAL,
     };
 
+    struct t_decl : t_sym {
+        t_decl(t_decl_type decl_type)
+            : decl_type(decl_type) {}
 
+        t_decl_type decl_type;
+    };
+    
+    struct t_template_argument;
+
+    template <class T_INST>
+    using t_insts = std::unordered_map<std::vector<t_template_argument*>, T_INST, util::t_vector_hasher<t_template_argument*>>;
+
+    using t_decls = std::unordered_map<manager::t_identifier_id, t_decl*>;
 
     // SYMBOLS v vvv vv vv
     
-    struct t_root { // index 0
-        /* 0 */ t_sym_ids file_modules; // {t_module_declaration}
+    struct t_module_decl;
+    struct t_root : t_sym { // index 0
+        /* 0 */ std::vector<t_module_decl*> file_modules; // {t_module_decl}
     };
 
-    struct t_template_parameter {
-        /* _ */ bool is_constexpr;
+    struct t_type_name_template_parameter : t_sym {
+
+    };
+
+    struct t_value_template_parameter : t_sym {
         /* _ */ manager::t_constexpr_id constexpr_id;
     };
 
-    struct t_template_argument {
-        /* _ */ t_sym_id argument_value; // sema::t_type_name || sema::t_ct_value
+    using t_template_parameter_variant = std::variant<t_type_name_template_parameter*, t_value_template_parameter*>;
+    struct t_template_parameter : t_sym {
+        /* _ */ t_template_parameter_variant value;
     };
 
-    struct t_function {
-        /* 0 */ scan::ast::t_node_id syntactic_function;
+    //                                                                   not definite yet, just here for implementation
+    using t_template_argument_value_variant = std::variant<manager::t_type_name_id, manager::t_constexpr_id>;
+    struct t_template_argument : t_sym {
+        /* _ */ t_template_argument_value_variant argument_value;
+    };
+
+    struct t_function : t_sym {
+        /* 0 */ scan::ast::t_function* syntactic_function;
         /* _ */ manager::t_type_name_ids parameter_types; // {t_type}
         /* _ */ manager::t_type_name_id return_type;
     };
+
+    struct t_function_inst {
+        /* _ */ t_function* function;
+    };
     
-    struct t_function_template {
+    struct t_function_template : t_sym {
         //  base is not 100% concrete unless len(specializations) is 0 
         //  /
         // v
-        /* 0 */ t_sym_id base; // t_function
-        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
-        /* _ */ t_specializations specializations; // <_, t_function> 
+        /* 0 */ t_function* base; // t_function
+        /* _ */ std::vector<t_template_parameter*> template_parameters; // {t_template_parameter}
+        /* _ */ t_insts<t_function_inst*> instantiations; // <_, t_function> 
     };
 
-    struct t_function_declaration {
-        /* 0 */ t_sym_id function_template; // t_function_template
+    struct t_function_decl : t_decl {
+        t_function_decl()
+            : t_decl(t_decl_type::FUNCTION) {}
+            
+        /* 0 */ t_function_template* function_template; // t_function_template
     };
 
     enum class t_access_specifier {
@@ -109,94 +132,78 @@ namespace frontend::sema::sym {
         PRIVATE,
     };
 
-    struct t_property {
+    struct t_property : t_sym {
         /* _ */ manager::t_type_name_id property_type;
         /* _ */ t_access_specifier access_specifier;
     };
 
-    struct t_method {
-        /* _ */ t_sym_id function_template; // t_function_template
+    struct t_method : t_sym {
+        /* _ */ t_function_template* function_template; // t_function_template
         /* _ */ t_access_specifier access_specifier;
     };
 
-    struct t_struct {
-        /* 0 */ t_ast_reference syntactic_struct;
-        /* _ */ t_declarations properties; // {t_property}
-        /* _ */ t_declarations methods; // {t_method}
+    struct t_record : t_sym {
+        /* 0 */ scan::ast::t_record* syntactic_record;
+        /* _ */ t_decls properties; // {t_property}
+        /* _ */ t_decls methods; // {t_method}
 
         // implementation should be fixed here. you can technically access different initializer types by name because a copy constructor
         // will always be called copy, but just be careful. 
-        /* _ */ t_declarations initializers; // {t_initializer}
+        /* _ */ t_decls initializers; // {t_initializer}
     };
 
-    struct t_struct_template {
-        /* 0 */ t_sym_id base; // t_struct
-        /* _ */ t_specializations specializations; // <_, t_struct>
-        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
+    struct t_record_inst {
+        t_record* record;
     };
 
-    struct t_struct_declaration {
-        /* 0 */ t_sym_id struct_template; // t_struct_template
+    struct t_record_template : t_sym {
+        /* 0 */ t_record* base; // t_record
+        /* _ */ t_insts<t_record_inst*> instantiations;
+        /* _ */ std::vector<t_template_parameter*> template_parameters;
     };
 
-    struct t_alias_specialization {
-        /* _ */ t_ast_reference specialization_node; // ast::t_alias
+    struct t_record_decl : t_decl {
+        /* 0 */ t_record_template* record_template;
     };
 
-    struct t_alias_template {
-        /* 0 */ t_ast_reference syntactic_alias_template;
-        /* _ */ t_specializations specializations;
-        /* _ */ t_sym_ids template_parameters; // {t_template_parameter}
+    struct t_primative : t_decl {
+        /* 0 */ std::size_t size;
     };
 
-    struct t_alias_declaration {
-        /* 0 */ t_sym_id alias_template; // t_alias_template
+    struct t_primative_decl : t_decl {
+        t_primative* primative;
     };
 
-    struct t_module_declaration {
-        /* 0 */ t_declarations declarations;
-        /* 0 */ t_sym_ids import_markers; // {t_import_marker}
+    struct t_import_marker : t_sym { 
+        // this target module is essentially any module that is a direct child of t_root. 
+        t_module_decl* get_file_module;
     };
 
-    struct t_global_declaration {
+    struct t_module_decl : t_decl {
+        /* 0 */ t_module_decl* parent_module;
+        /* 0 */ t_decls declarations;
+        /* 0 */ std::vector<t_import_marker*> import_markers;
+    };
+
+    struct t_global_decl : t_decl {
         /* _ */ manager::t_type_name_id global_type;
     };
 
-    struct t_import_marker { 
-        // this target module is essentially any module that is a direct child of t_root. 
-        t_sym_id target_file_module;
-    };
+    struct t_sym_table {
+        t_sym_table()
+            : root_ptr(arena.emplace<t_root>()) {}
 
-    using t_sym_variation = std::variant<
-        t_root,
-        t_template_parameter,
-        t_template_argument,
-        t_function,
-        t_function_template,
-        t_function_declaration,
-        t_property,
-        t_method,
-        t_struct,
-        t_struct_template,
-        t_struct_declaration,
-        t_alias_specialization,
-        t_alias_template,
-        t_alias_declaration,
-        t_module_declaration,
-        t_global_declaration,
-        t_import_marker
-    >;
+    private:
+            util::t_arena<> arena;
 
-    using t_symbol_table_arena = util::t_arena<t_sym_variation, t_sym_id>;
+    public:
+        t_root* root_ptr;
+    
+        template <std::derived_from<t_sym> T>
+        inline T* push(T sym) {
+            T* ptr = arena.push<T>(std::move(sym));
 
-    struct t_symbol_table : t_symbol_table_arena {
-        t_symbol_table() {
-            emplace<t_root>();
-        }
-
-        [[nodiscard]]
-        constexpr inline t_sym_id get_root_id() const {
-            return t_sym_id{0}; // always the first thing
-        }
+            return ptr; 
+        } 
     };
 }
