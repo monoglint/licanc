@@ -6,7 +6,7 @@
 
 #include "util/ansi_format.hh"
 
-void util::panic(std::string message) {
+void util::panic(std::string message, bool exit) {
     std::string title = "Licanc has encountered a fatal error!";
     std::string separator = std::string("\n") + util::ansi_format::LIGHT_GRAY + std::string(title.size(), '=') + util::ansi_format::RESET + '\n';
 
@@ -21,5 +21,8 @@ void util::panic(std::string message) {
     std::cerr << separator << '\n';
     std::cerr << "Please report an issue on the repository and provide this error log.\n";
     
-    std::exit(1);
+    if (exit)
+        std::exit(1);
+    else
+        throw t_panic_assertion(message);
 }

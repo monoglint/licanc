@@ -28,7 +28,8 @@ it to be passable as a funciton argument
 namespace frontend::scan::ast {
     struct t_node {
         t_node(util::t_span span)
-            : span(std::move(span)) {}
+            : span(std::move(span)) 
+        {}
 
         util::t_span span;
     };
@@ -43,7 +44,8 @@ namespace frontend::scan::ast {
 
     struct t_decl : t_node {
         t_decl(util::t_span span, t_decl_type decl_type)
-            : t_node(span), decl_type(decl_type) {}
+            : t_node(span), decl_type(decl_type) 
+        {}
 
         t_decl_type decl_type;
     };
@@ -55,7 +57,8 @@ namespace frontend::scan::ast {
         
     struct t_stmt : t_node {
         t_stmt(util::t_span span, t_stmt_type stmt_type)
-            : t_node(span), stmt_type(stmt_type) {}
+            : t_node(span), stmt_type(stmt_type) 
+        {}
 
         t_stmt_type stmt_type;
     };
@@ -73,7 +76,8 @@ namespace frontend::scan::ast {
 
     struct t_expr : t_node {
         t_expr(util::t_span span, t_expr_type expr_type)
-            : t_node(span), expr_type(expr_type) {}
+            : t_node(span), expr_type(expr_type) 
+        {}
 
         t_expr_type expr_type;
     };
@@ -92,8 +96,9 @@ namespace frontend::scan::ast {
     //
     //
     struct t_root : t_node {
-        t_root(util::t_span span)
-            : t_node(std::move(span)) {}
+        t_root()
+            : t_node({}) 
+        {}
 
         t_decl_ptrs decls;
     };
@@ -101,7 +106,8 @@ namespace frontend::scan::ast {
     // x
     struct t_identifier : t_expr {
         t_identifier(util::t_span span, manager::t_identifier_id identifier_id)
-            : t_expr(std::move(span), t_expr_type::IDENTIFIER), identifier_id(identifier_id) {}
+            : t_expr(std::move(span), t_expr_type::IDENTIFIER), identifier_id(identifier_id) 
+        {}
         
         // reference to within manager::t_compilation_unit
         manager::t_identifier_id identifier_id;
@@ -110,7 +116,8 @@ namespace frontend::scan::ast {
     // "hello world"
     struct t_string_literal : t_expr {
         t_string_literal(util::t_span span, manager::t_string_literal_id string_literal_id)
-            : t_expr(std::move(span), t_expr_type::STRING_LITERAL), string_literal_id(string_literal_id) {}
+            : t_expr(std::move(span), t_expr_type::STRING_LITERAL), string_literal_id(string_literal_id) 
+        {}
 
         manager::t_string_literal_id string_literal_id;
     };
@@ -127,7 +134,8 @@ namespace frontend::scan::ast {
     // -5
     struct t_unary_expr : t_expr {
         t_unary_expr(util::t_span span, t_expr* operand, token::t_token_type opr)
-            : t_expr(std::move(span), t_expr_type::UNARY), operand(operand), opr(opr) {}
+            : t_expr(std::move(span), t_expr_type::UNARY), operand(operand), opr(opr) 
+        {}
 
         t_expr* operand;
         token::t_token_type opr;
@@ -136,7 +144,8 @@ namespace frontend::scan::ast {
     // 5 + 2
     struct t_binary_expr : t_expr {
         t_binary_expr(util::t_span span, t_expr* operand0, t_expr* operand1, token::t_token_type opr)
-            : t_expr(std::move(span), t_expr_type::BINARY), operand0(operand0), operand1(operand1), opr(opr) {}
+            : t_expr(std::move(span), t_expr_type::BINARY), operand0(operand0), operand1(operand1), opr(opr) 
+        {}
 
         t_expr* operand0;
         t_expr* operand1;
@@ -148,7 +157,8 @@ namespace frontend::scan::ast {
     // math..pi
     struct t_scope_resolution_expr : t_expr {
         t_scope_resolution_expr(util::t_span span, t_expr* operand0, t_identifier* operand1, std::vector<t_template_argument*> template_arguments = {})
-            : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1), template_arguments(std::move(template_arguments)) {}
+            : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1), template_arguments(std::move(template_arguments))
+         {}
 
         t_expr* operand0;
         t_identifier* operand1;
@@ -159,7 +169,8 @@ namespace frontend::scan::ast {
     // a > b ? x : y
     struct t_ternary_expr : t_expr {
         t_ternary_expr(util::t_span span, t_expr* condition, t_expr* consequent, t_expr* alternate, token::t_token_type opr)
-            : t_expr(std::move(span), t_expr_type::TERNARY), condition(condition), consequent(consequent), alternate(alternate), opr(opr) {}
+            : t_expr(std::move(span), t_expr_type::TERNARY), condition(condition), consequent(consequent), alternate(alternate), opr(opr) 
+        {}
 
         t_expr* condition;
         t_expr* consequent;
@@ -171,7 +182,8 @@ namespace frontend::scan::ast {
     // a::b() || a()
     struct t_scope_reference_expr : t_expr {
         t_scope_reference_expr(util::t_span span, t_scope_reference_variant reference)
-            : t_expr(std::move(span), t_expr_type::SCOPE_REFERENCE), reference(std::move(reference)) {}
+            : t_expr(std::move(span), t_expr_type::SCOPE_REFERENCE), reference(std::move(reference)) 
+        {}
 
         t_scope_reference_variant reference;
     };
@@ -185,7 +197,8 @@ namespace frontend::scan::ast {
 
     struct t_call_expr : t_expr {
         t_call_expr(util::t_span span, t_scope_reference_expr* callee, t_expr_ptrs arguments = {}, std::vector<t_template_argument*> template_arguments = {})
-            : t_expr(std::move(span), t_expr_type::CALL), callee(callee), arguments(std::move(arguments)), template_arguments(std::move(template_arguments)) {}
+            : t_expr(std::move(span), t_expr_type::CALL), callee(callee), arguments(std::move(arguments)), template_arguments(std::move(template_arguments)) 
+        {}
 
         t_scope_reference_expr* callee; // t_scope_reference
         t_expr_ptrs arguments; // {t_expr}
@@ -197,7 +210,8 @@ namespace frontend::scan::ast {
     // array<u8>
     struct t_type : t_node {
         t_type(util::t_span span, t_type_source_variant source, std::vector<t_template_argument*> template_arguments, token::t_token_type qualifier)
-            : t_node(std::move(span)), source(std::move(source)), template_arguments(std::move(template_arguments)), qualifier(qualifier) {}
+            : t_node(std::move(span)), source(std::move(source)), template_arguments(std::move(template_arguments)), qualifier(qualifier) 
+        {}
 
         t_type_source_variant source;
         std::vector<t_template_argument*> template_arguments;
@@ -228,7 +242,8 @@ namespace frontend::scan::ast {
     // import "math"
     struct t_import_decl : t_decl {
         t_import_decl(util::t_span span, t_string_literal* file_path, t_string_literal* absolute_file_path)
-            : t_decl(std::move(span), t_decl_type::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path) {}
+            : t_decl(std::move(span), t_decl_type::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path) 
+        {}
 
         t_string_literal* file_path;
         t_string_literal* absolute_file_path;
@@ -238,7 +253,8 @@ namespace frontend::scan::ast {
     // 
     struct t_global_decl : t_decl {
         t_global_decl(util::t_span span, t_identifier* name, t_type* type, t_expr* value)
-            : t_decl(std::move(span), t_decl_type::GLOBAL), name(name), type(type), value(value) {}
+            : t_decl(std::move(span), t_decl_type::GLOBAL), name(name), type(type), value(value) 
+        {}
 
         t_identifier* name;
         t_type* type; // t_type
@@ -257,7 +273,8 @@ namespace frontend::scan::ast {
     using t_template_parameter_variant = std::variant<t_type_name_template_parameter*, t_value_template_parameter*>;
     struct t_template_parameter : t_node {
         t_template_parameter(util::t_span span, t_template_parameter_variant value)
-            : t_node(std::move(span)), value(std::move(value)) {}
+            : t_node(std::move(span)), value(std::move(value)) 
+        {}
 
         t_template_parameter_variant value;
     };
@@ -265,7 +282,8 @@ namespace frontend::scan::ast {
     using t_template_argument_variant = std::variant<t_type*, t_expr*>;
     struct t_template_argument : t_node {
         t_template_argument(util::t_span span, t_template_argument_variant value)
-            : t_node(std::move(span)), value(std::move(value)) {}
+            : t_node(std::move(span)), value(std::move(value)) 
+        {}
 
         // note: if value is a t_expr, then the value of the template argument must be proven to be a compile time constant
         t_template_argument_variant value;
@@ -273,7 +291,8 @@ namespace frontend::scan::ast {
 
     struct t_function_parameter : t_node {
         t_function_parameter(util::t_span span, t_identifier* name, t_type* type)
-            : t_node(std::move(span)), name(name), type(type) {}
+            : t_node(std::move(span)), name(name), type(type) 
+        {}
 
         t_identifier* name;
         t_type* type;
@@ -281,7 +300,8 @@ namespace frontend::scan::ast {
     
     struct t_function : t_node {
         t_function(util::t_span span, std::vector<t_function_parameter*> parameters, t_stmt* body, t_type* return_type)
-            : t_node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type) {}
+            : t_node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type) 
+        {}
 
         std::vector<t_function_parameter*> parameters;
         t_stmt* body;
@@ -290,7 +310,8 @@ namespace frontend::scan::ast {
 
     struct t_function_template : t_node {
         t_function_template(util::t_span span, t_function* base, std::vector<t_template_parameter*> template_parameters)
-            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) {}
+            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
+        {}
 
         t_function* base;
         std::vector<t_template_parameter*> template_parameters; // {t_template_parameter}
@@ -298,7 +319,8 @@ namespace frontend::scan::ast {
     
     struct t_function_decl : t_decl {
         t_function_decl(util::t_span span, t_function_template* function_template, t_identifier* name)
-            : t_decl(std::move(span), t_decl_type::FUNCTION), function_template(function_template), name(name) {}
+            : t_decl(std::move(span), t_decl_type::FUNCTION), function_template(function_template), name(name) 
+            {}
 
         t_function_template* function_template;
         t_identifier* name;
@@ -306,7 +328,8 @@ namespace frontend::scan::ast {
 
     struct t_initializer : t_node {
         t_initializer(util::t_span span, t_identifier* name, t_function* function)
-            : t_node(std::move(span)), name(name), function(function) {}
+            : t_node(std::move(span)), name(name), function(function) 
+        {}
 
         t_identifier* name; // t_identifier
         t_function* function; // NO DEPENDENT TYPES
@@ -314,14 +337,16 @@ namespace frontend::scan::ast {
 
     struct t_finalizer : t_node {
         t_finalizer(util::t_span span, t_function* function)
-            : t_node(std::move(span)), function(function) {}
+            : t_node(std::move(span)), function(function) 
+        {}
 
         t_function* function; // NO DEPENDENT TYPES
     };
 
     struct t_method : t_node {
         t_method(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_function_template* function_template)
-            : t_node(std::move(span)), access_specifier(access_specifier), name(name), function_template(function_template) {}
+            : t_node(std::move(span)), access_specifier(access_specifier), name(name), function_template(function_template) 
+        {}
 
         token::t_token_type access_specifier;
         t_identifier* name;
@@ -330,7 +355,8 @@ namespace frontend::scan::ast {
 
     struct t_property : t_node {
         t_property(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_type* type)
-            : t_node(std::move(span)), access_specifier(access_specifier), name(name), type(type) {}
+            : t_node(std::move(span)), access_specifier(access_specifier), name(name), type(type) 
+        {}
 
         token::t_token_type access_specifier;
         t_identifier* name;
@@ -339,7 +365,8 @@ namespace frontend::scan::ast {
 
     struct t_record : t_node {
         t_record(util::t_span span, std::vector<t_method*> methods, std::vector<t_property*> properties, std::vector<t_initializer*> initializers, t_finalizer* finalizer)
-            : t_node(std::move(span)), methods(std::move(methods)), properties(std::move(properties)), initializers(std::move(initializers)), finalizer(finalizer) {}
+            : t_node(std::move(span)), methods(std::move(methods)), properties(std::move(properties)), initializers(std::move(initializers)), finalizer(finalizer) 
+        {}
 
         std::vector<t_method*> methods;
         std::vector<t_property*> properties;
@@ -349,7 +376,8 @@ namespace frontend::scan::ast {
 
     struct t_record_template : t_node {
         t_record_template(util::t_span span, t_record* base, std::vector<t_template_parameter*> template_parameters)
-            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) {}
+            : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
+        {}
 
         t_record* base;
         std::vector<t_template_parameter*> template_parameters;
@@ -357,7 +385,8 @@ namespace frontend::scan::ast {
 
     struct t_record_decl : t_decl {
         t_record_decl(util::t_span span, t_record_template* record_template, t_identifier* name)
-            : t_decl(std::move(span), t_decl_type::RECORD), record_template(record_template), name(name) {}
+            : t_decl(std::move(span), t_decl_type::RECORD), record_template(record_template), name(name) 
+        {}
 
         t_record_template* record_template;
         t_identifier* name;
@@ -382,26 +411,29 @@ namespace frontend::scan::ast {
 
     struct t_module_decl : t_decl {
         t_module_decl(util::t_span span, t_identifier* name, t_decl_ptrs decls)
-            : t_decl(std::move(span), t_decl_type::MODULE), name(name), decls(std::move(decls)) {}
+            : t_decl(std::move(span), t_decl_type::MODULE), name(name), decls(std::move(decls)) 
+        {}
         
         t_identifier* name; // t_identifier
         t_decl_ptrs decls; // {t_item}
 
-        // ^^^ in the symbol table, a module declaration's decls are split into declarations and references.
+        // ^^^ in the symbol table, a module declaration's decls are split into decls and references.
     };
 
     // -- STATEMENTS
 
     struct t_return_stmt : t_stmt {
         t_return_stmt(util::t_span span, t_expr* value)
-            : t_stmt(std::move(span), t_stmt_type::RETURN), value(value) {}
+            : t_stmt(std::move(span), t_stmt_type::RETURN), value(value) 
+        {}
 
         t_expr* value;
     };
 
     struct t_compound_stmt : t_stmt {
         t_compound_stmt(util::t_span span, t_stmt_ptrs stmts)
-            : t_stmt(std::move(span), t_stmt_type::COMPOUND), stmts(std::move(stmts)) {}
+            : t_stmt(std::move(span), t_stmt_type::COMPOUND), stmts(std::move(stmts)) 
+        {}
 
         t_stmt_ptrs stmts;
     };
@@ -412,7 +444,8 @@ namespace frontend::scan::ast {
 
     struct t_ast {
         t_ast()
-            : root_ptr(arena.emplace<t_root>()) {}
+            : root_ptr(emplace<t_root>()) 
+        {}
 
         // if an import node is allocated into the arena, its important to add it to the "imports" vector
         
@@ -422,15 +455,13 @@ namespace frontend::scan::ast {
     public:
         t_root* root_ptr;
         std::vector<t_import_decl*> import_nodes;
-    
-        template <std::derived_from<t_node> T>
-        inline T* push(T node) {
-            T* ptr = arena.push<T>(std::move(node));
+        
+        template <std::derived_from<t_node> T, typename... ARGS>
+        T* emplace(ARGS... args);
 
-            if constexpr (std::is_same_v<T, t_import_item>)
-                import_nodes.push_back(ptr);
-            
-            return ptr; 
-        } 
+        template <std::derived_from<t_node> T>
+        inline T* push(T sym) {
+            return emplace<T, T>(std::move(sym));
+        }
     };
 }

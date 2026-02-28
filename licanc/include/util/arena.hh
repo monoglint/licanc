@@ -4,6 +4,7 @@
 #include <new>
 #include <memory>
 #include <deque>
+#include <optional>
 
 namespace util {
     template <std::size_t CAPACITY>
@@ -47,35 +48,42 @@ namespace util {
 
     /*
     
-    WARNING: ONLY PASS AGREGATE CLASSES INTO THIS STRUCT.
-    DESTRUCTORS WILL NOT CALL WHEN ARENA IS CLEARED
+    WARNING: DESTRUCTORS WILL NOT CALL WHEN ARENA IS CLEARED
     
     */
     template <std::size_t CHUNK_CAPACITY = 4096>
     struct t_arena {
         explicit t_arena()
-            : chunks(1) {};
+            : chunks(1) 
+        {};
 
         t_arena(const t_arena&) = delete;
         t_arena(t_arena&&) = delete;
         t_arena& operator=(const t_arena&) = delete;
         t_arena& operator=(t_arena&&) = delete;
 
+        // CAN RETURN NULLPTR
         template <typename T, typename... ARGS>
         [[nodiscard]]
-        constexpr inline T* emplace(ARGS&&... args) {
+        constexpr inline std::optional<T*> emplace(ARGS&&... args) {
             T* ptr = attempt_allocation<T, ARGS...>(std::forward<ARGS>(args)...);
 
             if (ptr)
                 return ptr;
 
             chunks.emplace_back();
-            return attempt_allocation<T, ARGS...>(std::forward<ARGS>(args)...);
+            T* ptr2 = attempt_allocation<T, ARGS...>(std::forward<ARGS>(args)...);
+
+            if (ptr2)
+                return ptr2;
+                
+            return std::nullopt;
         }
 
+        // CAN RETURN NULLPTR
         template <typename T>
         [[nodiscard]]
-        constexpr inline T* push(T&& obj) {
+        constexpr inline std::optional<T*> push(T&& obj) {
             return emplace<T, T>(std::move(obj));
         }
     private: 

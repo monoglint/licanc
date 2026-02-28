@@ -1,6 +1,6 @@
 /*
 
-this file holds all of the struct declarations and definitions for symbols
+this file holds all of the struct decls and definitions for symbols
 
 */
 
@@ -31,6 +31,14 @@ then there are different contexts in which the given property can be set.
 ^^
 THESE ARE NOT FULLY CONCRETELY SET. ONLY USE A NUMBER THAT CORRELATES TO A WORKER THAT IS BEING BUILT OR IS COMPLETE
 
+--
+--
+
+note: because properties must be initialized over different passes of the semantic analyzer, default constructors
+do not inherently exist (unless enums are being automatically established). it is encouraged that in the future,
+a visitor pattern is established to ensure that all symbols have their properties filled in with the context being
+based on what pass of the semantic analyzer was just performed
+
 */
 
 #pragma once
@@ -59,11 +67,13 @@ namespace frontend::sema::sym {
         RECORD,
         MODULE,
         GLOBAL,
+        PRIMATIVE,
     };
 
     struct t_decl : t_sym {
         t_decl(t_decl_type decl_type)
-            : decl_type(decl_type) {}
+            : decl_type(decl_type) 
+        {}
 
         t_decl_type decl_type;
     };
@@ -121,8 +131,9 @@ namespace frontend::sema::sym {
     };
 
     struct t_function_decl : t_decl {
-        t_function_decl()
-            : t_decl(t_decl_type::FUNCTION) {}
+        t_function_decl(t_function_template* function_template)
+            : t_decl(t_decl_type::FUNCTION), function_template(function_template)
+        {}
             
         /* 0 */ t_function_template* function_template; // t_function_template
     };
@@ -163,6 +174,10 @@ namespace frontend::sema::sym {
     };
 
     struct t_record_decl : t_decl {
+        t_record_decl()
+            : t_decl(t_decl_type::RECORD)
+        {}
+
         /* 0 */ t_record_template* record_template;
     };
 
@@ -171,6 +186,10 @@ namespace frontend::sema::sym {
     };
 
     struct t_primative_decl : t_decl {
+        t_primative_decl()
+            : t_decl(t_decl_type::PRIMATIVE) 
+        {}
+
         t_primative* primative;
     };
 
@@ -180,30 +199,38 @@ namespace frontend::sema::sym {
     };
 
     struct t_module_decl : t_decl {
-        /* 0 */ t_module_decl* parent_module;
-        /* 0 */ t_decls declarations;
+        t_module_decl(std::optional<t_module_decl*> parent_module, t_decls decls, std::vector<t_import_marker*> import_markers)
+            : t_decl(t_decl_type::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
+        {}
+
+        /* 0 */ std::optional<t_module_decl*> parent_module;
+        /* 0 */ t_decls decls;
         /* 0 */ std::vector<t_import_marker*> import_markers;
     };
 
     struct t_global_decl : t_decl {
+        t_global_decl()
+            : t_decl(t_decl_type::GLOBAL) {}
+
         /* _ */ manager::t_type_name_id global_type;
     };
 
     struct t_sym_table {
         t_sym_table()
-            : root_ptr(arena.emplace<t_root>()) {}
+            : root_ptr(emplace<t_root>()) {}
 
     private:
             util::t_arena<> arena;
 
     public:
         t_root* root_ptr;
-    
+        
+        template <std::derived_from<t_sym> T, typename... ARGS>
+        T* emplace(ARGS... args);
+
         template <std::derived_from<t_sym> T>
         inline T* push(T sym) {
-            T* ptr = arena.push<T>(std::move(sym));
-
-            return ptr; 
-        } 
+            return emplace<T, T>(std::move(sym));
+        }
     };
 }

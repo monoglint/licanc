@@ -6,15 +6,25 @@ primary interface header
 
 #pragma once
 
+#include <vector>
 #include <string>
 
 namespace licanc {
-    struct t_lican_config {
-        // directory for the entire lican project
-        std::string project_path = "";
-        std::string start_subpath = "";
-        std::string app_name = "untitled_lican_app";
+    // all contents of config is checked in validate_licanc_config
+    struct t_licanc_config {
+        const std::string project_path;
+        const std::string start_subpath;
+        const std::string app_name = "untitled_lican_app";
+
+        const std::vector<std::string> target_import_paths
     };
 
-    void compile(t_lican_config config);
+    enum class t_compile_result {
+        SUCCESS,
+        ERROR,
+        TERMINATED,
+    };
+
+    void assert_licanc_config_validity(t_licanc_config& config);
+    t_compile_result compile(t_licanc_config config);
 }

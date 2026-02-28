@@ -10,10 +10,12 @@ namespace util {
     requires std::is_integral_v<T_VALUE>
     struct t_safe_id {
         explicit t_safe_id(T_VALUE value)
-            : value(value) {}
+            : value(value) 
+        {}
 
         t_safe_id()
-            : value(INVALID_VALUE) {};
+            : value(INVALID_VALUE) 
+        {};
 
         // for getting the type when accessing a fully template-instantiated t_safe_id
         using t_value_type = T_VALUE;

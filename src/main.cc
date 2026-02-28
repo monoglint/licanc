@@ -34,7 +34,7 @@
         //                                                      \                   |          /
         //                                                       `----------------------------`
         
-        licanc::t_lican_config config;
+        licanc::t_licanc_config config;
 
         if (argc == 1) {
             config.project_path = "C:/Users/jghig/projects/c/lican_loader/hello_world";
