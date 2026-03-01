@@ -34,18 +34,25 @@
         //                                                      \                   |          /
         //                                                       `----------------------------`
         
-        licanc::t_licanc_config config;
+
+        std::string project_path;
+        std::string start_subpath;
 
         if (argc == 1) {
-            config.project_path = "C:/Users/jghig/projects/c/lican_loader/hello_world";
-            config.start_subpath = "main.li";
+            project_path = "C:/Users/jghig/projects/c/lican_loader/hello_world";
+            start_subpath = "main.li";
         }
         else if (argc == 3) {
-            config.project_path = argv[1];
-            config.start_subpath = argv[2];
-        }        
+            project_path = argv[1];
+            start_subpath = argv[2];
+        }
 
-        licanc::compile(std::move(config));
+        licanc::t_licanc_config config {
+            .project_path = project_path,
+            .start_subpath = start_subpath
+        };
+
+        licanc::compile(config);
         
         return 0;
     }

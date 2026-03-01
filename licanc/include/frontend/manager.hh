@@ -53,6 +53,10 @@ namespace frontend::manager {
 
         [[nodiscard]]
         bool has_errors() const;
+
+        inline void clear() {
+            logs.clear();
+        }
     };
     
     enum class t_file_state {
@@ -67,21 +71,44 @@ namespace frontend::manager {
 
         std::string path;
         std::string source_code;
+        scan::token::t_tokens tokens;
         scan::ast::t_ast ast;
+        sema::sym::t_sym_table sym_table;
 
         // a list of files that need to be wiped if this one is during incremental compilation
-        // a file can only have moochers if its state is DONE (affirmed in manager.cc/handle_file_imports)
-        std::vector<t_file_id> moocher_ids;
+        // a file can only have dependents if its state is DONE (affirmed in manager.cc/handle_file_imports)
+        std::vector<t_file_id> dependent_ids;
+
+        // updated in recurse_mark_dirty()
+        std::vector<t_file_id> dirty_dependent_ids;
 
         t_logger logger;
 
         t_file_state state = t_file_state::SCAN_READY;
+        
+        // whether or not the current file's source code or a dependee's source code was changed
+        // note: this isnt an indicator for whether the file was just added
+        // do NOT modify this unless you are recurse_mark_dirty() by t_compilation_files
+        bool is_dirty = false;
+
+        // NOTE: this does not clear source_code
+        void clear();
+
+        // check if the source code has been modified since the last update to this file
+        // returns true if the source code has been refreshed
+        bool refresh_source_code();
     };
     
     struct t_compilation_files {
         enum class t_add_file_error {
             FILE_ALREADY_EXISTS,
+            COULDNT_OPEN_FILE,
             PATH_INVALID,
+        };
+
+        enum class t_delist_file_result {
+            SUCCESS,
+            FILE_DOESNT_EXIST,
         };
 
         using t_add_file_result = std::expected<t_file_id, t_add_file_error>; 
@@ -89,7 +116,15 @@ namespace frontend::manager {
         using t_get_const_file_result = std::optional<std::reference_wrapper<const t_compilation_file>>;
         using t_find_file_result = std::optional<t_file_id>;
 
+        t_compilation_files(const t_compilation_files&) = delete;
+        t_compilation_files(t_compilation_files&&) = delete;
+
+        std::vector<t_file_id> dirty_files;
+
+        // should be called internally to register a new file in a project.
         t_add_file_result add_file(std::string path);
+
+        t_delist_file_result delist_file(t_file_id file_id);
 
         [[nodiscard]]
         t_get_file_result get_file(t_file_id file_id);
@@ -103,12 +138,18 @@ namespace frontend::manager {
         [[nodiscard]]
         inline std::size_t size() const { return files.size(); }
 
+        [[nodiscard]]
+        std::vector<t_file_id> get_valid_files() const;
+
+        void recurse_mark_dirty(t_file_id start);
+
         // returns true if there is a singular error from at least one file
         [[nodiscard]]
         bool has_errors() const;
 
     private:
-        std::deque<t_compilation_file> files;
+        using t_file_entry = std::optional<t_compilation_file>; 
+        std::deque<t_file_entry> files;
     };
 
     struct t_compile_time_data {
@@ -134,22 +175,34 @@ namespace frontend::manager {
 
     // to check for errors, run files.has_errors()
     struct t_compilation_unit {
+        enum class t_delist_file_result {
+            SUCCESS,
+            FILE_NOT_LISTED,
+        };
+
         t_compilation_unit(t_frontend_config _config);
 
         t_frontend_config config;
         t_compile_time_data compile_time_data;
-
-        sema::sym::t_sym_table sym_table;
         
         t_compilation_files files;
 
         // compile or recompile the start_subpath file
         void compile();
-        
-        // compile or recompile a specifc target
-        void compile(t_file_id target_file_id);
 
-        void clear_file(t_file_id file_id);
+
+        // should be called internally when the file's path is discovered to be invalid, or if the file is found
+        // to have no mooches or is not mooching on another file
+        // this function is also in the unit because it requires unit level calls
+        t_delist_file_result delist_file(t_file_id file_id);
+    private:
+        void run_compiler_state_machine(t_file_id target_file_id);
+
+        // mark files dirty and remove deleted files
+        void refresh_files();
+
+        // call after refresh_files()
+        void recompile_dirty_files();
     };
 
     //

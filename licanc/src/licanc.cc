@@ -7,7 +7,7 @@
 #include "util/panic.hh"
 
 void licanc::assert_licanc_config_validity(licanc::t_licanc_config& config) {
-    config.project_path
+    config.
 }
 
 licanc::t_compile_result licanc::compile(licanc::t_licanc_config config) {

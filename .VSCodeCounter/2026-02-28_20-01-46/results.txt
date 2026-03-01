@@ -1,0 +1,81 @@
+Date : 2026-02-28 20:01:46
+Directory : c:\Users\jghig\projects\c\lican_loader
+Total : 37 files,  1532 codes, 363 comments, 532 blanks, all 2427 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C++      |         33 |      1,455 |        363 |        517 |      2,335 |
+| JSON     |          1 |         44 |          0 |          1 |         45 |
+| CMake    |          2 |         24 |          0 |          9 |         33 |
+| Markdown |          1 |          9 |          0 |          5 |         14 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                     | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                        |         37 |      1,532 |        363 |        532 |      2,427 |
+| . (Files)                                                                                |          3 |         67 |          0 |         12 |         79 |
+| licanc                                                                                   |         33 |      1,440 |        341 |        507 |      2,288 |
+| licanc (Files)                                                                           |          1 |         10 |          0 |          3 |         13 |
+| licanc\include                                                                           |         21 |      1,035 |        248 |        356 |      1,639 |
+| licanc\include (Files)                                                                   |          1 |         18 |          6 |          6 |         30 |
+| licanc\include\frontend                                                                  |         11 |        640 |        173 |        243 |      1,056 |
+| licanc\include\frontend (Files)                                                          |          2 |        116 |         21 |         53 |        190 |
+| licanc\include\frontend\scan                                                             |          4 |        324 |         93 |        118 |        535 |
+| licanc\include\frontend\sema                                                             |          5 |        200 |         59 |         72 |        331 |
+| licanc\include\util                                                                      |          9 |        377 |         69 |        107 |        553 |
+| licanc\src                                                                               |         11 |        395 |         93 |        148 |        636 |
+| licanc\src (Files)                                                                       |          2 |        220 |         40 |         76 |        336 |
+| licanc\src\frontend                                                                      |          7 |        147 |         51 |         65 |        263 |
+| licanc\src\frontend\scan                                                                 |          3 |         21 |          0 |         15 |         36 |
+| licanc\src\frontend\sema                                                                 |          4 |        126 |         51 |         50 |        227 |
+| licanc\src\util                                                                          |          2 |         28 |          2 |          7 |         37 |
+| src                                                                                      |          1 |         25 |         22 |         13 |         60 |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                                 | language | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\jghig\projects\c\lican_loader\CMakeLists.txt                                    | CMake    |         14 |          0 |          6 |         20 |
+| c:\Users\jghig\projects\c\lican_loader\CMakePresets.json                                 | JSON     |         44 |          0 |          1 |         45 |
+| c:\Users\jghig\projects\c\lican_loader\README.md                                         | Markdown |          9 |          0 |          5 |         14 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\CMakeLists.txt                             | CMake    |         10 |          0 |          3 |         13 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\manager.hh                | C++      |        106 |         12 |         44 |        162 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\manager_types.hh          | C++      |         10 |          9 |          9 |         28 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\ast.hh               | C++      |        293 |         80 |         98 |        471 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\lexer.hh             | C++      |          9 |          0 |          6 |         15 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\parser.hh            | C++      |          8 |          0 |          4 |         12 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\token.hh             | C++      |         14 |         13 |         10 |         37 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\full_passer.hh       | C++      |          9 |          0 |          6 |         15 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\sema.hh              | C++      |         28 |          0 |          8 |         36 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\semantic_analyzer.hh | C++      |          6 |          5 |          4 |         15 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\sym.hh               | C++      |        143 |         49 |         48 |        240 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\sym_registrar.hh     | C++      |         14 |          5 |          6 |         25 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\licanc.hh                          | C++      |         18 |          6 |          6 |         30 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\ansi_format.hh                | C++      |         34 |          0 |          1 |         35 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\arena.hh                      | C++      |         74 |          7 |         21 |        102 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\hash.hh                       | C++      |         10 |          0 |          3 |         13 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\intern_pool.hh                | C++      |         30 |          0 |         10 |         40 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\panic.hh                      | C++      |         16 |          0 |          4 |         20 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\safe_id.hh                    | C++      |         51 |          1 |         15 |         67 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\span.hh                       | C++      |         15 |          0 |          6 |         21 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\vector_hasher.hh              | C++      |         17 |         30 |          6 |         53 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\include\util\weird_arena.hh                | C++      |        130 |         31 |         41 |        202 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\scan\ast.cc                   | C++      |         10 |          0 |          5 |         15 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\scan\lexer.cc                 | C++      |          3 |          0 |          2 |          5 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\scan\parser.cc                | C++      |          8 |          0 |          8 |         16 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\sema\full_passer.cc           | C++      |          3 |          0 |          2 |          5 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\sema\semantic_analyzer.cc     | C++      |         21 |          0 |          8 |         29 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\sema\sym.cc                   | C++      |          8 |          0 |          4 |         12 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\frontend\sema\sym_registrar.cc         | C++      |         94 |         51 |         36 |        181 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\licanc.cc                              | C++      |         20 |          1 |          6 |         27 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\manager.cc                             | C++      |        200 |         39 |         70 |        309 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\util\panic.cc                          | C++      |         21 |          2 |          5 |         28 |
+| c:\Users\jghig\projects\c\lican_loader\licanc\src\util\span.cc                           | C++      |          7 |          0 |          2 |          9 |
+| c:\Users\jghig\projects\c\lican_loader\src\main.cc                                       | C++      |         25 |         22 |         13 |         60 |
+| Total                                                                                    |          |      1,532 |        363 |        532 |      2,427 |
++------------------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

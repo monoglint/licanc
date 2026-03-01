@@ -16,7 +16,7 @@ namespace licanc {
         const std::string start_subpath;
         const std::string app_name = "untitled_lican_app";
 
-        const std::vector<std::string> target_import_paths
+        const std::vector<std::string> target_import_paths;
     };
 
     enum class t_compile_result {

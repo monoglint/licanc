@@ -89,7 +89,7 @@ namespace frontend::sema::sym {
     
     struct t_module_decl;
     struct t_root : t_sym { // index 0
-        /* 0 */ std::vector<t_module_decl*> file_modules; // {t_module_decl}
+        /* 0 */ t_module_decl* global_module;
     };
 
     struct t_type_name_template_parameter : t_sym {
@@ -193,9 +193,9 @@ namespace frontend::sema::sym {
         t_primative* primative;
     };
 
-    struct t_import_marker : t_sym { 
-        // this target module is essentially any module that is a direct child of t_root. 
-        t_module_decl* get_file_module;
+    struct t_import_marker : t_sym {
+        // a pointer to the global module of another already semantically analyzed file
+        t_module_decl* target_module;
     };
 
     struct t_module_decl : t_decl {
@@ -216,14 +216,13 @@ namespace frontend::sema::sym {
     };
 
     struct t_sym_table {
-        t_sym_table()
-            : root_ptr(emplace<t_root>()) {}
+        t_sym_table() {}
 
     private:
-            util::t_arena<> arena;
+        util::t_arena<> arena;
 
     public:
-        t_root* root_ptr;
+        t_root* root_ptr; // initialized in semantic_analyzer.cc
         
         template <std::derived_from<t_sym> T, typename... ARGS>
         T* emplace(ARGS... args);
@@ -231,6 +230,10 @@ namespace frontend::sema::sym {
         template <std::derived_from<t_sym> T>
         inline T* push(T sym) {
             return emplace<T, T>(std::move(sym));
+        }
+
+        inline void clear() {
+            arena.clear();
         }
     };
 }

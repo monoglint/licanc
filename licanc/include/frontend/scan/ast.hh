@@ -153,14 +153,14 @@ namespace frontend::scan::ast {
     };
 
     struct t_template_argument;
-
+    struct t_scope_reference_expr;
     // math..pi
     struct t_scope_resolution_expr : t_expr {
-        t_scope_resolution_expr(util::t_span span, t_expr* operand0, t_identifier* operand1, std::vector<t_template_argument*> template_arguments = {})
+        t_scope_resolution_expr(util::t_span span, t_scope_reference_expr* operand0, t_identifier* operand1, std::vector<t_template_argument*> template_arguments = {})
             : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1), template_arguments(std::move(template_arguments))
          {}
 
-        t_expr* operand0;
+        t_scope_reference_expr* operand0;
         t_identifier* operand1;
 
         std::vector<t_template_argument*> template_arguments; // {t_template_argument}
@@ -443,9 +443,7 @@ namespace frontend::scan::ast {
     //
 
     struct t_ast {
-        t_ast()
-            : root_ptr(emplace<t_root>()) 
-        {}
+        t_ast() {}
 
         // if an import node is allocated into the arena, its important to add it to the "imports" vector
         
@@ -462,6 +460,10 @@ namespace frontend::scan::ast {
         template <std::derived_from<t_node> T>
         inline T* push(T sym) {
             return emplace<T, T>(std::move(sym));
+        }
+
+        inline void clear() {
+            arena.clear();
         }
     };
 }

@@ -25,7 +25,7 @@ namespace {
     bool assert_identifier_declarability(sema::sym_registrar::t_registrar_context& context, sema::sym::t_module_decl* module_decl_sym, scan::ast::t_identifier* identifier_node) {
         if (!check_identifier_declarability(module_decl_sym, identifier_node)) {
             std::string identifier = context.compile_time_data.identifier_pool.get(identifier_node->identifier_id).value().get(); // explicit bypass
-            context.logger.add_error(context.file_id, identifier_node->span, "Multiple decls of " + identifier);
+            context.logger.add_error(identifier_node->span, "Multiple decls of " + identifier);
             return false;
         }
 
@@ -112,16 +112,14 @@ namespace {
     }
 
     void walk(t_registrar_context& context, scan::ast::t_import_decl* node, sema::sym::t_module_decl* parent_module_sym) {
-        // by lican rules, an imported file's module should be fully finished before the analyzer even hits the current file
-        sema::sym::t_root* root_sym = context.sym_table.root_ptr;
-        
-        if (node->resolved_file_id.get() >= root_sym->file_modules.size())
-            util::panic("The requested file (" + std::to_string(node->resolved_file_id.get()) + ") was not recognized by the semantic analyzer.");
-        
-        sema::sym::t_module_decl* target_file_module_sym = root_sym->file_modules[node->resolved_file_id.get()];
+        frontend::manager::t_compilation_files::t_get_file_result get_file_result = context.files.get_file(node->resolved_file_id);
+
+        util::panic_assert(get_file_result.has_value(), "The symbol registrar attempted to locate the symbol table of a file that does not exist when processing an import.");
+
+        sema::sym::t_module_decl* target_module_sym = get_file_result.value().get().sym_table.root_ptr->global_module;
 
         auto* import_marker_sym = context.sym_table.push<sema::sym::t_import_marker>({
-            .get_file_module = target_file_module_sym
+            .target_module = target_module_sym
         });        
 
         parent_module_sym->import_markers.push_back(import_marker_sym);
@@ -168,11 +166,10 @@ namespace {
     }
 
     void walk(t_registrar_context& context, scan::ast::t_root* node) {
-        auto* file_module_sym = context.sym_table.emplace<sema::sym::t_module_decl>();
+        sema::sym::t_module_decl* global_module_sym = context.sym_table.emplace<sema::sym::t_module_decl>();
+        context.sym_table.root_ptr->global_module = global_module_sym;
 
-        context.sym_table.root_ptr->file_modules.push_back(file_module_sym);
-
-        eval_decls(context, node->decls, file_module_sym);
+        eval_decls(context, node->decls, global_module_sym);
     }
 }
 

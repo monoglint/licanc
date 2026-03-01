@@ -57,6 +57,10 @@ namespace util {
             : chunks(1) 
         {};
 
+        ~t_arena() {
+            clear();
+        }
+
         t_arena(const t_arena&) = delete;
         t_arena(t_arena&&) = delete;
         t_arena& operator=(const t_arena&) = delete;
@@ -85,6 +89,10 @@ namespace util {
         [[nodiscard]]
         constexpr inline std::optional<T*> push(T&& obj) {
             return emplace<T, T>(std::move(obj));
+        }
+
+        inline void clear() {
+            chunks.clear();
         }
     private: 
         std::deque<t_arena_chunk<CHUNK_CAPACITY>> chunks;

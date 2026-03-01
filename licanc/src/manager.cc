@@ -13,11 +13,20 @@
 #include "util/panic.hh"
 
 namespace {
-    std::optional<std::string> open_file(std::string file_path) {
+    enum class t_open_file_error {
+        COULDNT_OPEN_FILE,
+        PATH_INVALID
+    };
+
+    using t_open_file_result = std::expected<std::string, t_open_file_error>;
+    t_open_file_result open_file(std::string file_path) {
+        if (!std::filesystem::exists(file_path))
+            return std::unexpected(t_open_file_error::PATH_INVALID);
+
         std::ifstream input_file(file_path, std::ios::binary);
 
         if (!input_file || !input_file.is_open())
-            return std::nullopt;
+            return std::unexpected(t_open_file_error::COULDNT_OPEN_FILE);
 
         return std::string(std::istreambuf_iterator<char>(input_file), std::istreambuf_iterator<char>());    
     }
@@ -65,7 +74,7 @@ namespace {
                 file_stack.emplace_back(add_file_result.value());
                 import_decl_node->resolved_file_id = add_file_result.value();
 
-                unit.files.get_file(add_file_result.value()).value().get().moocher_ids.push_back(file_id);
+                unit.files.get_file(add_file_result.value()).value().get().dependent_ids.push_back(file_id);
             }
             else if (add_file_result.error() == frontend::manager::t_compilation_files::t_add_file_error::FILE_ALREADY_EXISTS) {
                 frontend::manager::t_file_id found_file_id = unit.files.find_file(absolute_file_path).value(); // explicit bypass
@@ -73,11 +82,8 @@ namespace {
 
                 frontend::manager::t_compilation_file& found_file = unit.files.get_file(found_file_id).value(); //explicit bypass
                 if (found_file.state == frontend::manager::t_file_state::DONE)
-                    found_file.moocher_ids.push_back(file_id);
+                    found_file.dependent_ids.push_back(file_id);
             }
-                
-                // note: if the existing file is RECOMPILE_READY, then mark it as scan ready and put it back in the file stack.
-
             else if (add_file_result.error() == frontend::manager::t_compilation_files::t_add_file_error::PATH_INVALID)
                 file.logger.add_error(import_decl_node->span, "The file \\" + absolute_file_path + "\" does not exist.");
         }
@@ -88,7 +94,9 @@ namespace {
 
         // not implemented yet
         frontend::scan::lexer::lex(frontend::scan::lexer::t_lexer_context{});
-        frontend::scan::parser::parse(frontend::scan::parser::t_parser_context{});
+        frontend::scan::parser::parse(frontend::scan::parser::t_parser_context{
+            .ast = file.ast
+        });
 
         handle_file_imports(unit, file_id, file, file_stack);
     }
@@ -100,32 +108,13 @@ namespace {
 
         frontend::sema::semantic_analyzer::analyze(unit, file_id);
     }
-
-    /*
-    
-    if a file is about to be recompiled, moochers need to be cleared and prepared for recompilation
-    
-    tbh this function is a tiny bit hacky, because it relies on the state machine and the state maachine relies on it
-    to get the job done, but it works and it is
-
-    even though moochers are registered after they are done being scanned, they will ALWAYS BE DONE by the time they are recognized as a moocher.
-    */
-    void invalidate_file_moochers(frontend::manager::t_compilation_unit& unit, frontend::manager::t_compilation_file& file, std::vector<frontend::manager::t_file_id>& file_stack) {
-        for (frontend::manager::t_file_id moocher_id : file.moocher_ids) {
-            file_stack.push_back(moocher_id);
-        }
-    }
 }
 
 std::string frontend::manager::t_log::to_string(bool format) const {
     std::stringstream buffer;
 
     if (format) {
-        buffer 
-            << util::ansi_format::LIGHT_GRAY
-            << span.start.to_string()
-            << ":\n"
-            << util::ansi_format::RESET;
+        buffer << util::ansi_format::LIGHT_GRAY << span.start.to_string() << ":\n" << util::ansi_format::RESET;
 
         switch (log_type) {
             case t_log_type::MESSAGE:
@@ -172,27 +161,52 @@ std::string frontend::manager::t_logger::to_string(bool format) const {
     return buffer.str();
 }
 
+void frontend::manager::t_compilation_file::clear() {
+    logger.clear();
+    tokens.clear();
+    ast.clear();
+    sym_table.clear();
+
+    dependent_ids.clear();
+    dirty_dependent_ids.clear();
+    is_dirty = false;
+}
+
+bool frontend::manager::t_compilation_file::refresh_source_code() {
+    t_open_file_result open_file_result = open_file(path);
+
+    if (!open_file_result.has_value()) {
+        std::cerr << "Licanc was unable to open \"" 
+            << path 
+            << "\" to compare to a cached version. The compiler will not register any changes made to the file since the last compilation.\n";
+
+        return false;
+    }
+    
+    if (open_file_result.value() == source_code)
+        return false;
+    
+    source_code = open_file_result.value();
+
+    return true;
+}
+
 bool frontend::manager::t_logger::has_errors() const {
     return std::find_if(logs.begin(), logs.end(), [](const t_log& log) -> bool {
         return log.log_type == t_log_type::ERROR;
     }) != logs.end();
 }
 
-// base function for parse_file(), analyze_file(), and others
-void frontend::manager::t_compilation_unit::compile(frontend::manager::t_file_id target_file_id) {
-    std::vector<manager::t_file_id> file_stack;
+void frontend::manager::t_compilation_unit::run_compiler_state_machine(t_file_id target_file_id) {
+        std::vector<manager::t_file_id> file_stack;
     file_stack.emplace_back(target_file_id);
 
     while (!file_stack.empty()) {
         manager::t_file_id file_id = file_stack.back();
 
         manager::t_compilation_files::t_get_file_result get_file_result = files.get_file(file_id);
-        // sanity recheck
-        if (!get_file_result.has_value()) {
-            std::cerr << "For some reason, there was a non existent file in the file stack. Might wanna check that out.\n";
-            file_stack.pop_back();
-            continue;
-        }
+
+        util::panic_assert(get_file_result.has_value(), "State machine encountered a nonexistent file in the stack.");
 
         t_compilation_file& file = get_file_result.value();
 
@@ -205,23 +219,16 @@ void frontend::manager::t_compilation_unit::compile(frontend::manager::t_file_id
             case t_file_state::SEMA_READY:
                 analyze_file(*this, file_id);
                 file.state = t_file_state::DONE;
-
-                file_stack.pop_back();
-                std::cout << "Finished frontend for [" << file.path << "].\n"; 
-                std::cout << file.logger.to_string();
                 break;
 
-            // only occurs when we want to recompile
-            case t_file_state::DONE:
-                invalidate_file_moochers(*this, file, file_stack);
-                clear_file(file_id);
-                file.state = t_file_state::SCAN_READY;
+            case t_file_state::DONE:       
+                file_stack.pop_back();
+                std::cout << "Finished frontend for [" << file.path << "].\n"; 
+                std::cout << file.logger.to_string();         
                 break;
         }
     }
 }
-
-// -> t_compilation_unit
 
 frontend::manager::t_compilation_files::t_add_file_result frontend::manager::t_compilation_files::add_file(std::string path) {
     bool file_exists = std::find_if(files.begin(), files.end(), [&path](t_compilation_file& file) -> bool {
@@ -231,42 +238,117 @@ frontend::manager::t_compilation_files::t_add_file_result frontend::manager::t_c
     if (file_exists)
         return std::unexpected(t_add_file_error::FILE_ALREADY_EXISTS);
     
-    std::optional<std::string> open_file_result = open_file(path);
+    t_open_file_result open_file_result = open_file(path);
 
-    if (!open_file_result.has_value())
-        return std::unexpected(t_add_file_error::PATH_INVALID);
+    if (!open_file_result.has_value()) {
+        switch (open_file_result.error()) {
+            case t_open_file_error::COULDNT_OPEN_FILE:
+                return std::unexpected(t_add_file_error::COULDNT_OPEN_FILE);
+            case t_open_file_error::PATH_INVALID:
+                return std::unexpected(t_add_file_error::PATH_INVALID);
+        }
+    }
 
     files.emplace_back(path, open_file_result.value());
+
     return t_file_id{files.size() - 1};
 }
 
+frontend::manager::t_compilation_files::t_delist_file_result frontend::manager::t_compilation_files::delist_file(t_file_id file_id) {
+    if (file_id.get() >= files.size())
+        return t_delist_file_result::FILE_DOESNT_EXIST;
+
+    // intentionally not throwing an error for if the file was already delisted because i don't really know why i should
+    
+    // assignment to std::nullopt should free that space
+    files[file_id.get()] = std::nullopt;
+
+    return t_delist_file_result::SUCCESS;
+}
+
 frontend::manager::t_compilation_files::t_get_file_result frontend::manager::t_compilation_files::get_file(t_file_id file_id) {
-    if (static_cast<std::size_t>(file_id) >= files.size())
+    if (file_id.get() >= files.size())
         return std::nullopt;
 
-    return files.at(static_cast<std::size_t>(file_id));
+    std::size_t numeric_file_id = file_id.get();
+
+    if (!files[numeric_file_id].has_value())
+        return std::nullopt;
+
+    return files[numeric_file_id].value();
 }
 
 frontend::manager::t_compilation_files::t_get_const_file_result frontend::manager::t_compilation_files::get_file(t_file_id file_id) const {
-    if (static_cast<std::size_t>(file_id) >= files.size())
+    if (file_id.get() >= files.size())
         return std::nullopt;
 
-    return std::cref(files.at(static_cast<std::size_t>(file_id)));
+    std::size_t numeric_file_id = file_id.get();
+
+    if (!files[numeric_file_id].has_value())
+        return std::nullopt;
+
+    return std::cref(files[numeric_file_id].value());
 }
 
 frontend::manager::t_compilation_files::t_find_file_result frontend::manager::t_compilation_files::find_file(std::string path) const {
-    for (std::size_t i = 0; i < files.size(); i++) {
-        if (files[i].path == path)
-            return t_file_id{i};
+    for (std::size_t file_id = 0; file_id < files.size(); file_id++) {
+        if (files[file_id].has_value() && files[file_id].value().path == path)
+            return t_file_id{file_id};
     }
 
     return std::nullopt;
+}
+
+std::vector<frontend::manager::t_file_id> frontend::manager::t_compilation_files::get_valid_files() const {
+    std::vector<t_file_id> valid_files;
+
+    for (std::size_t file_id = 0; const t_file_entry& file_entry : files) {
+        if (file_entry.has_value())
+            valid_files.push_back(t_file_id{file_id});
+    }
+
+    return valid_files;
 }
 
 bool frontend::manager::t_compilation_files::has_errors() const {
     return std::find_if(files.begin(), files.end(), [](const t_compilation_file& file) -> bool {
         return file.logger.has_errors();
     }) != files.end();
+}
+
+// call this once the seed file_id 
+void frontend::manager::t_compilation_files::recurse_mark_dirty(t_file_id start) {
+    std::vector<t_file_id> file_stack;
+
+    if (!get_file(start).has_value())
+        util::panic("The central dependent invalidator attempted to invalidate a nonexistent file.");
+
+    file_stack.push_back(start);
+
+    while (!file_stack.empty()) {
+        t_file_id file_id = file_stack.back();
+        t_compilation_files::t_get_file_result get_file_result = get_file(file_id).value();
+        
+        t_compilation_file& file = get_file_result.value(); // checked later in the loop and refresh_files()
+
+        if (file.is_dirty)
+            continue;
+
+        file.is_dirty = true;
+        dirty_files.push_back(file_id);
+
+        for (t_file_id dependent_id : file.dependent_ids) {
+            t_compilation_files::t_get_file_result get_dependent_file_result = get_file(dependent_id);
+
+            if (!get_dependent_file_result.has_value())
+                util::panic("The central dependent invalidator caught a listed dependent file that does not exist.");
+            
+            t_compilation_file& dependent_file = get_dependent_file_result.value();
+            dependent_file.dirty_dependent_ids.push_back(file_id);
+
+            file_stack.push_back(dependent_id);
+        }
+    }
 }
 
 // -> namespace bound
@@ -280,16 +362,102 @@ frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _con
     util::panic_assert(add_file_result.has_value(), "Failed to create root file for the primary compilation unit.");
 }
 
-void frontend::manager::t_compilation_unit::compile() {
-    t_compilation_files::t_find_file_result find_file_result = files.find_file(config.project_path + '/' + config.start_subpath);
-    
-    util::panic_assert(find_file_result.has_value(), "Could not locate a root file to begin compilation from.");
+/*
 
-    compile(find_file_result.value());
+this function should wipe the file from the compier, make its id available, and make all of its dependents recompile
+
+*/
+frontend::manager::t_compilation_unit::t_delist_file_result frontend::manager::t_compilation_unit::delist_file(t_file_id file_id) {
+    t_compilation_files::t_get_file_result get_file_result = files.get_file(file_id);
+
+    if (!get_file_result.has_value())
+        return t_delist_file_result::FILE_NOT_LISTED;
+
+    std::vector<t_file_id> file_dependent_ids = get_file_result.value().get().dependent_ids;
+
+    // this is gonna turn that file into garbage, don't bother even getting file by varaible before this
+    files.delist_file(file_id);
+
+    for (t_file_id dependent_id : file_dependent_ids) {
+        files.recurse_mark_dirty(dependent_id);
+    }
 }
 
-void frontend::manager::t_compilation_unit::clear_file(t_file_id file_id) {
+void frontend::manager::t_compilation_unit::compile() {
+    t_compilation_files::t_find_file_result find_file_result = files.find_file(config.project_path + '/' + config.start_subpath);
+    if (!find_file_result.has_value()) {
+        std::cerr << "Could not locate a root file to begin compilation from. Please try again.\n";
+        return;
+    }
     
+    t_file_id root_file_id = find_file_result.value();
+    t_compilation_file& root_file = files.get_file(root_file_id).value();
+
+    if (root_file.state == t_file_state::SCAN_READY) {
+        run_compiler_state_machine(root_file_id);
+        return;
+    }
+
+    refresh_files();
+    recompile_dirty_files();
+}
+
+void frontend::manager::t_compilation_unit::refresh_files() {
+    for (t_file_id file_id : files.get_valid_files()) {
+        t_compilation_files::t_get_file_result get_file_result = files.get_file(file_id);
+        t_compilation_file& file = get_file_result.value();
+
+        // first check if the file even "exists"
+        if (!std::filesystem::exists(file.path)) {
+            delist_file(file_id);
+            continue;
+        }
+
+        // potentially remove files with no connections to others after not being referenced for multiple recompilations
+
+        if (file.refresh_source_code()) {
+            files.recurse_mark_dirty(file_id);
+            continue;
+        }
+    }
+}
+
+void frontend::manager::t_compilation_unit::recompile_dirty_files() {
+    files.dirty_files.erase(std::remove_if(files.dirty_files.begin(), files.dirty_files.end(), [&](t_file_id dirty_file_id) {
+        const t_compilation_file& dirty_file = files.get_file(dirty_file_id).value(); // checked earlier in recurse_mark_dirty
+        const bool is_file_dependent = dirty_file.dirty_dependent_ids.size() > 0;
+
+        return is_file_dependent;
+    }));
+
+    while (files.dirty_files.size() > 0) {
+        t_file_id dirty_file_id = files.dirty_files.back();
+        t_compilation_file& dirty_file = files.get_file(dirty_file_id).value();
+        std::vector<t_file_id> dependents = dirty_file.dependent_ids;
+
+        dirty_file.clear(); // wipe dirty file of everything and start anew
+        dirty_file.state = t_file_state::SCAN_READY;
+
+        // state machine prevents reprocessing due to states
+        run_compiler_state_machine(dirty_file_id);
+
+        files.dirty_files.erase(files.dirty_files.end() - 1);
+
+        // all dependents of dirty files were marked dirty too
+        for (t_file_id dependent_file_id : dependents) {
+            t_compilation_file& dependent_file = files.get_file(dependent_file_id).value();
+            // clear current file from dependent file's dirty dependencies
+            for (std::size_t index = 0; t_file_id file_id : dependent_file.dirty_dependent_ids) {
+                //              now clean
+                if (file_id == dirty_file_id) {
+                    dependent_file.dirty_dependent_ids.erase(dependent_file.dirty_dependent_ids.begin() + index);
+                    break;
+                }
+            }
+
+            files.dirty_files.push_back(dependent_file_id);
+        }
+    }
 }
 
 std::string frontend::manager::standardize_import_path(std::string project_path, std::string path) {
