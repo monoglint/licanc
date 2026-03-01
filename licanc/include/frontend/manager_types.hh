@@ -13,13 +13,13 @@ DO NOT DOWNCAST THESE TYPES, THEY SHOULD REMAIN std::size_t
 
 
 namespace frontend::manager {
-    // index of t_compilation_file in t_compilation_unit::files
+    // index of t_frontend_file in t_frontend_unit::files
     using t_file_id = util::t_safe_id<struct t_file_id_tag>; 
 
-    // index of std::string in t_compilation_unit::identifier_pool
+    // index of std::string in t_frontend_unit::identifier_pool
     using t_identifier_id = util::t_safe_id<struct t_identifier_id_tag>;
 
-    // index of std::string in t_compilation_unit::string_literal_pool
+    // index of std::string in t_frontend_unit::string_literal_pool
     using t_string_literal_id = util::t_safe_id<struct t_string_literal_id_tag>;
 
     using t_type_name_id = util::t_safe_id<struct t_type_name_id_tag>;

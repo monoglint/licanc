@@ -17,7 +17,7 @@ namespace frontend::sema::sym_registrar {
         manager::t_file_id file_id;
         manager::t_logger& logger;
         manager::t_compile_time_data& compile_time_data;
-        manager::t_compilation_files& files;
+        manager::t_frontend_files& files;
         sema::sym::t_sym_table& sym_table;
         scan::ast::t_ast& ast;
     };

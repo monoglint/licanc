@@ -73,7 +73,7 @@ namespace {
         declare_symbol(context, parent_module_sym, decl_node->name, decl_sym);
     }
 
-    void walk(t_registrar_context& context, scan::ast::t_record_decl* decl_node, sema::sym::t_module_decl* parent_module_sym) {
+    void walk(t_registrar_context& context, scan::ast::t_struct_decl* decl_node, sema::sym::t_module_decl* parent_module_sym) {
         /*
         
         struct vector2<T>{ dec x: T = 0 dec y: T = 0 }
@@ -82,14 +82,14 @@ namespace {
         */
 
         auto* base_struct_sym = context.sym_table.push<sema::sym::t_record>(sema::sym::t_record{
-            .syntactic_record = decl_node->record_template->base
+            .syntactic_record = decl_node->struct_template->base
         });
 
-        auto* template_sym = context.sym_table.push<sema::sym::t_record_template>({
+        auto* template_sym = context.sym_table.push<sema::sym::t_struct_template>({
             .base = base_struct_sym
         });
 
-        auto* decl_sym = context.sym_table.emplace<sema::sym::t_record_decl>(template_sym);
+        auto* decl_sym = context.sym_table.emplace<sema::sym::t_struct_decl>(template_sym);
         
         declare_symbol(context, parent_module_sym, decl_node->name, decl_sym);        
     }
@@ -112,7 +112,7 @@ namespace {
     }
 
     void walk(t_registrar_context& context, scan::ast::t_import_decl* node, sema::sym::t_module_decl* parent_module_sym) {
-        frontend::manager::t_compilation_files::t_get_file_result get_file_result = context.files.get_file(node->resolved_file_id);
+        frontend::manager::t_frontend_files::t_get_file_result get_file_result = context.files.get_file(node->resolved_file_id);
 
         util::panic_assert(get_file_result.has_value(), "The symbol registrar attempted to locate the symbol table of a file that does not exist when processing an import.");
 
@@ -158,8 +158,8 @@ namespace {
                 case scan::ast::t_decl_type::MODULE:
                     walk(context, static_cast<scan::ast::t_module_decl*>(node), parent_module_sym); 
                     break;
-                case scan::ast::t_decl_type::RECORD:
-                    walk(context, static_cast<scan::ast::t_record_decl*>(node), parent_module_sym); 
+                case scan::ast::t_decl_type::STRUCT:
+                    walk(context, static_cast<scan::ast::t_struct_decl*>(node), parent_module_sym); 
                     break;
             }
         }

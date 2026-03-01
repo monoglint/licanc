@@ -64,7 +64,7 @@ namespace frontend::sema::sym {
 
     enum class t_decl_type {
         FUNCTION,
-        RECORD,
+        STRUCT,
         MODULE,
         GLOBAL,
         PRIMATIVE,
@@ -163,22 +163,22 @@ namespace frontend::sema::sym {
         /* _ */ t_decls initializers; // {t_initializer}
     };
 
-    struct t_record_inst {
+    struct t_struct_inst {
         t_record* record;
     };
 
-    struct t_record_template : t_sym {
+    struct t_struct_template : t_sym {
         /* 0 */ t_record* base; // t_record
-        /* _ */ t_insts<t_record_inst*> instantiations;
+        /* _ */ t_insts<t_struct_inst*> instantiations;
         /* _ */ std::vector<t_template_parameter*> template_parameters;
     };
 
-    struct t_record_decl : t_decl {
-        t_record_decl()
-            : t_decl(t_decl_type::RECORD)
+    struct t_struct_decl : t_decl {
+        t_struct_decl()
+            : t_decl(t_decl_type::STRUCT)
         {}
 
-        /* 0 */ t_record_template* record_template;
+        /* 0 */ t_struct_template* struct_template;
     };
 
     struct t_primative : t_decl {

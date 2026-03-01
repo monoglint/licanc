@@ -11,7 +11,7 @@ namespace frontend::sema {
         FLUID_REF,
     };
 
-    using t_type_name_decl_variant = std::variant<sym::t_record_decl*, sym::t_primative_decl*>;
+    using t_type_name_decl_variant = std::variant<sym::t_struct_decl*, sym::t_primative_decl*>;
     struct t_type_name {
         t_type_name_decl_variant declaration;
         t_type_name_qualifier qualifier;

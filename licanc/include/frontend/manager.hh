@@ -78,10 +78,10 @@ namespace frontend::manager {
 
         /*
         
-        used as a temporary marker to prevent duplication if t_compilation_files::recurse_mark_dirty
+        used as a temporary marker to prevent duplication if t_frontend_files::recurse_mark_dirty
         can also be used as general dirty identification after a recompilation is called and before the state machine runs
         
-        set to true recurse_mark_dirty() by t_compilation_files
+        set to true recurse_mark_dirty() by t_frontend_files
         set to false in recompile_dirty_files()
 
         */
@@ -93,8 +93,8 @@ namespace frontend::manager {
         void remove_dirty_dependency(t_file_id now_clean_dependency_id);
     };
     
-    struct t_compilation_file {
-        t_compilation_file(std::string path, std::string source_code)
+    struct t_frontend_file {
+        t_frontend_file(std::string path, std::string source_code)
             : path(std::move(path)), source_code(std::move(source_code)) {}
 
         // "inputs"
@@ -119,7 +119,7 @@ namespace frontend::manager {
         bool refresh_source_code();
     };
     
-    struct t_compilation_files {
+    struct t_frontend_files {
         enum class t_add_file_error {
             FILE_ALREADY_EXISTS,
             COULDNT_OPEN_FILE,
@@ -132,13 +132,13 @@ namespace frontend::manager {
         };
 
         using t_add_file_result = std::expected<t_file_id, t_add_file_error>; 
-        using t_get_file_result = std::optional<std::reference_wrapper<t_compilation_file>>;
-        using t_get_const_file_result = std::optional<std::reference_wrapper<const t_compilation_file>>;
+        using t_get_file_result = std::optional<std::reference_wrapper<t_frontend_file>>;
+        using t_get_const_file_result = std::optional<std::reference_wrapper<const t_frontend_file>>;
         using t_find_file_result = std::optional<t_file_id>;
 
-        t_compilation_files() = default;
-        t_compilation_files(const t_compilation_files&) = delete;
-        t_compilation_files(t_compilation_files&&) = delete;
+        t_frontend_files() = default;
+        t_frontend_files(const t_frontend_files&) = delete;
+        t_frontend_files(t_frontend_files&&) = delete;
 
         std::deque<t_file_id> dirty_files;
 
@@ -169,7 +169,7 @@ namespace frontend::manager {
         bool has_errors() const;
 
     private:
-        using t_file_entry = std::optional<t_compilation_file>; 
+        using t_file_entry = std::optional<t_frontend_file>; 
         std::deque<t_file_entry> files;
     };
 
@@ -195,18 +195,18 @@ namespace frontend::manager {
     };
 
     // to check for errors, run files.has_errors()
-    struct t_compilation_unit {
+    struct t_frontend_unit {
         enum class t_delist_file_result {
             SUCCESS,
             FILE_NOT_LISTED,
         };
 
-        t_compilation_unit(t_frontend_config _config);
+        t_frontend_unit(t_frontend_config _config);
 
         t_frontend_config config;
         t_compile_time_data compile_time_data;
         
-        t_compilation_files files;
+        t_frontend_files files;
 
         // compile or recompile the start_subpath file
         void compile();

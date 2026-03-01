@@ -38,7 +38,7 @@ namespace frontend::scan::ast {
         IMPORT,
         GLOBAL,
         FUNCTION,
-        RECORD,
+        STRUCT,
         MODULE,
     };
 
@@ -68,9 +68,11 @@ namespace frontend::scan::ast {
         STRING_LITERAL,
         UNARY,
         BINARY,
-        SCOPE_RESOLUTION,
-        TERNARY,
         SCOPE_REFERENCE,
+        MEMBER_REFERENCE,
+        SCOPE_RESOLUTION,
+        MEMBER_ACCESS,
+        TERNARY,
         CALL,
     };
 
@@ -80,6 +82,22 @@ namespace frontend::scan::ast {
         {}
 
         t_expr_type expr_type;
+    };
+
+    enum class t_typename_type {
+        NAMED,
+        INSTANTIATED,
+        QUALIFIED,
+        REFERENCED,
+        POINTERED
+    };
+
+    struct t_typename : t_node {
+        t_typename(util::t_span span, t_typename_type typename_type)
+            : t_node(span), typename_type(typename_type)
+        {}
+
+        t_typename_type typename_type;
     };
     
     template <typename T>
@@ -109,7 +127,7 @@ namespace frontend::scan::ast {
             : t_expr(std::move(span), t_expr_type::IDENTIFIER), identifier_id(identifier_id) 
         {}
         
-        // reference to within manager::t_compilation_unit
+        // reference to within manager::t_frontend_unit
         manager::t_identifier_id identifier_id;
     };
 
@@ -152,21 +170,48 @@ namespace frontend::scan::ast {
         token::t_token_type opr;
     };
 
-    struct t_template_argument;
-    struct t_scope_reference_expr;
-    // math..pi
+    struct t_scope_resolution_expr;
+    using t_scope_reference_variant = std::variant<t_identifier*, t_scope_resolution_expr*>;
+    // a::b() || a()
+    struct t_scope_reference_expr : t_expr {
+        t_scope_reference_expr(util::t_span span, t_scope_reference_variant reference)
+            : t_expr(std::move(span), t_expr_type::SCOPE_REFERENCE), reference(std::move(reference)) 
+        {}
+
+        t_scope_reference_variant reference;
+    };
+
+    struct t_member_access_expr;
+    using t_member_reference_variant = std::variant<t_identifier*, t_member_access_expr*>;
+    struct t_member_reference_expr : t_expr {
+        t_member_reference_expr(util::t_span span, t_member_reference_variant reference)
+            : t_expr(std::move(span), t_expr_type::MEMBER_REFERENCE), reference(std::move(reference))
+        {}
+
+        t_member_reference_variant reference;
+    };
+
+    // math::pi
     struct t_scope_resolution_expr : t_expr {
-        t_scope_resolution_expr(util::t_span span, t_scope_reference_expr* operand0, t_identifier* operand1, std::vector<t_template_argument*> template_arguments = {})
-            : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1), template_arguments(std::move(template_arguments))
+        t_scope_resolution_expr(util::t_span span, t_scope_reference_expr* operand0, t_identifier* operand1)
+            : t_expr(std::move(span), t_expr_type::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1)
          {}
 
         t_scope_reference_expr* operand0;
         t_identifier* operand1;
+    };
+    
+    // object.position.x
+    struct t_member_access_expr : t_expr {
+        t_member_access_expr(util::t_span span, t_member_reference_expr* operand0, t_identifier* operand1)
+            : t_expr(std::move(span), t_expr_type::MEMBER_ACCESS), operand0(operand0), operand1(operand1)
+        {}
 
-        std::vector<t_template_argument*> template_arguments; // {t_template_argument}
+        t_member_reference_expr* operand0;
+        t_identifier* operand1;
     };
 
-    // a > b ? x : y
+    // if a > b { } else { } <--- not actual compound statement, braces are parser resolved syntactic sugar
     struct t_ternary_expr : t_expr {
         t_ternary_expr(util::t_span span, t_expr* condition, t_expr* consequent, t_expr* alternate, token::t_token_type opr)
             : t_expr(std::move(span), t_expr_type::TERNARY), condition(condition), consequent(consequent), alternate(alternate), opr(opr) 
@@ -178,16 +223,6 @@ namespace frontend::scan::ast {
         token::t_token_type opr;
     };
 
-    using t_scope_reference_variant = std::variant<t_identifier*, t_scope_resolution_expr*>;
-    // a::b() || a()
-    struct t_scope_reference_expr : t_expr {
-        t_scope_reference_expr(util::t_span span, t_scope_reference_variant reference)
-            : t_expr(std::move(span), t_expr_type::SCOPE_REFERENCE), reference(std::move(reference)) 
-        {}
-
-        t_scope_reference_variant reference;
-    };
-
     /*
     
     templated initializer in templated struct scenario
@@ -196,27 +231,55 @@ namespace frontend::scan::ast {
     */
 
     struct t_call_expr : t_expr {
-        t_call_expr(util::t_span span, t_scope_reference_expr* callee, t_expr_ptrs arguments = {}, std::vector<t_template_argument*> template_arguments = {})
-            : t_expr(std::move(span), t_expr_type::CALL), callee(callee), arguments(std::move(arguments)), template_arguments(std::move(template_arguments)) 
+        t_call_expr(util::t_span span, t_scope_reference_expr* callee, t_expr_ptrs arguments = {})
+            : t_expr(std::move(span), t_expr_type::CALL), callee(callee), arguments(std::move(arguments))
         {}
 
         t_scope_reference_expr* callee; // t_scope_reference
         t_expr_ptrs arguments; // {t_expr}
-        std::vector<t_template_argument*> template_arguments;
     };
 
-    struct t_type;
-    using t_type_source_variant = std::variant<t_type*, t_scope_reference_expr*>;
-    // array<u8>
-    struct t_type : t_node {
-        t_type(util::t_span span, t_type_source_variant source, std::vector<t_template_argument*> template_arguments, token::t_token_type qualifier)
-            : t_node(std::move(span)), source(std::move(source)), template_arguments(std::move(template_arguments)), qualifier(qualifier) 
+    struct t_heap_expr : t_expr {
+        t_call_expr* instantiation;
+    };
+
+
+    struct t_named_typename : t_typename {
+        t_named_typename(util::t_span span, t_scope_reference_expr* base)
+            : t_typename(std::move(span), t_typename_type::NAMED), base(base)
         {}
 
-        t_type_source_variant source;
-        std::vector<t_template_argument*> template_arguments;
+        t_scope_reference_expr* base;
+    };
 
-        token::t_token_type qualifier;
+    struct t_instantiated_typename : t_typename {
+        t_instantiated_typename(util::t_span span)
+            : t_typename(std::move(span), t_typename_type::INSTANTIATED)
+        {}
+
+
+        /*
+        dec x: @u8
+        
+        */
+    };
+
+    struct t_qualified_typename : t_typename {
+        t_qualified_typename(util::t_span span)
+            : t_typename(std::move(span), t_typename_type::QUALIFIED)
+        {}
+    };
+
+    struct t_referenced_typename : t_typename {
+        t_referenced_typename(util::t_span span)
+            : t_typename(std::move(span), t_typename_type::REFERENCED)
+        {}
+    };
+
+    struct t_pointered_typename : t_typename {
+        t_pointered_typename(util::t_span span)
+            : t_typename(std::move(span), t_typename_type::POINTERED)
+        {}
     };
 
     /*
@@ -253,13 +316,13 @@ namespace frontend::scan::ast {
 
     // 
     struct t_global_decl : t_decl {
-        t_global_decl(util::t_span span, t_identifier* name, t_type* type, t_expr* value)
+        t_global_decl(util::t_span span, t_identifier* name, t_typename* type, t_expr* value)
             : t_decl(std::move(span), t_decl_type::GLOBAL), name(name), type(type), value(value) 
         {}
 
         t_identifier* name;
-        t_type* type; // t_type
-        t_expr* value; // expr
+        t_typename* type;
+        t_expr* value;
     };
 
     struct t_type_name_template_parameter : t_node {
@@ -268,7 +331,7 @@ namespace frontend::scan::ast {
 
     struct t_value_template_parameter : t_node {
         t_identifier* name;
-        t_type* type;
+        t_typename* type;
     };
 
     using t_template_parameter_variant = std::variant<t_type_name_template_parameter*, t_value_template_parameter*>;
@@ -280,33 +343,33 @@ namespace frontend::scan::ast {
         t_template_parameter_variant value;
     };
 
-    using t_template_argument_variant = std::variant<t_type*, t_expr*>;
+    using t_template_argument_value_variant = std::variant<t_typename*, t_expr*>;
     struct t_template_argument : t_node {
-        t_template_argument(util::t_span span, t_template_argument_variant value)
+        t_template_argument(util::t_span span, t_template_argument_value_variant value)
             : t_node(std::move(span)), value(std::move(value)) 
         {}
 
         // note: if value is a t_expr, then the value of the template argument must be proven to be a compile time constant
-        t_template_argument_variant value;
+        t_template_argument_value_variant value;
     };
 
     struct t_function_parameter : t_node {
-        t_function_parameter(util::t_span span, t_identifier* name, t_type* type)
+        t_function_parameter(util::t_span span, t_identifier* name, t_typename* type)
             : t_node(std::move(span)), name(name), type(type) 
         {}
 
         t_identifier* name;
-        t_type* type;
+        t_typename* type;
     };
     
     struct t_function : t_node {
-        t_function(util::t_span span, std::vector<t_function_parameter*> parameters, t_stmt* body, t_type* return_type)
+        t_function(util::t_span span, std::vector<t_function_parameter*> parameters, t_stmt* body, t_typename* return_type)
             : t_node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type) 
         {}
 
         std::vector<t_function_parameter*> parameters;
         t_stmt* body;
-        t_type* return_type;
+        t_typename* return_type;
     };
 
     struct t_function_template : t_node {
@@ -355,13 +418,13 @@ namespace frontend::scan::ast {
     };
 
     struct t_property : t_node {
-        t_property(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_type* type)
+        t_property(util::t_span span, token::t_token_type access_specifier, t_identifier* name, t_typename* type)
             : t_node(std::move(span)), access_specifier(access_specifier), name(name), type(type) 
         {}
 
         token::t_token_type access_specifier;
         t_identifier* name;
-        t_type* type;
+        t_typename* type;
     };
 
     struct t_record : t_node {
@@ -375,8 +438,8 @@ namespace frontend::scan::ast {
         t_finalizer* finalizer; // t_finalizer?
     };
 
-    struct t_record_template : t_node {
-        t_record_template(util::t_span span, t_record* base, std::vector<t_template_parameter*> template_parameters)
+    struct t_struct_template : t_node {
+        t_struct_template(util::t_span span, t_record* base, std::vector<t_template_parameter*> template_parameters)
             : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
         {}
 
@@ -384,12 +447,12 @@ namespace frontend::scan::ast {
         std::vector<t_template_parameter*> template_parameters;
     };
 
-    struct t_record_decl : t_decl {
-        t_record_decl(util::t_span span, t_record_template* record_template, t_identifier* name)
-            : t_decl(std::move(span), t_decl_type::RECORD), record_template(record_template), name(name) 
+    struct t_struct_decl : t_decl {
+        t_struct_decl(util::t_span span, t_struct_template* struct_template, t_identifier* name)
+            : t_decl(std::move(span), t_decl_type::STRUCT), struct_template(struct_template), name(name) 
         {}
 
-        t_record_template* record_template;
+        t_struct_template* struct_template;
         t_identifier* name;
     };
 
