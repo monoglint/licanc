@@ -32,9 +32,51 @@ namespace {
     }
 }
 
-// everything in this namespace could be a method of t_compilation_file
-// they are not methods to maintain encapsulation, and so manager.hh doesn't need to #include <stack>
+namespace frontend::manager {
 namespace {
+    // used by handle_file_imports to mark the current file as an added or existing file's dependency
+    // returns the file_id of the new dependency of the given file
+    /*
+    
+    file_id -> file_id of the file that is now a registered dependent of the file who's path is "absolute_file_path"
+    
+    */
+    t_file_id register_file_dependency(t_compilation_unit& unit, t_file_id file_id, const std::string& absolute_file_path) {
+        t_compilation_files::t_add_file_result add_file_result = unit.files.add_file(absolute_file_path);
+        
+        if (add_file_result.has_value()) {
+            t_file_id new_file_id = add_file_result.value();
+            t_compilation_file& new_file = unit.files.get_file(new_file_id).value();
+
+            new_file.dependency_data.dependent_ids.push_back(file_id);
+
+            return new_file_id;
+        }
+
+        else if (add_file_result.error() == t_compilation_files::t_add_file_error::FILE_ALREADY_EXISTS) {
+            t_file_id found_file_id = unit.files.find_file(absolute_file_path).value();
+            t_compilation_file& found_file = unit.files.get_file(found_file_id).value();
+            
+            found_file.dependency_data.dependent_ids.push_back(file_id);
+
+            return found_file_id;
+        }
+        
+        util::panic("An unreachable condition was reached by the file dependency registerer. Whether or not 'absolute_file_path' is valid was checked by the file dependency register's only caller.");
+    }
+
+    bool detect_file_interdependency(const t_compilation_unit& unit, t_file_id current_file_id, std::vector<t_file_id>& file_stack, const std::string& absolute_file_path) {
+        return std::find_if(file_stack.begin(), file_stack.end(), [&](t_file_id frame_file_id) -> bool {
+            if (current_file_id == frame_file_id)
+                return false;
+
+            t_compilation_files::t_get_const_file_result frame_get_file_result = unit.files.get_file(frame_file_id);
+            const t_compilation_file& frame_file = frame_get_file_result.value();
+
+            return frame_file.path == absolute_file_path;
+
+        }) != file_stack.end();
+    }
     /*
 
     lazily loading in all of the files we need should occur after parsing because we have just enough information to know what files we need to use.
@@ -43,71 +85,53 @@ namespace {
     after parsing. this lessens complexity
     
     */
-    void handle_file_imports(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, frontend::manager::t_compilation_file& file, std::vector<frontend::manager::t_file_id>& file_stack) {
+    void handle_file_imports(t_compilation_unit& unit, t_file_id current_file_id, t_compilation_file& file, std::vector<t_file_id>& file_stack) {
         // check if there is an include item anywhere in the ast.
-        for (frontend::scan::ast::t_import_decl* import_decl_node : file.ast.import_nodes) {
-            frontend::manager::t_compile_time_data::t_string_literal_pool::t_get_result get_string_result = 
+        for (scan::ast::t_import_decl* import_decl_node : file.ast.import_nodes) {
+            if (!import_decl_node->is_path_valid)
+                continue;
+
+            t_compile_time_data::t_string_literal_pool::t_get_result get_string_result = 
                 unit.compile_time_data.string_literal_pool.get(import_decl_node->absolute_file_path->string_literal_id);
 
-            const std::string& absolute_file_path = get_string_result.value(); // explicit bypass
+            const std::string& absolute_file_path = get_string_result.value();
 
-            // we're calling the file frame_file since we're iterating through indexes of a stack
-            bool interdependency_found = std::find_if(file_stack.begin(), file_stack.end(), [&absolute_file_path, &unit](frontend::manager::t_file_id frame_file_id) -> bool {
-                frontend::manager::t_compilation_files::t_get_file_result frame_get_file_result = unit.files.get_file(frame_file_id);
-                frontend::manager::t_compilation_file& frame_file = frame_get_file_result.value();
-
-                return frame_file.path == absolute_file_path;
-
-            }) != file_stack.end();
-
+            bool interdependency_found = detect_file_interdependency(unit, current_file_id, file_stack, absolute_file_path);
             if (interdependency_found) {
                 file.logger.add_error(import_decl_node->span, std::string("Including \\" + absolute_file_path + "\" results in interdependency (strictly forbidden!!!!)."));
 
                 // although continuing with a caught and non-inserted interdependency will lead to unresolved symbols later on,
                 // it is necessary to keep execution going so we can add those errors to the log pool.
-                return;
+                continue;
             }
 
-            frontend::manager::t_compilation_files::t_add_file_result add_file_result = unit.files.add_file(absolute_file_path);
-            
-            if (add_file_result.has_value()) {
-                file_stack.emplace_back(add_file_result.value());
-                import_decl_node->resolved_file_id = add_file_result.value();
+            t_file_id dependency_file_id = register_file_dependency(unit, current_file_id, absolute_file_path);
 
-                unit.files.get_file(add_file_result.value()).value().get().dependent_ids.push_back(file_id);
-            }
-            else if (add_file_result.error() == frontend::manager::t_compilation_files::t_add_file_error::FILE_ALREADY_EXISTS) {
-                frontend::manager::t_file_id found_file_id = unit.files.find_file(absolute_file_path).value(); // explicit bypass
-                import_decl_node->resolved_file_id = found_file_id;
-
-                frontend::manager::t_compilation_file& found_file = unit.files.get_file(found_file_id).value(); //explicit bypass
-                if (found_file.state == frontend::manager::t_file_state::DONE)
-                    found_file.dependent_ids.push_back(file_id);
-            }
-            else if (add_file_result.error() == frontend::manager::t_compilation_files::t_add_file_error::PATH_INVALID)
-                file.logger.add_error(import_decl_node->span, "The file \\" + absolute_file_path + "\" does not exist.");
+            import_decl_node->resolved_file_id = dependency_file_id;
+            file_stack.emplace_back(dependency_file_id);
         }
     }
 
-    void parse_file(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id, std::vector<frontend::manager::t_file_id>& file_stack) {
-        frontend::manager::t_compilation_file& file = unit.files.get_file(file_id).value();
+    void parse_file(t_compilation_unit& unit, t_file_id file_id, std::vector<t_file_id>& file_stack) {
+        t_compilation_file& file = unit.files.get_file(file_id).value();
 
         // not implemented yet
-        frontend::scan::lexer::lex(frontend::scan::lexer::t_lexer_context{});
-        frontend::scan::parser::parse(frontend::scan::parser::t_parser_context{
+        scan::lexer::lex(scan::lexer::t_lexer_context{});
+        scan::parser::parse(scan::parser::t_parser_context{
             .ast = file.ast
         });
 
         handle_file_imports(unit, file_id, file, file_stack);
     }
 
-    void analyze_file(frontend::manager::t_compilation_unit& unit, frontend::manager::t_file_id file_id) {
-        frontend::manager::t_compilation_files::t_get_file_result get_file_result = unit.files.get_file(file_id);
+    void analyze_file(t_compilation_unit& unit, t_file_id file_id) {
+        t_compilation_files::t_get_file_result get_file_result = unit.files.get_file(file_id);
 
         // GET_FILE_RESULT IS CONFIRMED TO EXIST BY THE STACK LOOP THIS FUNCITON IS CALLED IN
 
-        frontend::sema::semantic_analyzer::analyze(unit, file_id);
+        sema::semantic_analyzer::analyze(unit, file_id);
     }
+}
 }
 
 std::string frontend::manager::t_log::to_string(bool format) const {
@@ -161,15 +185,17 @@ std::string frontend::manager::t_logger::to_string(bool format) const {
     return buffer.str();
 }
 
-void frontend::manager::t_compilation_file::clear() {
+void frontend::manager::t_file_dependency_data::remove_dirty_dependency(t_file_id now_clean_dependency_id) {
+    std::erase_if(dirty_dependency_ids, [&](const t_file_id dirty_dependency_id) -> bool {
+        return dirty_dependency_id == now_clean_dependency_id;
+    });
+}
+
+void frontend::manager::t_compilation_file::clear_frontend_pass_data() {
     logger.clear();
     tokens.clear();
     ast.clear();
     sym_table.clear();
-
-    dependent_ids.clear();
-    dirty_dependent_ids.clear();
-    is_dirty = false;
 }
 
 bool frontend::manager::t_compilation_file::refresh_source_code() {
@@ -331,20 +357,22 @@ void frontend::manager::t_compilation_files::recurse_mark_dirty(t_file_id start)
         
         t_compilation_file& file = get_file_result.value(); // checked later in the loop and refresh_files()
 
-        if (file.is_dirty)
+        if (file.dependency_data.is_dirty) {
+            file_stack.pop_back();
             continue;
+        }
 
-        file.is_dirty = true;
+        file.dependency_data.is_dirty = true;
         dirty_files.push_back(file_id);
 
-        for (t_file_id dependent_id : file.dependent_ids) {
+        for (t_file_id dependent_id : file.dependency_data.dependent_ids) {
             t_compilation_files::t_get_file_result get_dependent_file_result = get_file(dependent_id);
 
             if (!get_dependent_file_result.has_value())
                 util::panic("The central dependent invalidator caught a listed dependent file that does not exist.");
             
             t_compilation_file& dependent_file = get_dependent_file_result.value();
-            dependent_file.dirty_dependent_ids.push_back(file_id);
+            dependent_file.dependency_data.dirty_dependency_ids.push_back(file_id);
 
             file_stack.push_back(dependent_id);
         }
@@ -354,7 +382,8 @@ void frontend::manager::t_compilation_files::recurse_mark_dirty(t_file_id start)
 // -> namespace bound
 
 frontend::manager::t_compilation_unit::t_compilation_unit(t_frontend_config _config) 
-    : config(std::move(_config)) {
+    : config(std::move(_config)) 
+{
     std::string start_path = config.project_path + '/' + config.start_subpath;
     
     t_compilation_files::t_add_file_result add_file_result = files.add_file(start_path);
@@ -373,7 +402,7 @@ frontend::manager::t_compilation_unit::t_delist_file_result frontend::manager::t
     if (!get_file_result.has_value())
         return t_delist_file_result::FILE_NOT_LISTED;
 
-    std::vector<t_file_id> file_dependent_ids = get_file_result.value().get().dependent_ids;
+    std::vector<t_file_id> file_dependent_ids = get_file_result.value().get().dependency_data.dependent_ids;
 
     // this is gonna turn that file into garbage, don't bother even getting file by varaible before this
     files.delist_file(file_id);
@@ -425,37 +454,44 @@ void frontend::manager::t_compilation_unit::refresh_files() {
 void frontend::manager::t_compilation_unit::recompile_dirty_files() {
     files.dirty_files.erase(std::remove_if(files.dirty_files.begin(), files.dirty_files.end(), [&](t_file_id dirty_file_id) {
         const t_compilation_file& dirty_file = files.get_file(dirty_file_id).value(); // checked earlier in recurse_mark_dirty
-        const bool is_file_dependent = dirty_file.dirty_dependent_ids.size() > 0;
+        const bool is_file_dependent = dirty_file.dependency_data.dirty_dependency_ids.size() > 0;
 
         return is_file_dependent;
     }));
 
     while (files.dirty_files.size() > 0) {
-        t_file_id dirty_file_id = files.dirty_files.back();
-        t_compilation_file& dirty_file = files.get_file(dirty_file_id).value();
-        std::vector<t_file_id> dependents = dirty_file.dependent_ids;
+        t_file_id file_id = files.dirty_files.back();
+        t_compilation_file& file = files.get_file(file_id).value();
 
-        dirty_file.clear(); // wipe dirty file of everything and start anew
-        dirty_file.state = t_file_state::SCAN_READY;
+        // grab list of dependents before it gets deleted
+        std::vector<t_file_id> dependent_ids = file.dependency_data.dependent_ids;
+
+        // ensure something really wrong isnt happening
+        util::panic_assert(file.dependency_data.dirty_dependency_ids.size() == 0, "");
+
+        // reset file state
+        file.clear_frontend_pass_data();
+        file.state = t_file_state::SCAN_READY;
+
+        // yeah, this is happening. this function directly handles dependency data, and therefore can safely modify it.
+        file.dependency_data.dependent_ids.clear();
+
+        // make file "clean" again
+        file.dependency_data.is_dirty = false;
 
         // state machine prevents reprocessing due to states
-        run_compiler_state_machine(dirty_file_id);
+        run_compiler_state_machine(file_id);
 
         files.dirty_files.erase(files.dirty_files.end() - 1);
 
-        // all dependents of dirty files were marked dirty too
-        for (t_file_id dependent_file_id : dependents) {
+        // a dependent file of a dirty file is always going to be dirty
+        // enforced by recurse_mark_dirty
+        for (t_file_id dependent_file_id : dependent_ids) {
             t_compilation_file& dependent_file = files.get_file(dependent_file_id).value();
-            // clear current file from dependent file's dirty dependencies
-            for (std::size_t index = 0; t_file_id file_id : dependent_file.dirty_dependent_ids) {
-                //              now clean
-                if (file_id == dirty_file_id) {
-                    dependent_file.dirty_dependent_ids.erase(dependent_file.dirty_dependent_ids.begin() + index);
-                    break;
-                }
-            }
+            dependent_file.dependency_data.remove_dirty_dependency(file_id);
 
-            files.dirty_files.push_back(dependent_file_id);
+            // push front to maintain proper compilation ordering of dependencies (root -> dependent -> dependent's dependent)
+            files.dirty_files.push_front(dependent_file_id);
         }
     }
 }

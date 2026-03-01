@@ -64,35 +64,55 @@ namespace frontend::manager {
         SEMA_READY,
         DONE, // this file has had changes to its source code and is ready to be recompiled if needed
     };
+
+    // temporary "cache" data that the scheduler uses to target dirty files for recompilation
+    struct t_file_dependency_data {
+        // a list of files that need to be wiped if this one is during incremental compilation
+        // added to in handle_file_imports()
+        // cleared from in recompile_dirty_files()
+        std::vector<t_file_id> dependent_ids;
+
+        // added to in recurse_mark_dirty()
+        // cleared from in recompile_dirty_files()
+        std::vector<t_file_id> dirty_dependency_ids;
+
+        /*
+        
+        used as a temporary marker to prevent duplication if t_compilation_files::recurse_mark_dirty
+        can also be used as general dirty identification after a recompilation is called and before the state machine runs
+        
+        set to true recurse_mark_dirty() by t_compilation_files
+        set to false in recompile_dirty_files()
+
+        */
+        bool is_dirty = false;
+
+        // call when a dependency needs to be deregistered for now being clean
+        // general utility function that does not have to be explicitly called
+        // this only skips an std::erase_if
+        void remove_dirty_dependency(t_file_id now_clean_dependency_id);
+    };
     
     struct t_compilation_file {
         t_compilation_file(std::string path, std::string source_code)
             : path(std::move(path)), source_code(std::move(source_code)) {}
 
+        // "inputs"
         std::string path;
         std::string source_code;
+
+        // "frontend pass data"
         scan::token::t_tokens tokens;
         scan::ast::t_ast ast;
         sema::sym::t_sym_table sym_table;
 
-        // a list of files that need to be wiped if this one is during incremental compilation
-        // a file can only have dependents if its state is DONE (affirmed in manager.cc/handle_file_imports)
-        std::vector<t_file_id> dependent_ids;
-
-        // updated in recurse_mark_dirty()
-        std::vector<t_file_id> dirty_dependent_ids;
-
         t_logger logger;
 
+        // scheduling and compilation
         t_file_state state = t_file_state::SCAN_READY;
-        
-        // whether or not the current file's source code or a dependee's source code was changed
-        // note: this isnt an indicator for whether the file was just added
-        // do NOT modify this unless you are recurse_mark_dirty() by t_compilation_files
-        bool is_dirty = false;
+        t_file_dependency_data dependency_data;
 
-        // NOTE: this does not clear source_code
-        void clear();
+        void clear_frontend_pass_data();
 
         // check if the source code has been modified since the last update to this file
         // returns true if the source code has been refreshed
@@ -116,10 +136,11 @@ namespace frontend::manager {
         using t_get_const_file_result = std::optional<std::reference_wrapper<const t_compilation_file>>;
         using t_find_file_result = std::optional<t_file_id>;
 
+        t_compilation_files() = default;
         t_compilation_files(const t_compilation_files&) = delete;
         t_compilation_files(t_compilation_files&&) = delete;
 
-        std::vector<t_file_id> dirty_files;
+        std::deque<t_file_id> dirty_files;
 
         // should be called internally to register a new file in a project.
         t_add_file_result add_file(std::string path);

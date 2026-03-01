@@ -241,13 +241,14 @@ namespace frontend::scan::ast {
 
     // import "math"
     struct t_import_decl : t_decl {
-        t_import_decl(util::t_span span, t_string_literal* file_path, t_string_literal* absolute_file_path)
-            : t_decl(std::move(span), t_decl_type::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path) 
+        t_import_decl(util::t_span span, t_string_literal* file_path, t_string_literal* absolute_file_path, bool is_path_valid)
+            : t_decl(std::move(span), t_decl_type::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid) 
         {}
 
         t_string_literal* file_path;
         t_string_literal* absolute_file_path;
-        /* manager.cc */ manager::t_file_id resolved_file_id; // parser ensures this will always be an absolute path
+        bool is_path_valid;
+        /* manager.cc */ manager::t_file_id resolved_file_id; // proper dependency connection is made here
     };
 
     // 
