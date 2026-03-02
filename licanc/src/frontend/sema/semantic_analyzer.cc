@@ -15,8 +15,6 @@ void frontend::sema::semantic_analyzer::analyze(manager::t_frontend_unit& unit, 
 
     manager::t_frontend_file& file = get_file_result.value().get();
 
-    file.sym_table.emplace<sym::t_root>();
-
     sym_registrar::register_symbols({
         .file_id = file_id, 
         .logger = file.logger, 

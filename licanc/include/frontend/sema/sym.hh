@@ -53,11 +53,7 @@ based on what pass of the semantic analyzer was just performed
 #include "util/hash.hh"
 
 #include "frontend/scan/ast.hh"
-#include "frontend/manager_types.hh"
-
-namespace frontend::manager {
-    using t_type_name_ids = std::vector<t_type_name_id>;
-}
+#include "manager/manager_types.hh"
 
 namespace frontend::sema::sym {
     struct t_sym { };
@@ -113,7 +109,7 @@ namespace frontend::sema::sym {
 
     struct t_function : t_sym {
         /* 0 */ scan::ast::t_function* syntactic_function;
-        /* _ */ manager::t_type_name_ids parameter_types; // {t_type}
+        /* _ */ std::vector<manager::t_type_name_id> parameter_types; // {t_type}
         /* _ */ manager::t_type_name_id return_type;
     };
 
@@ -216,7 +212,7 @@ namespace frontend::sema::sym {
     };
 
     struct t_sym_table {
-        t_sym_table() {}
+        t_sym_table() { init(); }
 
     private:
         util::t_arena<> arena;
@@ -231,9 +227,10 @@ namespace frontend::sema::sym {
         inline T* push(T sym) {
             return emplace<T, T>(std::move(sym));
         }
-
-        inline void clear() {
-            arena.clear();
+        
+    private:
+        inline void init() {
+            arena.emplace<t_root>();
         }
     };
 }

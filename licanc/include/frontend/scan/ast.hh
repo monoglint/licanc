@@ -23,7 +23,7 @@ it to be passable as a funciton argument
 #include "util/span.hh"
 #include "util/safe_id.hh"
 
-#include "frontend/manager_types.hh"
+#include "manager/manager_types.hh"
 
 namespace frontend::scan::ast {
     struct t_node {
@@ -541,7 +541,7 @@ namespace frontend::scan::ast {
     //
 
     struct t_ast {
-        t_ast() {}
+        t_ast() { init(); }
 
         // if an import node is allocated into the arena, its important to add it to the "imports" vector
         
@@ -560,8 +560,9 @@ namespace frontend::scan::ast {
             return emplace<T, T>(std::move(sym));
         }
 
-        inline void clear() {
-            arena.clear();
+    private:
+        inline void init() {
+            arena.emplace<t_root>();
         }
     };
 }
