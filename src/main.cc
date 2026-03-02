@@ -49,7 +49,7 @@
 
         licanc::t_licanc_config config {
             .project_path = project_path,
-            .start_subpath = start_subpath
+            .start_path = project_path + start_subpath
         };
 
         licanc::compile(config);

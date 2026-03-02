@@ -125,10 +125,6 @@ namespace {
     }
 
     void analyze_file(t_frontend_unit& unit, t_file_id file_id) {
-        t_frontend_files::t_get_file_result get_file_result = unit.files.get_file(file_id);
-
-        // GET_FILE_RESULT IS CONFIRMED TO EXIST BY THE STACK LOOP THIS FUNCITON IS CALLED IN
-
         sema::semantic_analyzer::analyze(unit, file_id);
     }
 }
@@ -257,8 +253,8 @@ void frontend::manager::t_frontend_unit::run_compiler_state_machine(t_file_id ta
 }
 
 frontend::manager::t_frontend_files::t_add_file_result frontend::manager::t_frontend_files::add_file(std::string path) {
-    bool file_exists = std::find_if(files.begin(), files.end(), [&path](t_frontend_file& file) -> bool {
-        return file.path == path;
+    const bool file_exists = std::find_if(files.begin(), files.end(), [&path](const std::optional<t_frontend_file>& file) -> bool {
+        return file.has_value() && file.value().path == path;
     }) != files.end();
     
     if (file_exists)
@@ -275,7 +271,7 @@ frontend::manager::t_frontend_files::t_add_file_result frontend::manager::t_fron
         }
     }
 
-    files.emplace_back(path, open_file_result.value());
+    files.emplace_back(std::filesystem::absolute(path).string(), open_file_result.value());
 
     return t_file_id{files.size() - 1};
 }
@@ -337,8 +333,8 @@ std::vector<frontend::manager::t_file_id> frontend::manager::t_frontend_files::g
 }
 
 bool frontend::manager::t_frontend_files::has_errors() const {
-    return std::find_if(files.begin(), files.end(), [](const t_frontend_file& file) -> bool {
-        return file.logger.has_errors();
+    return std::find_if(files.begin(), files.end(), [](const std::optional<t_frontend_file>& file) -> bool {
+        return file.has_value() && file.value().logger.has_errors();
     }) != files.end();
 }
 
@@ -384,9 +380,7 @@ void frontend::manager::t_frontend_files::recurse_mark_dirty(t_file_id start) {
 frontend::manager::t_frontend_unit::t_frontend_unit(t_frontend_config _config) 
     : config(std::move(_config)) 
 {
-    std::string start_path = config.project_path + '/' + config.start_subpath;
-    
-    t_frontend_files::t_add_file_result add_file_result = files.add_file(start_path);
+    t_frontend_files::t_add_file_result add_file_result = files.add_file(config.start_path);
 
     util::panic_assert(add_file_result.has_value(), "Failed to create root file for the primary compilation unit.");
 }
@@ -413,7 +407,7 @@ frontend::manager::t_frontend_unit::t_delist_file_result frontend::manager::t_fr
 }
 
 void frontend::manager::t_frontend_unit::compile() {
-    t_frontend_files::t_find_file_result find_file_result = files.find_file(config.project_path + '/' + config.start_subpath);
+    t_frontend_files::t_find_file_result find_file_result = files.find_file(config.start_path);
     if (!find_file_result.has_value()) {
         std::cerr << "Could not locate a root file to begin compilation from. Please try again.\n";
         return;

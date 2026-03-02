@@ -81,8 +81,8 @@ namespace {
 
         */
 
-        auto* base_struct_sym = context.sym_table.push<sema::sym::t_record>(sema::sym::t_record{
-            .syntactic_record = decl_node->struct_template->base
+        auto* base_struct_sym = context.sym_table.push<sema::sym::t_struct>(sema::sym::t_struct{
+            .syntactic_struct = decl_node->struct_template->base
         });
 
         auto* template_sym = context.sym_table.push<sema::sym::t_struct_template>({

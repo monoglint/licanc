@@ -185,11 +185,11 @@ namespace frontend::manager {
 
     struct t_frontend_config {
         t_frontend_config(licanc::t_licanc_config& config)
-            : project_path(config.project_path), start_subpath(config.start_subpath), target_import_paths(config.target_import_paths)
+            : project_path(config.project_path), start_path(config.start_path), target_import_paths(config.target_import_paths)
         {}
 
         const std::string& project_path;
-        const std::string& start_subpath;
+        const std::string& start_path;
         
         const std::vector<std::string>& target_import_paths;
     };

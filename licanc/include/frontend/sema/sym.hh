@@ -118,7 +118,7 @@ namespace frontend::sema::sym {
     };
 
     struct t_function_inst {
-        /* _ */ t_function* function;
+        /* _ */ t_function* concrete_function;
     };
     
     struct t_function_template : t_sym {
@@ -153,8 +153,8 @@ namespace frontend::sema::sym {
         /* _ */ t_access_specifier access_specifier;
     };
 
-    struct t_record : t_sym {
-        /* 0 */ scan::ast::t_record* syntactic_record;
+    struct t_struct : t_sym {
+        /* 0 */ scan::ast::t_struct* syntactic_struct;
         /* _ */ t_decls properties; // {t_property}
         /* _ */ t_decls methods; // {t_method}
 
@@ -164,11 +164,11 @@ namespace frontend::sema::sym {
     };
 
     struct t_struct_inst {
-        t_record* record;
+        t_struct* concrete_struct;
     };
 
     struct t_struct_template : t_sym {
-        /* 0 */ t_record* base; // t_record
+        /* 0 */ t_struct* base; // t_struct
         /* _ */ t_insts<t_struct_inst*> instantiations;
         /* _ */ std::vector<t_template_parameter*> template_parameters;
     };

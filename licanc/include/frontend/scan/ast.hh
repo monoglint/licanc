@@ -74,6 +74,8 @@ namespace frontend::scan::ast {
         MEMBER_ACCESS,
         TERNARY,
         CALL,
+        HEAP,
+        TEMPLATE_inst,
     };
 
     struct t_expr : t_node {
@@ -86,10 +88,11 @@ namespace frontend::scan::ast {
 
     enum class t_typename_type {
         NAMED,
-        INSTANTIATED,
+        TEMPLATE_INSTANTIATED,
         QUALIFIED,
         REFERENCED,
-        POINTERED
+        POINTERED,
+        ARRAYED,
     };
 
     struct t_typename : t_node {
@@ -240,9 +243,23 @@ namespace frontend::scan::ast {
     };
 
     struct t_heap_expr : t_expr {
-        t_call_expr* instantiation;
+        t_heap_expr(util::t_span span, t_call_expr* inst, std::optional<t_expr*> address)
+            : t_expr(std::move(span), t_expr_type::HEAP), inst(inst), address(std::move(address))
+        {}
+
+        t_call_expr* inst;
+        std::optional<t_expr*> address; // must semantically deduce to a pointer
     };
 
+    struct t_template_argument;
+    struct t_template_inst_expr : t_expr {
+        t_template_inst_expr(util::t_span span, t_scope_reference_expr* target, std::vector<t_template_argument*> template_arguments)
+            : t_expr(std::move(span), t_expr_type::TEMPLATE_inst), target(target), template_arguments(std::move(template_arguments))
+        {}
+        
+        t_scope_reference_expr* target;
+        std::vector<t_template_argument*> template_arguments;
+    };
 
     struct t_named_typename : t_typename {
         t_named_typename(util::t_span span, t_scope_reference_expr* base)
@@ -252,34 +269,51 @@ namespace frontend::scan::ast {
         t_scope_reference_expr* base;
     };
 
-    struct t_instantiated_typename : t_typename {
-        t_instantiated_typename(util::t_span span)
-            : t_typename(std::move(span), t_typename_type::INSTANTIATED)
+    struct t_template_argument;
+    struct t_template_instantiated_typename : t_typename {
+        t_template_instantiated_typename(util::t_span span, t_named_typename* base, std::vector<t_template_argument*> arguments)
+            : t_typename(std::move(span), t_typename_type::TEMPLATE_INSTANTIATED), base(base), arguments(std::move(arguments))
         {}
 
+        t_named_typename* base;
+        std::vector<t_template_argument*> arguments;
+    };
 
-        /*
-        dec x: @u8
-        
-        */
+    enum class t_typename_qualifier {
+        CONST
     };
 
     struct t_qualified_typename : t_typename {
-        t_qualified_typename(util::t_span span)
-            : t_typename(std::move(span), t_typename_type::QUALIFIED)
+        t_qualified_typename(util::t_span span, t_typename* base, t_typename_qualifier qualifier)
+            : t_typename(std::move(span), t_typename_type::QUALIFIED), base(base), qualifier(qualifier)
         {}
+
+        t_typename* base;
+        t_typename_qualifier qualifier;
     };
 
     struct t_referenced_typename : t_typename {
-        t_referenced_typename(util::t_span span)
-            : t_typename(std::move(span), t_typename_type::REFERENCED)
+        t_referenced_typename(util::t_span span, t_typename* base)
+            : t_typename(std::move(span), t_typename_type::REFERENCED), base(base)
         {}
+
+        t_typename* base;
     };
 
     struct t_pointered_typename : t_typename {
-        t_pointered_typename(util::t_span span)
-            : t_typename(std::move(span), t_typename_type::POINTERED)
+        t_pointered_typename(util::t_span span, t_typename* base)
+            : t_typename(std::move(span), t_typename_type::POINTERED), base(base)
         {}
+
+        t_typename* base; // only limitation: no references
+    };
+
+    struct t_arrayed_typename : t_typename {
+        t_arrayed_typename(util::t_span span, t_typename* base)
+            : t_typename(std::move(span), t_typename_type::ARRAYED), base(base)
+        {}
+
+        t_typename* base;
     };
 
     /*
@@ -427,8 +461,8 @@ namespace frontend::scan::ast {
         t_typename* type;
     };
 
-    struct t_record : t_node {
-        t_record(util::t_span span, std::vector<t_method*> methods, std::vector<t_property*> properties, std::vector<t_initializer*> initializers, t_finalizer* finalizer)
+    struct t_struct : t_node {
+        t_struct(util::t_span span, std::vector<t_method*> methods, std::vector<t_property*> properties, std::vector<t_initializer*> initializers, t_finalizer* finalizer)
             : t_node(std::move(span)), methods(std::move(methods)), properties(std::move(properties)), initializers(std::move(initializers)), finalizer(finalizer) 
         {}
 
@@ -439,11 +473,11 @@ namespace frontend::scan::ast {
     };
 
     struct t_struct_template : t_node {
-        t_struct_template(util::t_span span, t_record* base, std::vector<t_template_parameter*> template_parameters)
+        t_struct_template(util::t_span span, t_struct* base, std::vector<t_template_parameter*> template_parameters)
             : t_node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
         {}
 
-        t_record* base;
+        t_struct* base;
         std::vector<t_template_parameter*> template_parameters;
     };
 
@@ -457,11 +491,11 @@ namespace frontend::scan::ast {
     };
 
     // struct t_type_alias_template : t_node {
-    //     t_type_alias_template(util::t_span span, t_type* type, std::vector<t_type*> instantiations, std::vector<t_template_parameter*> template_parameters)
-    //         : t_node(std::move(span)), type(type), instantiations(std::move(instantiations)), template_parameters(std::move(template_parameters)) {}
+    //     t_type_alias_template(util::t_span span, t_type* type, std::vector<t_type*> insts, std::vector<t_template_parameter*> template_parameters)
+    //         : t_node(std::move(span)), type(type), insts(std::move(insts)), template_parameters(std::move(template_parameters)) {}
 
     //     t_type* type;
-    //     std::vector<t_type*> instantiations;
+    //     std::vector<t_type*> insts;
     //     std::vector<t_template_parameter*> template_parameters;
     // };
 
