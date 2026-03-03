@@ -3,7 +3,7 @@
 #include <iostream>
 #include <filesystem>
 
-#include "frontend/manager.hh"
+#include "manager/manager.hh"
 #include "util/panic.hh"
 
 void licanc::assert_licanc_config_validity(licanc::t_licanc_config& config) {
@@ -22,10 +22,14 @@ licanc::t_compile_result licanc::compile(licanc::t_licanc_config config) {
         correct_licanc_config(config);
 
         // LATER: compare hashed config with cached compilations and load the frontend unit on those
-        frontend::manager::t_frontend_unit unit(config);
-        unit.compile();
+        
 
-        return unit.files.has_errors() ? t_compile_result::ERROR : t_compile_result::SUCCESS;
+        manager::t_compilation_engine_config_context engine_context(config.project_path, config.start_path);
+        manager::t_compilation_engine engine(engine_context);
+
+        engine.compile();
+
+        return engine.file_manager.has_errors() ? t_compile_result::ERROR : t_compile_result::SUCCESS;
     }
     catch (util::t_panic_assertion assertion) {
         std::cerr << "Licanc failed and had to terminate:\n";

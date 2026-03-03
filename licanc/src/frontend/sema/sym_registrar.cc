@@ -24,7 +24,7 @@ namespace {
 
     bool assert_identifier_declarability(sema::sym_registrar::t_registrar_context& context, sema::sym::t_module_decl* module_decl_sym, scan::ast::t_identifier* identifier_node) {
         if (!check_identifier_declarability(module_decl_sym, identifier_node)) {
-            std::string identifier = context.compile_time_data.identifier_pool.get(identifier_node->identifier_id).value().get(); // explicit bypass
+            std::string identifier = context.session_pools.identifier_pool.get(identifier_node->identifier_id).value().get(); // explicit bypass
             context.logger.add_error(identifier_node->span, "Multiple decls of " + identifier);
             return false;
         }
@@ -112,11 +112,11 @@ namespace {
     }
 
     void walk(t_registrar_context& context, scan::ast::t_import_decl* node, sema::sym::t_module_decl* parent_module_sym) {
-        frontend::manager::t_frontend_files::t_get_file_result get_file_result = context.files.get_file(node->resolved_file_id);
+        manager::t_file_manager::t_get_file_result get_file_result = context.file_manager.get_file(node->resolved_file_id);
 
         util::panic_assert(get_file_result.has_value(), "The symbol registrar attempted to locate the symbol table of a file that does not exist when processing an import.");
 
-        sema::sym::t_module_decl* target_module_sym = get_file_result.value().get().sym_table.root_ptr->global_module;
+        sema::sym::t_module_decl* target_module_sym = get_file_result.value().get().compiler_output_data.frontend.sym_table.root_ptr->global_module;
 
         auto* import_marker_sym = context.sym_table.push<sema::sym::t_import_marker>({
             .target_module = target_module_sym

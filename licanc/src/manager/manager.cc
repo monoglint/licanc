@@ -39,12 +39,12 @@ namespace {
     file_id -> file_id of the file that is now a registered dependent of the file who's path is "absolute_file_path"
     
     */
-    manager::t_file_id register_file_dependency(manager::t_compilation_engine& engine, manager::t_file_id file_id, const std::string& absolute_file_path) {
-        manager::t_file_manager::t_add_file_result add_file_result = engine.file_manager.add_file(absolute_file_path);
+    manager::t_file_id register_file_dependency(manager::t_file_manager& file_manager, manager::t_file_id file_id, const std::string& absolute_file_path) {
+        manager::t_file_manager::t_add_file_result add_file_result = file_manager.add_file(absolute_file_path);
         
         if (add_file_result.has_value()) {
             manager::t_file_id new_file_id = add_file_result.value();
-            manager::t_compilation_file& new_file = engine.file_manager.get_file(new_file_id).value();
+            manager::t_compilation_file& new_file = file_manager.get_file(new_file_id).value();
 
             new_file.dependency_data.dependent_ids.push_back(file_id);
 
@@ -52,8 +52,8 @@ namespace {
         }
 
         else if (add_file_result.error() == manager::t_file_manager::t_add_file_error::FILE_ALREADY_EXISTS) {
-            manager::t_file_id found_file_id = engine.file_manager.find_file(absolute_file_path).value();
-            manager::t_compilation_file& found_file = engine.file_manager.get_file(found_file_id).value();
+            manager::t_file_id found_file_id = file_manager.find_file(absolute_file_path).value();
+            manager::t_compilation_file& found_file = file_manager.get_file(found_file_id).value();
             
             found_file.dependency_data.dependent_ids.push_back(file_id);
 
@@ -63,12 +63,12 @@ namespace {
         util::panic("An unreachable condition was reached by the file dependency registerer. Whether or not 'absolute_file_path' is valid was checked by the file dependency register's only caller.");
     }
 
-    bool detect_file_interdependency(const manager::t_compilation_engine& engine, manager::t_file_id current_file_id, std::vector<manager::t_file_id>& file_stack, const std::string& absolute_file_path) {
+    bool detect_file_interdependency(const manager::t_file_manager& file_manager, manager::t_file_id current_file_id, std::vector<manager::t_file_id>& file_stack, const std::string& absolute_file_path) {
         return std::find_if(file_stack.begin(), file_stack.end(), [&](manager::t_file_id frame_file_id) -> bool {
             if (current_file_id == frame_file_id)
                 return false;
 
-            manager::t_file_manager::t_get_const_file_result frame_get_file_result = engine.file_manager.get_file(frame_file_id);
+            manager::t_file_manager::t_get_const_file_result frame_get_file_result = file_manager.get_file(frame_file_id);
             const manager::t_compilation_file& frame_file = frame_get_file_result.value();
 
             return frame_file.path == absolute_file_path;
@@ -94,7 +94,7 @@ namespace {
 
             const std::string& absolute_file_path = get_string_result.value();
 
-            bool interdependency_found = detect_file_interdependency(engine, current_file_id, file_stack, absolute_file_path);
+            bool interdependency_found = detect_file_interdependency(engine.file_manager, current_file_id, file_stack, absolute_file_path);
             if (interdependency_found) {
                 file.logger.add_error(import_decl_node->span, std::string("Including \\" + absolute_file_path + "\" results in interdependency (strictly forbidden!!!!)."));
 
@@ -103,7 +103,7 @@ namespace {
                 continue;
             }
 
-            manager::t_file_id dependency_file_id = register_file_dependency(engine, current_file_id, absolute_file_path);
+            manager::t_file_id dependency_file_id = register_file_dependency(engine.file_manager, current_file_id, absolute_file_path);
 
             import_decl_node->resolved_file_id = dependency_file_id;
             file_stack.emplace_back(dependency_file_id);
@@ -239,7 +239,7 @@ bool manager::t_file_manager::has_errors() const {
 }
 
 // call this once the seed file_id 
-void manager::t_scheduler::recurse_mark_dirty(manager::t_file_id start) {
+void manager::t_file_refresher::recurse_mark_dirty(manager::t_file_id start) {
     std::vector<manager::t_file_id> file_stack;
 
     if (!file_manager.get_file(start).has_value())
@@ -249,9 +249,9 @@ void manager::t_scheduler::recurse_mark_dirty(manager::t_file_id start) {
 
     while (!file_stack.empty()) {
         t_file_id file_id = file_stack.back();
-        t_file_manager::t_get_file_result get_file_result = get_file(file_id).value();
+        t_file_manager::t_get_file_result get_file_result = file_manager.get_file(file_id).value();
 
-        t_frontend_file& file = get_file_result.value(); // checked later in the loop and refresh_files()
+        t_compilation_file& file = get_file_result.value(); // checked later in the loop and refresh_files()
 
         if (file.dependency_data.is_dirty) {
             file_stack.pop_back();
@@ -262,15 +262,143 @@ void manager::t_scheduler::recurse_mark_dirty(manager::t_file_id start) {
         dirty_files.push_back(file_id);
 
         for (t_file_id dependent_id : file.dependency_data.dependent_ids) {
-            t_frontend_files::t_get_file_result get_dependent_file_result = get_file(dependent_id);
+            t_file_manager::t_get_file_result get_dependent_file_result = file_manager.get_file(dependent_id);
 
             if (!get_dependent_file_result.has_value())
                 util::panic("The central dependent invalidator caught a listed dependent file that does not exist.");
             
-            t_frontend_file& dependent_file = get_dependent_file_result.value();
+            t_compilation_file& dependent_file = get_dependent_file_result.value();
             dependent_file.dependency_data.dirty_dependency_ids.push_back(file_id);
 
             file_stack.push_back(dependent_id);
+        }
+    }
+}
+
+manager::t_file_manager::t_delist_file_result manager::t_file_refresher::delist_file(t_file_id file_id) {
+    t_file_manager::t_get_file_result get_file_result = file_manager.get_file(file_id);
+
+    if (!get_file_result.has_value())
+        return t_file_manager::t_delist_file_result::FILE_DOESNT_EXIST;
+
+    for (t_file_id dependent_id : get_file_result.value().get().dependency_data.dependent_ids) {
+        recurse_mark_dirty(dependent_id);
+    }
+
+    return file_manager.delist_file(file_id); // will check if file exists but we did here too so its ok
+}
+
+void manager::t_file_refresher::refresh_files() {
+    for (t_file_id file_id : file_manager.get_valid_files()) {
+        t_file_manager::t_get_file_result get_file_result = file_manager.get_file(file_id);
+        t_compilation_file& file = get_file_result.value();
+
+        // first check if the file even "exists"
+        if (!std::filesystem::exists(file.path)) {
+            file_manager.delist_file(file_id);
+            continue;
+        }
+
+        // potentially remove files with no connections to others after not being referenced for multiple recompilations
+
+        if (file.refresh_source_code()) {
+            recurse_mark_dirty(file_id);
+            continue;
+        }
+    }
+}
+
+void manager::t_compilation_engine::compile() {
+    t_file_manager::t_find_file_result get_file_result = file_manager.find_file(config_context.start_path);
+
+    if (!get_file_result.has_value()) {
+        std::cerr << "Failed to find the project's root path! Ensure there there is a path for \"" << config_context.start_path << "\"\n";
+        return;
+    }
+
+    t_file_id file_id = get_file_result.value();
+    t_compilation_file& file = file_manager.get_file(file_id).value();
+
+    if (file.state == t_file_state::SCAN_READY) {
+        compile_to_completion(file_id);
+        return;
+    }
+
+    // otherwise, run recompilation
+
+    file_refresher.refresh_files();
+    recompile_dirty_files();
+}
+
+void manager::t_compilation_engine::recompile_dirty_files() {
+    file_refresher.dirty_files.erase(std::remove_if(file_refresher.dirty_files.begin(), file_refresher.dirty_files.end(), [&](t_file_id dirty_file_id) {
+        const t_compilation_file& dirty_file = file_manager.get_file(dirty_file_id).value(); // checked earlier in recurse_mark_dirty
+        const bool is_file_dependent = dirty_file.dependency_data.dirty_dependency_ids.size() > 0;
+
+        return is_file_dependent;
+    }));
+
+    while (file_refresher.dirty_files.size() > 0) {
+        t_file_id file_id = file_refresher.dirty_files.back();
+        t_compilation_file& file = file_manager.get_file(file_id).value();
+
+        // grab list of dependents before it gets deleted
+        std::vector<t_file_id> dependent_ids = file.dependency_data.dependent_ids;
+
+        // ensure something really wrong isnt happening
+        util::panic_assert(file.dependency_data.dirty_dependency_ids.size() == 0, "");
+
+        // reset file state
+        file.compiler_output_data.clear();
+        file.state = t_file_state::SCAN_READY;
+
+        // yeah, this is happening. this function directly handles dependency data, and therefore can safely modify it.
+        file.dependency_data.dependent_ids.clear();
+
+        // make file "clean" again
+        file.dependency_data.is_dirty = false;
+
+        // state machine prevents reprocessing due to states
+        compile_to_completion(file_id);
+
+        file_refresher.dirty_files.erase(file_refresher.dirty_files.end() - 1);
+
+        // a dependent file of a dirty file is always going to be dirty
+        // enforced by recurse_mark_dirty
+        for (t_file_id dependent_file_id : dependent_ids) {
+            t_compilation_file& dependent_file = file_manager.get_file(dependent_file_id).value();
+            dependent_file.dependency_data.remove_dirty_dependency(file_id);
+
+            // push front to maintain proper compilation ordering of dependencies (root -> dependent -> dependent's dependent)
+            file_refresher.dirty_files.push_front(dependent_file_id);
+        }
+    }
+}
+
+void manager::t_compilation_engine::compile_to_completion(t_file_id target_file_id) {
+    std::vector<manager::t_file_id> file_stack;
+    file_stack.emplace_back(target_file_id);
+
+    while (!file_stack.empty()) {
+        manager::t_file_id file_id = file_stack.back();
+        t_compilation_file& file = file_manager.get_file(file_id).value();
+
+        switch (file.state) {
+            case t_file_state::SCAN_READY:
+                parse_file(*this, file_id, file_stack);
+                file.state = t_file_state::SEMA_READY;
+                break;
+
+            case t_file_state::SEMA_READY:
+                analyze_file(*this, file_id);
+                file.state = t_file_state::DONE;
+                break;
+
+            case t_file_state::DONE:       
+                file_stack.pop_back();
+                std::cout << "Finished frontend for [" << file.path << "].\n"; 
+                std::cout << file.logger.to_string();         
+                break;
         }
     }
 }

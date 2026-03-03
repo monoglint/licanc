@@ -19,7 +19,7 @@ namespace manager {
         DONE, // this file has had changes to its source code and is ready to be recompiled if needed
     };
 
-    // temporary "cache" data that the scheduler uses to target dirty files for recompilation
+    // temporary "cache" data that the file_refresher uses to target dirty files for recompilation
     struct t_file_dependency_data {
         // a list of files that need to be wiped if this one is during incremental compilation
         // added to in handle_file_imports()
@@ -51,19 +51,22 @@ namespace manager {
         frontend::scan::token::t_tokens tokens;
         frontend::scan::ast::t_ast ast;
         frontend::sema::sym::t_sym_table sym_table;
+
+        inline void clear() { tokens.clear(); ast.clear(); sym_table.clear(); }
     };
 
     struct t_backend_pass_data {
-
+        inline void clear() { }
     };
 
     struct t_compiler_output_data {
         t_frontend_pass_data frontend;
         t_backend_pass_data backend;
 
+        // ALERT ALERT!!! MOST USEFUL FUNCTION IN THE ENTIRE COMPILER RIGHT HERE!!! ALERT!!
         inline void clear() {
-            frontend = {};
-            backend = {};
+            frontend.clear();
+            backend.clear();
         }
     };
     
@@ -88,6 +91,7 @@ namespace manager {
         bool refresh_source_code();
     };
     
+    // calling any method in this struct is not file_refresher safe. always interface with the file_refresher if accessing externally
     struct t_file_manager {
         enum class t_add_file_error {
             FILE_ALREADY_EXISTS,
@@ -138,20 +142,18 @@ namespace manager {
         std::deque<t_file_entry> files;
     };
 
-    struct t_scheduler {
+    struct t_file_refresher {        
         t_file_manager& file_manager;
 
         std::deque<t_file_id> dirty_files;
 
+        // mark a file and all of its ancestor-dependents dirty
         void recurse_mark_dirty(t_file_id start);
+
+        t_file_manager::t_delist_file_result delist_file(t_file_id file_id);
         
         // mark files dirty and remove deleted files
         void refresh_files();
-
-        // call after refresh_files()
-        void recompile_dirty_files();
-
-        void run_compiler_state_machine(t_file_id target_file_id);
     };
 
     // a central global arrangement of pools for parts of the compiler to feed to
@@ -165,12 +167,29 @@ namespace manager {
         t_typename_pool typename_pool;
     };
 
+    struct t_compilation_engine_config_context {
+        const std::string& project_path;
+        const std::string& start_path;
+    };
+
     struct t_compilation_engine {
+        t_compilation_engine(t_compilation_engine_config_context& config_context)
+            : config_context(config_context), file_refresher(file_manager)
+        {}
+
+        t_compilation_engine_config_context config_context;
+
         t_session_pools session_pools;
         t_file_manager file_manager;
-        t_scheduler scheduler;
+        t_file_refresher file_refresher;
 
-        // compile or recompile the start_subpath file
+        // compile the start path file or recompile dirty files in the project
         void compile();
+
+        // check for any dirty files and target recompile those
+        void recompile_dirty_files();
+
+    private:
+        void compile_to_completion(t_file_id target_file_id);
     };
 }

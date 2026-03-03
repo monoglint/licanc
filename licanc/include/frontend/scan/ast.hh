@@ -560,9 +560,14 @@ namespace frontend::scan::ast {
             return emplace<T, T>(std::move(sym));
         }
 
+        inline void clear() {
+            arena.clear();
+            init();
+        }
+
     private:
         inline void init() {
-            arena.emplace<t_root>();
+            std::ignore = arena.emplace<t_root>();
         }
     };
 }

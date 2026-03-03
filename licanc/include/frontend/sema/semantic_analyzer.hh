@@ -8,8 +8,8 @@ Takes all of the semantic analyzer workers and condenses them into one function 
 
 #include <string>
 
-#include "frontend/manager.hh"
+#include "manager/manager.hh"
 
 namespace frontend::sema::semantic_analyzer {
-    void analyze(manager::t_frontend_unit& unit, manager::t_file_id file_id);
+    void analyze(manager::t_compilation_engine& engine, manager::t_file_id file_id);
 }
