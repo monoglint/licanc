@@ -4,6 +4,12 @@
 
 #include "util/ansi_format.hh"
 
+bool util::t_logger::has_errors() const {
+    return std::find_if(logs.begin(), logs.end(), [](const t_log& log) -> bool {
+        return log.log_type == t_log_type::ERROR;
+    }) != logs.end();
+}
+
 std::string util::t_log::to_string(bool format) const {
     std::stringstream buffer;
 

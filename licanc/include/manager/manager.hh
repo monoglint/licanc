@@ -9,6 +9,7 @@
 #include "frontend/sema/sema.hh"
 
 #include "util/intern_pool.hh"
+#include "util/logger.hh"
 #include "manager/manager_types.hh"
 
 namespace manager {
@@ -76,7 +77,7 @@ namespace manager {
 
         t_compiler_output_data compiler_output_data;
 
-        t_logger logger;
+        util::t_logger logger;
 
         // scheduling and compilation
         t_file_state state = t_file_state::SCAN_READY;
@@ -107,8 +108,6 @@ namespace manager {
         t_file_manager() = default;
         t_file_manager(const t_file_manager&) = delete;
         t_file_manager(t_file_manager&&) = delete;
-
-        std::deque<t_file_id> dirty_files;
 
         // should be called internally to register a new file in a project.
         t_add_file_result add_file(std::string path);
@@ -141,6 +140,8 @@ namespace manager {
 
     struct t_scheduler {
         t_file_manager& file_manager;
+
+        std::deque<t_file_id> dirty_files;
 
         void recurse_mark_dirty(t_file_id start);
         
