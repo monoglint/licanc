@@ -5,32 +5,33 @@
 #include "util/span.hh"
 
 namespace util {
-    enum class t_log_type {
+    enum class LogType {
         MESSAGE,
         WARNING,
         ERROR,
     };
 
-    struct t_log {
-        t_log(util::t_span span, t_log_type log_type, std::string message)
+    struct Log {
+        Log(util::Span span, LogType log_type, std::string message)
             : span(span), log_type(log_type), message(message) {}
             
-        util::t_span span;
-        t_log_type log_type;
+        util::Span span;
+        LogType log_type;
         std::string message;
 
         [[nodiscard]]
         std::string to_string(bool format = true) const;
     };
 
-    struct t_logger {
-        std::vector<t_log> logs;
+    class Logger {
+    public:
+        std::vector<Log> logs;
 
-        inline void add_log(t_log_type log_type, util::t_span span, std::string message) { logs.emplace_back(span, log_type, message); }
+        inline void add_log(LogType log_type, util::Span span, std::string message) { logs.emplace_back(span, log_type, message); }
         
-        inline void add_message(util::t_span span, std::string message)                  { add_log(t_log_type::MESSAGE, span, message); }
-        inline void add_warning(util::t_span span, std::string message)                  { add_log(t_log_type::WARNING, span, message); }
-        inline void add_error(util::t_span span, std::string message)                    { add_log(t_log_type::ERROR, span, message); }
+        inline void add_message(util::Span span, std::string message)                  { add_log(LogType::MESSAGE, span, message); }
+        inline void add_warning(util::Span span, std::string message)                  { add_log(LogType::WARNING, span, message); }
+        inline void add_error(util::Span span, std::string message)                    { add_log(LogType::ERROR, span, message); }
 
         [[nodiscard]]
         std::string to_string(bool format = true) const;

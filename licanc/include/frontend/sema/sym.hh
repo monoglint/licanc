@@ -8,7 +8,7 @@ this file holds all of the struct decls and definitions for symbols
 
 INSTRUCTIONS FOR MODDING
 
-Add a new t_sym_type value. Create a new independent struct.
+Add a new SymType value. Create a new independent struct.
 Append the new struct type to the variant at the bottom of the file.
 
 semantic note: all of the properties of symbols and nodes don't have an _id even though they're referencing ids. code outside of this file will use an id
@@ -56,9 +56,9 @@ based on what pass of the semantic analyzer was just performed
 #include "manager/manager_types.hh"
 
 namespace frontend::sema::sym {
-    struct t_sym { };
+    struct Sym { };
 
-    enum class t_decl_type {
+    enum class DeclType {
         FUNCTION,
         STRUCT,
         MODULE,
@@ -66,164 +66,170 @@ namespace frontend::sema::sym {
         PRIMATIVE,
     };
 
-    struct t_decl : t_sym {
-        t_decl(t_decl_type decl_type)
+    struct Decl : Sym {
+        Decl(DeclType decl_type)
             : decl_type(decl_type) 
         {}
 
-        t_decl_type decl_type;
+        DeclType decl_type;
     };
     
-    struct t_template_argument;
+    struct TemplateArgument;
 
     template <class T_INST>
-    using t_insts = std::unordered_map<std::vector<t_template_argument*>, T_INST, util::t_vector_hasher<t_template_argument*>>;
+    using Insts = std::unordered_map<std::vector<TemplateArgument*>, T_INST, util::VectorHasher<TemplateArgument*>>;
 
-    using t_decls = std::unordered_map<manager::t_identifier_id, t_decl*>;
+    using Decls = std::unordered_map<manager::IdentifierId, Decl*>;
 
     // SYMBOLS v vvv vv vv
     
-    struct t_module_decl;
-    struct t_root : t_sym { // index 0
-        /* 0 */ t_module_decl* global_module;
+    struct ModuleDecl;
+    struct Root : Sym { // index 0
+        /* 0 */ ModuleDecl* global_module;
     };
 
-    struct t_type_name_template_parameter : t_sym {
+    struct TypeNameTemplateParameter : Sym {
 
     };
 
-    struct t_value_template_parameter : t_sym {
-        /* _ */ manager::t_constexpr_id constexpr_id;
+    struct ValueTemplateParameter : Sym {
+        /* _ */ manager::ConstexprId constexpr_id;
     };
 
-    using t_template_parameter_variant = std::variant<t_type_name_template_parameter*, t_value_template_parameter*>;
-    struct t_template_parameter : t_sym {
-        /* _ */ t_template_parameter_variant value;
+    using TemplateParameterVariant = std::variant<TypeNameTemplateParameter*, ValueTemplateParameter*>;
+    struct TemplateParameter : Sym {
+        /* _ */ TemplateParameterVariant value;
     };
 
     //                                                                   not definite yet, just here for implementation
-    using t_template_argument_value_variant = std::variant<manager::t_type_name_id, manager::t_constexpr_id>;
-    struct t_template_argument : t_sym {
-        /* _ */ t_template_argument_value_variant argument_value;
+    using TemplateArgumentValueVariant = std::variant<manager::ResolvedTypeId, manager::ConstexprId>;
+    struct TemplateArgument : Sym {
+        /* _ */ TemplateArgumentValueVariant argument_value;
     };
 
-    struct t_function : t_sym {
-        /* 0 */ scan::ast::t_function* syntactic_function;
-        /* _ */ std::vector<manager::t_type_name_id> parameter_types; // {t_type}
-        /* _ */ manager::t_type_name_id return_type;
+    struct Function : Sym {
+        /* 0 */ scan::ast::Function* syntactic_function;
+        /* _ */ std::vector<manager::ResolvedTypeId> parameter_types; // {Type}
+        /* _ */ manager::ResolvedTypeId return_type;
     };
 
-    struct t_function_inst {
-        /* _ */ t_function* concrete_function;
+    struct FunctionInst {
+        /* _ */ Function* concrete_function;
     };
     
-    struct t_function_template : t_sym {
+    struct FunctionTemplate : Sym {
         //  base is not 100% concrete unless len(specializations) is 0 
         //  /
         // v
-        /* 0 */ t_function* base; // t_function
-        /* _ */ std::vector<t_template_parameter*> template_parameters; // {t_template_parameter}
-        /* _ */ t_insts<t_function_inst*> instantiations; // <_, t_function> 
+        /* 0 */ Function* base; // Function
+        /* _ */ std::vector<TemplateParameter*> template_parameters; // {TemplateParameter}
+        /* _ */ Insts<FunctionInst*> instantiations; // <_, Function> 
     };
 
-    struct t_function_decl : t_decl {
-        t_function_decl(t_function_template* function_template)
-            : t_decl(t_decl_type::FUNCTION), function_template(function_template)
+    struct FunctionOverload : Sym {
+        /* _ */ std::vector<manager::ResolvedTypeId> parameter_types;
+        /* _ */ FunctionTemplate* function_template; // FunctionTemplate
+    };
+
+    struct FunctionDecl : Decl {
+        FunctionDecl(std::vector<FunctionOverload*> overloads)
+            : Decl(DeclType::FUNCTION), overloads(std::move(overloads))
         {}
             
-        /* 0 */ t_function_template* function_template; // t_function_template
+        // default overload stored in index 0
+        /* index 0: 0 */ std::vector<FunctionOverload*> overloads;
     };
 
-    enum class t_access_specifier {
+    enum class AccessSpecifier {
         PUBLIC,
         PRIVATE,
     };
 
-    struct t_property : t_sym {
-        /* _ */ manager::t_type_name_id property_type;
-        /* _ */ t_access_specifier access_specifier;
+    struct Property : Sym {
+        /* _ */ manager::ResolvedTypeId property_type;
+        /* _ */ AccessSpecifier access_specifier;
     };
 
-    struct t_method : t_sym {
-        /* _ */ t_function_template* function_template; // t_function_template
-        /* _ */ t_access_specifier access_specifier;
+    struct Method : Sym {
+        /* _ */ FunctionTemplate* function_template; // FunctionTemplate
+        /* _ */ AccessSpecifier access_specifier;
     };
 
-    struct t_struct : t_sym {
-        /* 0 */ scan::ast::t_struct* syntactic_struct;
-        /* _ */ t_decls properties; // {t_property}
-        /* _ */ t_decls methods; // {t_method}
+    struct Struct : Sym {
+        /* 0 */ scan::ast::Struct* syntactic_struct;
+        /* _ */ Decls properties; // {Property}
+        /* _ */ Decls methods; // {Method}
 
         // implementation should be fixed here. you can technically access different initializer types by name because a copy constructor
         // will always be called copy, but just be careful. 
-        /* _ */ t_decls initializers; // {t_initializer}
+        /* _ */ Decls initializers; // {Initializer}
     };
 
-    struct t_struct_inst {
-        t_struct* concrete_struct;
+    struct StructInst {
+        Struct* concrete_struct;
     };
 
-    struct t_struct_template : t_sym {
-        /* 0 */ t_struct* base; // t_struct
-        /* _ */ t_insts<t_struct_inst*> instantiations;
-        /* _ */ std::vector<t_template_parameter*> template_parameters;
+    struct StructTemplate : Sym {
+        /* 0 */ Struct* base; // Struct
+        /* _ */ Insts<StructInst*> instantiations;
+        /* _ */ std::vector<TemplateParameter*> template_parameters;
     };
 
-    struct t_struct_decl : t_decl {
-        t_struct_decl()
-            : t_decl(t_decl_type::STRUCT)
+    struct StructDecl : Decl {
+        StructDecl()
+            : Decl(DeclType::STRUCT)
         {}
 
-        /* 0 */ t_struct_template* struct_template;
+        /* 0 */ StructTemplate* struct_template;
     };
 
-    struct t_primative : t_decl {
+    struct Primative : Decl {
         /* 0 */ std::size_t size;
     };
 
-    struct t_primative_decl : t_decl {
-        t_primative_decl()
-            : t_decl(t_decl_type::PRIMATIVE) 
+    struct PrimativeDecl : Decl {
+        PrimativeDecl()
+            : Decl(DeclType::PRIMATIVE) 
         {}
 
-        t_primative* primative;
+        Primative* primative;
     };
 
-    struct t_import_marker : t_sym {
+    struct ImportMarker : Sym {
         // a pointer to the global module of another already semantically analyzed file
-        t_module_decl* target_module;
+        ModuleDecl* target_module;
     };
 
-    struct t_module_decl : t_decl {
-        t_module_decl(std::optional<t_module_decl*> parent_module, t_decls decls, std::vector<t_import_marker*> import_markers)
-            : t_decl(t_decl_type::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
+    struct ModuleDecl : Decl {
+        ModuleDecl(std::optional<ModuleDecl*> parent_module, Decls decls, std::vector<ImportMarker*> import_markers)
+            : Decl(DeclType::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
         {}
 
-        /* 0 */ std::optional<t_module_decl*> parent_module;
-        /* 0 */ t_decls decls;
-        /* 0 */ std::vector<t_import_marker*> import_markers;
+        /* 0 */ std::optional<ModuleDecl*> parent_module;
+        /* 0 */ Decls decls;
+        /* 0 */ std::vector<ImportMarker*> import_markers;
     };
 
-    struct t_global_decl : t_decl {
-        t_global_decl()
-            : t_decl(t_decl_type::GLOBAL) {}
+    struct GlobalDecl : Decl {
+        GlobalDecl()
+            : Decl(DeclType::GLOBAL) {}
 
-        /* _ */ manager::t_type_name_id global_type;
+        /* _ */ manager::ResolvedTypeId global_type;
     };
 
-    struct t_sym_table {
-        t_sym_table() { init(); }
+    struct SymTable {
+        SymTable() { init(); }
 
     private:
-        util::t_arena<> arena;
+        util::Arena<> arena;
 
     public:
-        t_root* root_ptr; // initialized in semantic_analyzer.cc
+        Root* root_ptr; // initialized in semantic_analyzer.cc
         
-        template <std::derived_from<t_sym> T, typename... ARGS>
+        template <std::derived_from<Sym> T, typename... ARGS>
         T* emplace(ARGS... args);
 
-        template <std::derived_from<t_sym> T>
+        template <std::derived_from<Sym> T>
         inline T* push(T sym) {
             return emplace<T, T>(std::move(sym));
         }
@@ -235,7 +241,7 @@ namespace frontend::sema::sym {
         
     private:
         inline void init() {
-            std::ignore = arena.emplace<t_root>();
+            std::ignore = arena.emplace<Root>();
         }
     };
 }

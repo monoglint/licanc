@@ -24,5 +24,5 @@ void util::panic(std::string message, bool exit) {
     if (exit)
         std::exit(1);
     else
-        throw t_panic_assertion(message);
+        throw PanicAssertion(message);
 }

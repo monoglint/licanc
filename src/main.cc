@@ -47,7 +47,7 @@
             start_subpath = argv[2];
         }
 
-        licanc::t_licanc_config config {
+        licanc::LicancConfig config {
             .project_path = project_path,
             .start_path = project_path + start_subpath
         };

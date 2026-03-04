@@ -8,27 +8,27 @@
 namespace util {
     template <class T_TAG, typename T_VALUE = std::size_t>
     requires std::is_integral_v<T_VALUE>
-    struct t_safe_id {
-        explicit t_safe_id(T_VALUE value)
+    struct SafeId {
+        explicit SafeId(T_VALUE value)
             : value(value) 
         {}
 
-        t_safe_id()
+        SafeId()
             : value(INVALID_VALUE) 
         {};
 
-        // for getting the type when accessing a fully template-instantiated t_safe_id
-        using t_value_type = T_VALUE;
-        using t_tag_type = T_TAG;
+        // for getting the type when accessing a fully template-instantiated SafeId
+        using ValueType = T_VALUE;
+        using TagType = T_TAG;
 
         inline static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
-        inline static const t_safe_id<T_TAG, T_VALUE> INVALID_ID;
+        inline static const SafeId<T_TAG, T_VALUE> INVALID_ID;
         
         constexpr explicit inline operator T_VALUE() const {
             return value;
         }
 
-        constexpr inline auto operator<=>(const t_safe_id<T_TAG, T_VALUE>&) const = default;
+        constexpr inline auto operator<=>(const SafeId<T_TAG, T_VALUE>&) const = default;
 
         [[nodiscard]]
         constexpr inline bool is_valid() const {
@@ -45,22 +45,22 @@ namespace util {
     };
 
     template <class T_TAG, typename T_VALUE = std::size_t>
-    struct t_is_safe_id : std::false_type {};
+    struct IsSafeId : std::false_type {};
 
     template <class T_TAG, typename T_VALUE>
-    struct t_is_safe_id<t_safe_id<T_TAG, T_VALUE>> : std::true_type {};
+    struct IsSafeId<SafeId<T_TAG, T_VALUE>> : std::true_type {};
 
     template <class T_TAG, typename T_VALUE = std::size_t>
-    constexpr inline bool t_is_safe_id_v = t_is_safe_id<T_TAG, T_VALUE>::value;
+    constexpr inline bool IsSafeIdV = IsSafeId<T_TAG, T_VALUE>::value;
 
     template <class T_TAG, typename T_VALUE = std::size_t>
-    concept c_is_safe_id = t_is_safe_id_v<T_TAG, T_VALUE>;
+    concept c_is_safe_id = IsSafeIdV<T_TAG, T_VALUE>;
 }
 
 namespace std {
     template <class T_TAG, typename T_VALUE>
-    struct hash<util::t_safe_id<T_TAG, T_VALUE>> {
-        std::size_t operator()(const util::t_safe_id<T_TAG, T_VALUE>& id) const noexcept {
+    struct hash<util::SafeId<T_TAG, T_VALUE>> {
+        std::size_t operator()(const util::SafeId<T_TAG, T_VALUE>& id) const noexcept {
             return std::hash<T_VALUE>{}(id.get());
         }
     };

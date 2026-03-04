@@ -5,10 +5,10 @@
 #include "frontend/manager.hh"
 
 namespace frontend::scan::parser {
-    struct t_parser_context {
-        ast::t_ast& ast;
+    struct ParserContext {
+        ast::AST& ast;
     };
 
-    void parse(t_parser_context context);
-    void build_test_ast(t_parser_context context);
+    void parse(ParserContext context);
+    void build_test_ast(ParserContext context);
 }

@@ -5,15 +5,15 @@
 
 #include "util/panic.hh"
 
-void frontend::sema::semantic_analyzer::analyze(manager::t_compilation_engine& engine, manager::t_file_id file_id) {
-    manager::t_file_manager::t_get_file_result get_file_result = engine.file_manager.get_file(file_id);
+void frontend::sema::semantic_analyzer::analyze(manager::CompilationEngine& engine, manager::FileId file_id) {
+    manager::FileManager::GetFileResult get_file_result = engine.file_manager.get_file(file_id);
     
     util::panic_assert(
         get_file_result.has_value(), 
         "Symbol registrar attempted to access nonexistent file_id: \"" + std::to_string(file_id.get()) + "\"."
     );
 
-    manager::t_compilation_file& file = get_file_result.value().get();
+    manager::CompilationFile& file = get_file_result.value().get();
 
     sym_registrar::register_symbols({
         .file_id = file_id, 

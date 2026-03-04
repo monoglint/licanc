@@ -7,9 +7,9 @@
 #include "frontend/manager.hh"
 
 namespace frontend::scan::lexer {
-    struct t_lexer_context {
+    struct LexerContext {
 
     };
 
-    void lex(t_lexer_context context);
+    void lex(LexerContext context);
 }

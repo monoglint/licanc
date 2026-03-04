@@ -49,14 +49,14 @@ namespace util {
     // because i am focusing too hard on "infrastructure" perfection and i need to control that
     // -session 10
     template <class T_VARIANT, util::c_is_safe_id T_ID>
-    struct t_arena {
+    struct Arena {
         template <class T>
-        using t_get_result = std::optional<std::reference_wrapper<T>>;
-        using t_get_variant_result = std::optional<std::reference_wrapper<T_VARIANT>>;
-        using t_get_const_variant_result = std::optional<std::reference_wrapper<const T_VARIANT>>;
+        using GetResult = std::optional<std::reference_wrapper<T>>;
+        using GetVariantResult = std::optional<std::reference_wrapper<T_VARIANT>>;
+        using GetConstVariantResult = std::optional<std::reference_wrapper<const T_VARIANT>>;
 
         [[nodiscard]]
-        inline t_get_variant_result get_variant(T_ID node_id) {
+        inline GetVariantResult get_variant(T_ID node_id) {
             if (!does_index_exist(node_id))
                 return std::nullopt;
                 
@@ -64,7 +64,7 @@ namespace util {
         }
 
         [[nodiscard]]
-        inline t_get_const_variant_result get_variant(T_ID node_id) const {
+        inline GetConstVariantResult get_variant(T_ID node_id) const {
             if (!does_index_exist(node_id))
                 return std::nullopt;
                 
@@ -74,8 +74,8 @@ namespace util {
         // Get node_id casted as T
         template <class T>
         [[nodiscard]]
-        inline t_get_result<T> get(T_ID node_id) {
-            t_get_variant_result get_variant_result = get_variant(node_id);
+        inline GetResult<T> get(T_ID node_id) {
+            GetVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return std::nullopt;
@@ -89,8 +89,8 @@ namespace util {
         // Get node_id casted as T
         template <class T>
         [[nodiscard]]
-        inline t_get_result<const T> get(T_ID node_id) const {
-            t_get_const_variant_result get_variant_result = get_variant(node_id);
+        inline GetResult<const T> get(T_ID node_id) const {
+            GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return std::nullopt;
@@ -113,7 +113,7 @@ namespace util {
         
         // Returns the actively filled variant index for the given id
         inline std::optional<std::size_t> index_of(T_ID node_id) const {
-            t_get_const_variant_result get_variant_result = get_variant(node_id);
+            GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return std::nullopt;
@@ -130,7 +130,7 @@ namespace util {
         template <class T>
         [[nodiscard]]
         inline bool is(T_ID node_id) const {
-            t_get_const_variant_result get_variant_result = get_variant(node_id);
+            GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return false;
@@ -173,15 +173,15 @@ namespace util {
 
     // note: a different name might be preferrable because base implies that this is the base class when it isnt
     template <class T_VARIANT, class T_ID, class T_BASE>
-    struct t_base_arena : t_arena<T_VARIANT, T_ID> {
-        using t_arena_type = t_arena<T_VARIANT, T_ID>;
+    struct BaseArena : Arena<T_VARIANT, T_ID> {
+        using ArenaType = Arena<T_VARIANT, T_ID>;
         
-        using t_get_base_result = std::optional<std::reference_wrapper<T_BASE>>;
-        using t_get_const_base_result = std::optional<std::reference_wrapper<const T_BASE>>;
+        using GetBaseResult = std::optional<std::reference_wrapper<T_BASE>>;
+        using GetConstBaseResult = std::optional<std::reference_wrapper<const T_BASE>>;
 
         [[nodiscard]]
-        inline t_get_base_result get_base(T_ID node_id) {
-            typename t_arena_type::t_get_variant_result get_variant_result = this->get_variant(node_id);
+        inline GetBaseResult get_base(T_ID node_id) {
+            typename ArenaType::GetVariantResult get_variant_result = this->get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return std::nullopt;
@@ -190,8 +190,8 @@ namespace util {
         }
 
         [[nodiscard]]
-        inline t_get_const_base_result get_base(T_ID node_id) const {
-            typename t_arena_type::t_get_const_variant_result get_variant_result = this->get_variant(node_id);
+        inline GetConstBaseResult get_base(T_ID node_id) const {
+            typename ArenaType::GetConstVariantResult get_variant_result = this->get_variant(node_id);
 
             if (!get_variant_result.has_value())
                 return std::nullopt;

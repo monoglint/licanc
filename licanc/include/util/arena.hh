@@ -8,16 +8,16 @@
 
 namespace util {
     template <std::size_t CAPACITY>
-    struct t_arena_chunk {
-        t_arena_chunk()
+    struct ArenaChunk {
+        ArenaChunk()
             : buffer(static_cast<std::byte*>(::operator new(CAPACITY))), offset(0) {}
 
-        ~t_arena_chunk() {
+        ~ArenaChunk() {
             ::operator delete(buffer); 
         }
 
-        t_arena_chunk(const t_arena_chunk&) = delete;
-        t_arena_chunk(t_arena_chunk&&) = delete;
+        ArenaChunk(const ArenaChunk&) = delete;
+        ArenaChunk(ArenaChunk&&) = delete;
 
         template <std::size_t ALIGN, std::size_t SIZE>
         constexpr inline bool can_allocate() {
@@ -41,7 +41,8 @@ namespace util {
 
             return new (aligned_ptr) T(std::forward<ARGS>(args)...);
         }
-
+        
+    private:
         std::byte* buffer;
         std::size_t offset;
     };
@@ -52,19 +53,20 @@ namespace util {
     
     */
     template <std::size_t CHUNK_CAPACITY = 4096>
-    struct t_arena {
-        explicit t_arena()
+    class Arena {
+    public:
+        explicit Arena()
             : chunks(1) 
         {};
 
-        ~t_arena() {
+        ~Arena() {
             clear();
         }
 
-        t_arena(const t_arena&) = delete;
-        t_arena(t_arena&&) = delete;
-        t_arena& operator=(const t_arena&) = delete;
-        t_arena& operator=(t_arena&&) = delete;
+        Arena(const Arena&) = delete;
+        Arena(Arena&&) = delete;
+        Arena& operator=(const Arena&) = delete;
+        Arena& operator=(Arena&&) = delete;
 
         // CAN RETURN NULLPTR
         template <typename T, typename... ARGS>
@@ -95,7 +97,7 @@ namespace util {
             chunks.clear();
         }
     private: 
-        std::deque<t_arena_chunk<CHUNK_CAPACITY>> chunks;
+        std::deque<ArenaChunk<CHUNK_CAPACITY>> chunks;
 
         template <typename T, typename... ARGS>
         constexpr inline T* attempt_allocation(ARGS&&... args) {

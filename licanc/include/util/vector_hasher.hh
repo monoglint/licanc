@@ -15,7 +15,7 @@
 namespace util {
     // must stand unique. can not be an std::hash specializtion due to rules
     template <typename T, class T_HASHER = std::hash<T>>
-    struct t_vector_hasher {
+    struct VectorHasher {
         using vector_of_t = std::vector<T>;
 
         inline std::size_t operator()(const vector_of_t& vec) const noexcept {

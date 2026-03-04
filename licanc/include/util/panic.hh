@@ -4,8 +4,8 @@
 #include <stdexcept>
 
 namespace util {
-    struct t_panic_assertion : public std::runtime_error {
-        t_panic_assertion(std::string message)
+    struct PanicAssertion : public std::runtime_error {
+        PanicAssertion(std::string message)
             : std::runtime_error(message)
         {}
     };

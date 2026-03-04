@@ -11,7 +11,7 @@ primary interface header
 
 namespace licanc {
     // all contents of config is checked in validate_licanc_config
-    struct t_licanc_config {
+    struct LicancConfig {
         std::string project_path;
         std::string start_path;
         std::string app_name = "untitled_lican_app";
@@ -19,14 +19,14 @@ namespace licanc {
         std::vector<std::string> target_import_paths;
     };
 
-    enum class t_compile_result {
+    enum class CompileResult {
         SUCCESS,
         ERROR,
         TERMINATED,
     };
 
-    void assert_licanc_config_validity(t_licanc_config& config);
-    void correct_licanc_config(licanc::t_licanc_config& config);
+    void assert_licanc_config_validity(LicancConfig& config);
+    void correct_licanc_config(licanc::LicancConfig& config);
 
-    t_compile_result compile(t_licanc_config config);
+    CompileResult compile(LicancConfig config);
 }

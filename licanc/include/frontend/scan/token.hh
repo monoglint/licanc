@@ -15,7 +15,7 @@ struct color3<T> {
 */
 
 namespace frontend::scan::token {
-    enum class t_token_type {
+    enum class TokenType {
         NONE,
 
         IMPORT,
@@ -27,11 +27,11 @@ namespace frontend::scan::token {
 
     };
 
-    struct t_token {
+    struct Token {
 
     };
 
     // note: this doesn't break naming rules of specifying type in names because the naming style is conventional
     // like "abstract syntax TREE", "symbol TABLE"
-    using t_tokens = std::vector<t_token>;
+    using Tokens = std::vector<Token>;
 }
