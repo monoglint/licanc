@@ -217,13 +217,10 @@ namespace frontend::sema::sym {
         /* _ */ manager::ResolvedTypeId global_type;
     };
 
-    struct SymTable {
+    class SymTable {
+    public:
         SymTable() { init(); }
 
-    private:
-        util::Arena<> arena;
-
-    public:
         Root* root_ptr; // initialized in semantic_analyzer.cc
         
         template <std::derived_from<Sym> T, typename... ARGS>
@@ -240,6 +237,8 @@ namespace frontend::sema::sym {
         }
         
     private:
+        util::Arena<> arena;
+
         inline void init() {
             std::ignore = arena.emplace<Root>();
         }

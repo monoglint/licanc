@@ -4,8 +4,6 @@
 
 #include "frontend/scan/token.hh"
 
-#include "frontend/manager.hh"
-
 namespace frontend::scan::lexer {
     struct LexerContext {
 

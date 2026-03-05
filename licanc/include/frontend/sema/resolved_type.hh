@@ -4,7 +4,7 @@
 
 namespace frontend::sema {
     enum class ResolvedTypeQualifier {
-        CONST
+        MUT
     };
 
     using ResolvedTypeDeclVariant = std::variant<sym::StructDecl*, sym::PrimativeDecl*>;

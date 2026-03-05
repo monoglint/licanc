@@ -540,15 +540,12 @@ namespace frontend::scan::ast {
     //
     //
 
-    struct AST {
+    class AST {
+    public:
         AST() { init(); }
 
         // if an import node is allocated into the arena, its important to add it to the "imports" vector
-        
-    private:
-        util::Arena<> arena;
 
-    public:
         Root* root_ptr;
         std::vector<ImportDecl*> import_nodes;
         
@@ -566,6 +563,8 @@ namespace frontend::scan::ast {
         }
 
     private:
+        util::Arena<> arena;
+
         inline void init() {
             std::ignore = arena.emplace<Root>();
         }

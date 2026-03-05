@@ -24,7 +24,7 @@ licanc::CompileResult licanc::compile(licanc::LicancConfig config) {
         // LATER: compare hashed config with cached compilations and load the frontend unit on those
         
 
-        manager::CompilationEngineConfigContext engine_context(config.project_path, config.start_path);
+        manager::EngineContext engine_context(config.project_path, config.start_path);
         manager::CompilationEngine engine(engine_context);
 
         engine.compile();

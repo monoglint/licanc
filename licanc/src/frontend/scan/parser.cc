@@ -2,10 +2,11 @@
 
 #include <filesystem>
 
-namespace frontend::scan::parser {
-
+namespace {
+    std::string standardize_import_path(std::string path) {
+        
+    }
 }
-
 
 void frontend::scan::parser::parse(ParserContext context) {
 

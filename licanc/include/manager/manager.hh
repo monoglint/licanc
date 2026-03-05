@@ -171,18 +171,18 @@ namespace manager {
         ResolvedTypePool resolved_type_pool;
     };
 
-    struct CompilationEngineConfigContext {
+    struct EngineContext {
         const std::string& project_path;
         const std::string& start_path;
     };
 
     class CompilationEngine {
     public:
-        CompilationEngine(CompilationEngineConfigContext& config_context)
+        CompilationEngine(EngineContext& config_context)
             : config_context(config_context), file_refresher(file_manager)
         {}
 
-        CompilationEngineConfigContext config_context;
+        EngineContext config_context;
 
         SessionPools session_pools;
         FileManager file_manager;
