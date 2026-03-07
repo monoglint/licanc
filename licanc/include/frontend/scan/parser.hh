@@ -6,7 +6,7 @@
 namespace frontend::scan::parser {
     struct ParserContext {
         ast::AST& ast;
-        manager::EngineContext engine_context;
+        manager::EngineContext& engine_context;
     };
 
     void parse(ParserContext context);

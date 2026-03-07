@@ -227,9 +227,7 @@ namespace frontend::sema::sym {
         T* emplace(ARGS... args);
 
         template <std::derived_from<Sym> T>
-        inline T* push(T sym) {
-            return emplace<T, T>(std::move(sym));
-        }
+        T* push(T sym);
 
         inline void clear() {
             arena.clear();
@@ -240,7 +238,7 @@ namespace frontend::sema::sym {
         util::Arena<> arena;
 
         inline void init() {
-            std::ignore = arena.emplace<Root>();
+            std::ignore = arena.try_emplace<Root>();
         }
     };
 }

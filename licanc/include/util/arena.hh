@@ -4,7 +4,11 @@
 #include <new>
 #include <memory>
 #include <deque>
+#include <vector>
 #include <optional>
+
+// notes for future improvements:
+// - vector of destructors could maybe be backed into the arena itself (7 march 2026)
 
 namespace util {
     template <std::size_t CAPACITY>
@@ -19,29 +23,17 @@ namespace util {
         ArenaChunk(const ArenaChunk&) = delete;
         ArenaChunk(ArenaChunk&&) = delete;
 
-        template <std::size_t ALIGN, std::size_t SIZE>
-        constexpr inline bool can_allocate() {
-            std::byte* current_ptr = buffer + offset;
-            std::size_t space_left = CAPACITY - offset;
-            void* aligned_ptr = current_ptr;
-
-            return std::align(ALIGN, SIZE, aligned_ptr, space_left) != nullptr;
-        }
-
-        template <typename T, typename... ARGS>
+        template <std::size_t SIZE, std::size_t ALIGN>
         [[nodiscard]]
-        constexpr inline T* allocate(ARGS&&... args) {
-            if (!can_allocate<alignof(T), sizeof(T)>())
-                return nullptr;
-            
-            std::byte* current_ptr = buffer + offset;
-            void* aligned_ptr = current_ptr;
-
-            offset += sizeof(T);
-
-            return new (aligned_ptr) T(std::forward<ARGS>(args)...);
-        }
+        void* try_align();
         
+        template <std::size_t SIZE, std::size_t ALIGN>
+        [[nodiscard]]
+        void* try_allocate();
+
+        inline void reset_offset() {
+            offset = 0;
+        }
     private:
         std::byte* buffer;
         std::size_t offset;
@@ -68,41 +60,34 @@ namespace util {
         Arena& operator=(const Arena&) = delete;
         Arena& operator=(Arena&&) = delete;
 
-        // CAN RETURN NULLPTR
         template <typename T, typename... ARGS>
         [[nodiscard]]
-        constexpr inline std::optional<T*> emplace(ARGS&&... args) {
-            T* ptr = attempt_allocation<T, ARGS...>(std::forward<ARGS>(args)...);
+        std::optional<T*> try_emplace(ARGS&&... args);
 
-            if (ptr)
-                return ptr;
-
-            chunks.emplace_back();
-            T* ptr2 = attempt_allocation<T, ARGS...>(std::forward<ARGS>(args)...);
-
-            if (ptr2)
-                return ptr2;
-                
-            return std::nullopt;
-        }
-
-        // CAN RETURN NULLPTR
         template <typename T>
         [[nodiscard]]
-        constexpr inline std::optional<T*> push(T&& obj) {
-            return emplace<T, T>(std::move(obj));
-        }
+        std::optional<T*> try_push(T obj);
 
-        inline void clear() {
-            chunks.clear();
-        }
-    private: 
+        template <std::size_t SIZE, std::size_t ALIGN>
+        [[nodiscard]]
+        std::optional<void*> try_allocate();
+
+        void clear();
+    private:
+        struct DestructorWrapper {
+            void(*callback)(void*);
+            void* obj_ptr;
+        };
+
         std::deque<ArenaChunk<CHUNK_CAPACITY>> chunks;
+        std::vector<DestructorWrapper> destructor_wrappers;
 
-        template <typename T, typename... ARGS>
-        constexpr inline T* attempt_allocation(ARGS&&... args) {
-            static_assert(sizeof(T) <= CHUNK_CAPACITY, "Attempted to allocate a data type too large.");
-            return chunks.back().template allocate<T>(std::forward<ARGS>(args)...);
-        }
+        template <typename T>
+        void register_potential_destructor(T* ptr);
+
+        // CAN RETURN NULLPTR
+        template <std::size_t SIZE, std::size_t ALIGN>
+        [[nodiscard]]
+        void* attempt_allocation();
     };
 }

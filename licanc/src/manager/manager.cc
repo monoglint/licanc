@@ -116,7 +116,8 @@ namespace {
         // not implemented yet
         frontend::scan::lexer::lex(frontend::scan::lexer::LexerContext{});
         frontend::scan::parser::parse(frontend::scan::parser::ParserContext{
-            .ast = file.compiler_output_data.frontend.ast
+            .ast = file.compiler_output_data.frontend.ast,
+            .engine_context = engine.engine_context
         });
 
         handle_post_parse_file_imports(engine, file_id, file, file_stack);
@@ -171,7 +172,8 @@ manager::FileManager::AddFileResult manager::FileManager::add_file(std::string p
         }
     }
 
-    files.emplace_back(std::filesystem::absolute(path).string(), quick_read_file_result.value());
+    std::optional<CompilationFile> item = std::make_optional<CompilationFile>(std::filesystem::absolute(path).string(), quick_read_file_result.value());
+    files.push_back(std::move(item));
 
     return FileId{files.size() - 1};
 }
@@ -224,7 +226,7 @@ manager::FileManager::FindFileResult manager::FileManager::find_file(std::string
 std::vector<manager::FileId> manager::FileManager::get_valid_files() const {
     std::vector<FileId> valid_files;
 
-    for (std::size_t file_id = 0; const FileEntry& file_entry : files) {
+    for (std::size_t file_id = 0; const std::optional<CompilationFile>& file_entry : files) {
         if (file_entry.has_value())
             valid_files.push_back(FileId{file_id});
     }
@@ -309,10 +311,10 @@ void manager::FileRefresher::refresh_files() {
 }
 
 void manager::CompilationEngine::compile() {
-    FileManager::FindFileResult get_file_result = file_manager.find_file(config_context.start_path);
+    FileManager::FindFileResult get_file_result = file_manager.find_file(engine_context.start_path);
 
     if (!get_file_result.has_value()) {
-        std::cerr << "Failed to find the project's root path! Ensure there there is a path for \"" << config_context.start_path << "\"\n";
+        std::cerr << "Failed to find the project's root path! Ensure there there is a path for \"" << engine_context.start_path << "\"\n";
         return;
     }
 

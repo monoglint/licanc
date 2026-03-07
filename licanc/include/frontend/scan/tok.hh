@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
 
 #include "util/span.hh"
 
@@ -61,7 +62,5 @@ namespace frontend::scan::tok {
 
     };
 
-    // note: this doesn't break naming rules of specifying type in names because the naming style is conventional
-    // like "abstract syntax TREE", "symbol TABLE"
-    using Tokens = std::vector<Token>;
+    using TokenStream = std::vector<Token>;
 }

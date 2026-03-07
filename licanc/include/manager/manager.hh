@@ -141,8 +141,7 @@ namespace manager {
         bool has_errors() const;
 
     private:
-        using FileEntry = std::optional<CompilationFile>;
-        std::deque<FileEntry> files;
+        std::deque<std::optional<CompilationFile>> files;
     };
 
     class FileRefresher {        
@@ -178,11 +177,11 @@ namespace manager {
 
     class CompilationEngine {
     public:
-        CompilationEngine(EngineContext& config_context)
-            : config_context(config_context), file_refresher(file_manager)
+        CompilationEngine(EngineContext& engine_context)
+            : engine_context(engine_context), file_refresher(file_manager)
         {}
 
-        EngineContext config_context;
+        EngineContext engine_context;
 
         SessionPools session_pools;
         FileManager file_manager;
