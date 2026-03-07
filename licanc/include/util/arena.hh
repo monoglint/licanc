@@ -13,7 +13,7 @@ namespace util {
             : buffer(static_cast<std::byte*>(::operator new(CAPACITY))), offset(0) {}
 
         ~ArenaChunk() {
-            ::operator delete(buffer); 
+            ::operator delete(buffer);
         }
 
         ArenaChunk(const ArenaChunk&) = delete;
@@ -56,7 +56,7 @@ namespace util {
     class Arena {
     public:
         explicit Arena()
-            : chunks(1) 
+            : chunks(1)
         {};
 
         ~Arena() {

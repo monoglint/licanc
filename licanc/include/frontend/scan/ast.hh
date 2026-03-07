@@ -2,15 +2,6 @@
 
 /*
 
-INSTRUCTIONS FOR MODDING
-
-Add a new ASTNodeType value. Create a new struct that inherits from Node.
-Append the new struct type to the variant at the bottom of the file.
-
-note: only have ast nodes inherit from decl, stmt, or expr if they can be guaranteed to be one. by that, imagine
-a function argument ast node. its value can be any type of expression. only label an ast node as an expr if you want
-it to be passable as a funciton argument
-
 */
 
 #include <variant>
@@ -18,7 +9,7 @@ it to be passable as a funciton argument
 
 #include "util/arena.hh"
 
-#include "frontend/scan/token.hh"
+#include "frontend/scan/tok.hh"
 
 #include "util/span.hh"
 #include "util/safe_id.hh"
@@ -28,42 +19,43 @@ it to be passable as a funciton argument
 namespace frontend::scan::ast {
     struct Node {
         Node(util::Span span)
-            : span(std::move(span)) 
+            : span(std::move(span))
         {}
 
         util::Span span;
     };
 
-    enum class DeclType {
+    enum class DeclKind {
         IMPORT,
         GLOBAL,
         FUNCTION,
         STRUCT,
         MODULE,
+        TYPE_ALIAS,
     };
 
     struct Decl : Node {
-        Decl(util::Span span, DeclType decl_type)
-            : Node(span), decl_type(decl_type) 
+        Decl(util::Span span, DeclKind decl_type)
+            : Node(span), decl_type(decl_type)
         {}
 
-        DeclType decl_type;
+        DeclKind decl_type;
     };
 
-    enum class StmtType {
+    enum class StmtKind {
         RETURN,
         COMPOUND,
     };
         
     struct Stmt : Node {
-        Stmt(util::Span span, StmtType stmt_type)
-            : Node(span), stmt_type(stmt_type) 
+        Stmt(util::Span span, StmtKind stmt_type)
+            : Node(span), stmt_type(stmt_type)
         {}
 
-        StmtType stmt_type;
+        StmtKind stmt_type;
     };
 
-    enum class ExprType {
+    enum class ExprKind {
         IDENTIFIER,
         STRING_LITERAL,
         UNARY,
@@ -79,14 +71,14 @@ namespace frontend::scan::ast {
     };
 
     struct Expr : Node {
-        Expr(util::Span span, ExprType expr_type)
-            : Node(span), expr_type(expr_type) 
+        Expr(util::Span span, ExprKind expr_type)
+            : Node(span), expr_type(expr_type)
         {}
 
-        ExprType expr_type;
+        ExprKind expr_type;
     };
 
-    enum class TypenameType {
+    enum class TypeKind {
         NAMED,
         TEMPLATE_INSTANTIATED,
         QUALIFIED,
@@ -95,21 +87,13 @@ namespace frontend::scan::ast {
         ARRAYED,
     };
 
-    struct Typename : Node {
-        Typename(util::Span span, TypenameType typename_type)
-            : Node(span), typename_type(typename_type)
+    struct Type : Node {
+        Type(util::Span span, TypeKind type_kind)
+            : Node(span), type_kind(type_kind)
         {}
 
-        TypenameType typename_type;
+        TypeKind type_kind;
     };
-    
-    template <typename T>
-    using Ptrs = std::vector<T*>;
-
-    using NodePtrs = Ptrs<Node>;
-    using DeclPtrs = Ptrs<Decl>;
-    using StmtPtrs = Ptrs<Stmt>;
-    using ExprPtrs = Ptrs<Expr>;
 
     //            ||||||
     //            ||||||
@@ -117,17 +101,17 @@ namespace frontend::scan::ast {
     //
     //
     struct Root : Node {
-        Root()
-            : Node({}) 
+        Root(std::vector<Decl*>* decls)
+            : Node({}), decls(decls)
         {}
 
-        DeclPtrs decls;
+        std::vector<Decl*>* decls;
     };
 
     // x
     struct Identifier : Expr {
         Identifier(util::Span span, manager::IdentifierId identifier_id)
-            : Expr(std::move(span), ExprType::IDENTIFIER), identifier_id(identifier_id) 
+            : Expr(std::move(span), ExprKind::IDENTIFIER), identifier_id(identifier_id)
         {}
         
         // reference to within manager::FrontendUnit
@@ -137,40 +121,40 @@ namespace frontend::scan::ast {
     // "hello world"
     struct StringLiteral : Expr {
         StringLiteral(util::Span span, manager::StringLiteralId string_literal_id)
-            : Expr(std::move(span), ExprType::STRING_LITERAL), string_literal_id(string_literal_id) 
+            : Expr(std::move(span), ExprKind::STRING_LITERAL), string_literal_id(string_literal_id)
         {}
 
         manager::StringLiteralId string_literal_id;
     };
 
     // struct NumberLiteral : Node {
-    //     NumberLiteral(util::Span span, manager::NumberLiteralId number_literal_id, token::TokenType suffix)
+    //     NumberLiteral(util::Span span, manager::NumberLiteralId number_literal_id, tok::TokenType suffix)
     //         : Node(std::move(span)), number_literal_id(number_literal_id), suffix(suffix) {}
 
     //     manager::NumberLiteralId number_literal_id;
-    //     token::TokenType suffix;
+    //     tok::TokenType suffix;
     // };
     // ^^^^^^^^ update how number literals are stored during scan time before re-enabling this
 
     // -5
     struct UnaryExpr : Expr {
-        UnaryExpr(util::Span span, Expr* operand, token::TokenType opr)
-            : Expr(std::move(span), ExprType::UNARY), operand(operand), opr(opr) 
+        UnaryExpr(util::Span span, Expr* operand, tok::OperatorKind opr)
+            : Expr(std::move(span), ExprKind::UNARY), operand(operand), opr(opr)
         {}
 
         Expr* operand;
-        token::TokenType opr;
+        tok::OperatorKind opr;
     };
 
     // 5 + 2
     struct BinaryExpr : Expr {
-        BinaryExpr(util::Span span, Expr* operand0, Expr* operand1, token::TokenType opr)
-            : Expr(std::move(span), ExprType::BINARY), operand0(operand0), operand1(operand1), opr(opr) 
+        BinaryExpr(util::Span span, Expr* operand0, Expr* operand1, tok::OperatorKind opr)
+            : Expr(std::move(span), ExprKind::BINARY), operand0(operand0), operand1(operand1), opr(opr)
         {}
 
         Expr* operand0;
         Expr* operand1;
-        token::TokenType opr;
+        tok::OperatorKind opr;
     };
 
     struct ScopeResolutionExpr;
@@ -178,7 +162,7 @@ namespace frontend::scan::ast {
     // a::b() || a()
     struct ScopeReferenceExpr : Expr {
         ScopeReferenceExpr(util::Span span, ScopeReferenceVariant reference)
-            : Expr(std::move(span), ExprType::SCOPE_REFERENCE), reference(std::move(reference)) 
+            : Expr(std::move(span), ExprKind::SCOPE_REFERENCE), reference(std::move(reference))
         {}
 
         ScopeReferenceVariant reference;
@@ -188,7 +172,7 @@ namespace frontend::scan::ast {
     using MemberReferenceVariant = std::variant<Identifier*, MemberAccessExpr*>;
     struct MemberReferenceExpr : Expr {
         MemberReferenceExpr(util::Span span, MemberReferenceVariant reference)
-            : Expr(std::move(span), ExprType::MEMBER_REFERENCE), reference(std::move(reference))
+            : Expr(std::move(span), ExprKind::MEMBER_REFERENCE), reference(std::move(reference))
         {}
 
         MemberReferenceVariant reference;
@@ -197,7 +181,7 @@ namespace frontend::scan::ast {
     // math::pi
     struct ScopeResolutionExpr : Expr {
         ScopeResolutionExpr(util::Span span, ScopeReferenceExpr* operand0, Identifier* operand1)
-            : Expr(std::move(span), ExprType::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1)
+            : Expr(std::move(span), ExprKind::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1)
          {}
 
         ScopeReferenceExpr* operand0;
@@ -207,7 +191,7 @@ namespace frontend::scan::ast {
     // object.position.x
     struct MemberAccessExpr : Expr {
         MemberAccessExpr(util::Span span, MemberReferenceExpr* operand0, Identifier* operand1)
-            : Expr(std::move(span), ExprType::MEMBER_ACCESS), operand0(operand0), operand1(operand1)
+            : Expr(std::move(span), ExprKind::MEMBER_ACCESS), operand0(operand0), operand1(operand1)
         {}
 
         MemberReferenceExpr* operand0;
@@ -216,14 +200,13 @@ namespace frontend::scan::ast {
 
     // if a > b { } else { } <--- not actual compound statement, braces are parser resolved syntactic sugar
     struct TernaryExpr : Expr {
-        TernaryExpr(util::Span span, Expr* condition, Expr* consequent, Expr* alternate, token::TokenType opr)
-            : Expr(std::move(span), ExprType::TERNARY), condition(condition), consequent(consequent), alternate(alternate), opr(opr) 
+        TernaryExpr(util::Span span, Expr* condition, Expr* consequent, Expr* alternate)
+            : Expr(std::move(span), ExprKind::TERNARY), condition(condition), consequent(consequent), alternate(alternate)
         {}
 
         Expr* condition;
         Expr* consequent;
         Expr* alternate;
-        token::TokenType opr;
     };
 
     /*
@@ -234,17 +217,17 @@ namespace frontend::scan::ast {
     */
 
     struct CallExpr : Expr {
-        CallExpr(util::Span span, ScopeReferenceExpr* callee, ExprPtrs arguments = {})
-            : Expr(std::move(span), ExprType::CALL), callee(callee), arguments(std::move(arguments))
+        CallExpr(util::Span span, ScopeReferenceExpr* callee, std::vector<Expr*>* arguments)
+            : Expr(std::move(span), ExprKind::CALL), callee(callee), arguments(arguments)
         {}
 
         ScopeReferenceExpr* callee; // ScopeReference
-        ExprPtrs arguments; // {Expr}
+        std::vector<Expr*>* arguments; // {Expr}
     };
 
     struct HeapExpr : Expr {
         HeapExpr(util::Span span, CallExpr* inst, std::optional<Expr*> address)
-            : Expr(std::move(span), ExprType::HEAP), inst(inst), address(std::move(address))
+            : Expr(std::move(span), ExprKind::HEAP), inst(inst), address(std::move(address))
         {}
 
         CallExpr* inst;
@@ -253,67 +236,71 @@ namespace frontend::scan::ast {
 
     struct TemplateArgument;
     struct TemplateInstExpr : Expr {
-        TemplateInstExpr(util::Span span, ScopeReferenceExpr* target, std::vector<TemplateArgument*> template_arguments)
-            : Expr(std::move(span), ExprType::TEMPLATE_inst), target(target), template_arguments(std::move(template_arguments))
+        TemplateInstExpr(util::Span span, ScopeReferenceExpr* target, std::vector<TemplateArgument*>* template_arguments)
+            : Expr(std::move(span), ExprKind::TEMPLATE_inst), target(target), template_arguments(template_arguments)
         {}
         
         ScopeReferenceExpr* target;
-        std::vector<TemplateArgument*> template_arguments;
+        std::vector<TemplateArgument*>* template_arguments;
     };
 
-    struct NamedTypename : Typename {
-        NamedTypename(util::Span span, ScopeReferenceExpr* base)
-            : Typename(std::move(span), TypenameType::NAMED), base(base)
+    struct NamedType : Type {
+        NamedType(util::Span span, ScopeReferenceExpr* base)
+            : Type(std::move(span), TypeKind::NAMED), base(base)
         {}
 
         ScopeReferenceExpr* base;
     };
 
     struct TemplateArgument;
-    struct TemplateInstantiatedTypename : Typename {
-        TemplateInstantiatedTypename(util::Span span, NamedTypename* base, std::vector<TemplateArgument*> arguments)
-            : Typename(std::move(span), TypenameType::TEMPLATE_INSTANTIATED), base(base), arguments(std::move(arguments))
+    struct TemplateInstantiatedType : Type {
+        TemplateInstantiatedType(util::Span span, NamedType* base, std::vector<TemplateArgument*>* arguments)
+            : Type(std::move(span), TypeKind::TEMPLATE_INSTANTIATED), base(base), arguments(arguments)
         {}
 
-        NamedTypename* base;
-        std::vector<TemplateArgument*> arguments;
+        NamedType* base;
+        std::vector<TemplateArgument*>* arguments;
     };
 
-    enum class TypenameQualifier {
+    enum class TypeQualifier {
         CONST
     };
 
-    struct QualifiedTypename : Typename {
-        QualifiedTypename(util::Span span, Typename* base, TypenameQualifier qualifier)
-            : Typename(std::move(span), TypenameType::QUALIFIED), base(base), qualifier(qualifier)
-        {}
-
-        Typename* base;
-        TypenameQualifier qualifier;
+    enum class ResolvedTypeQualifier {
+        MUT
     };
 
-    struct ReferencedTypename : Typename {
-        ReferencedTypename(util::Span span, Typename* base)
-            : Typename(std::move(span), TypenameType::REFERENCED), base(base)
+    struct QualifiedType : Type {
+        QualifiedType(util::Span span, Type* base, TypeQualifier qualifier)
+            : Type(std::move(span), TypeKind::QUALIFIED), base(base), qualifier(qualifier)
         {}
 
-        Typename* base;
+        Type* base;
+        TypeQualifier qualifier;
     };
 
-    struct PointeredTypename : Typename {
-        PointeredTypename(util::Span span, Typename* base)
-            : Typename(std::move(span), TypenameType::POINTERED), base(base)
+    struct ReferencedType : Type {
+        ReferencedType(util::Span span, Type* base)
+            : Type(std::move(span), TypeKind::REFERENCED), base(base)
         {}
 
-        Typename* base; // only limitation: no references
+        Type* base;
     };
 
-    struct ArrayedTypename : Typename {
-        ArrayedTypename(util::Span span, Typename* base)
-            : Typename(std::move(span), TypenameType::ARRAYED), base(base)
+    struct PointeredType : Type {
+        PointeredType(util::Span span, Type* base)
+            : Type(std::move(span), TypeKind::POINTERED), base(base)
         {}
 
-        Typename* base;
+        Type* base; // only limitation: no references
+    };
+
+    struct ArrayedType : Type {
+        ArrayedType(util::Span span, Type* base)
+            : Type(std::move(span), TypeKind::ARRAYED), base(base)
+        {}
+
+        Type* base;
     };
 
     /*
@@ -337,9 +324,10 @@ namespace frontend::scan::ast {
     */
 
     // import "math"
+    // note: always public, must be placed in a private namespace to be hidden
     struct ImportDecl : Decl {
         ImportDecl(util::Span span, StringLiteral* file_path, StringLiteral* absolute_file_path, bool is_path_valid)
-            : Decl(std::move(span), DeclType::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid) 
+            : Decl(std::move(span), DeclKind::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid)
         {}
 
         StringLiteral* file_path;
@@ -350,12 +338,13 @@ namespace frontend::scan::ast {
 
     // 
     struct GlobalDecl : Decl {
-        GlobalDecl(util::Span span, Identifier* name, Typename* type, Expr* value)
-            : Decl(std::move(span), DeclType::GLOBAL), name(name), type(type), value(value) 
+        GlobalDecl(util::Span span, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type, Expr* value)
+            : Decl(std::move(span), DeclKind::GLOBAL), storage_specifiers(storage_specifiers), name(name), type(type), value(value)
         {}
 
+        tok::StorageSpecifierFlags storage_specifiers;
         Identifier* name;
-        Typename* type;
+        Type* type;
         Expr* value;
     };
 
@@ -365,22 +354,22 @@ namespace frontend::scan::ast {
 
     struct ValueTemplateParameter : Node {
         Identifier* name;
-        Typename* type;
+        Type* type;
     };
 
     using TemplateParameterVariant = std::variant<TypeNameTemplateParameter*, ValueTemplateParameter*>;
     struct TemplateParameter : Node {
         TemplateParameter(util::Span span, TemplateParameterVariant value)
-            : Node(std::move(span)), value(std::move(value)) 
+            : Node(std::move(span)), value(std::move(value))
         {}
 
         TemplateParameterVariant value;
     };
 
-    using TemplateArgumentValueVariant = std::variant<Typename*, Expr*>;
+    using TemplateArgumentValueVariant = std::variant<Type*, Expr*>;
     struct TemplateArgument : Node {
         TemplateArgument(util::Span span, TemplateArgumentValueVariant value)
-            : Node(std::move(span)), value(std::move(value)) 
+            : Node(std::move(span)), value(std::move(value))
         {}
 
         // note: if value is a Expr, then the value of the template argument must be proven to be a compile time constant
@@ -388,132 +377,126 @@ namespace frontend::scan::ast {
     };
 
     struct FunctionParameter : Node {
-        FunctionParameter(util::Span span, Identifier* name, Typename* type)
-            : Node(std::move(span)), name(name), type(type) 
+        FunctionParameter(util::Span span, Identifier* name, Type* type)
+            : Node(std::move(span)), name(name), type(type)
         {}
 
         Identifier* name;
-        Typename* type;
+        Type* type;
     };
     
     struct Function : Node {
-        Function(util::Span span, std::vector<FunctionParameter*> parameters, Stmt* body, Typename* return_type)
-            : Node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type) 
+        Function(util::Span span, std::vector<FunctionParameter*>* parameters, Stmt* body, Type* return_type)
+            : Node(std::move(span)), parameters(parameters), body(body), return_type(return_type)
         {}
 
-        std::vector<FunctionParameter*> parameters;
+        std::vector<FunctionParameter*>* parameters;
         Stmt* body;
-        Typename* return_type;
+        Type* return_type;
     };
 
     struct FunctionTemplate : Node {
-        FunctionTemplate(util::Span span, Function* base, std::vector<TemplateParameter*> template_parameters)
-            : Node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
+        FunctionTemplate(util::Span span, Function* base, std::vector<TemplateParameter*>* template_parameters)
+            : Node(std::move(span)), base(base), template_parameters(template_parameters)
         {}
 
         Function* base;
-        std::vector<TemplateParameter*> template_parameters; // {TemplateParameter}
+        std::vector<TemplateParameter*>* template_parameters; // {TemplateParameter}
     };
     
     struct FunctionDecl : Decl {
-        FunctionDecl(util::Span span, FunctionTemplate* function_template, Identifier* name)
-            : Decl(std::move(span), DeclType::FUNCTION), function_template(function_template), name(name) 
+        FunctionDecl(util::Span span, tok::StorageSpecifierFlags storage_specifiers, FunctionTemplate* function_template, Identifier* name)
+            : Decl(std::move(span), DeclKind::FUNCTION), storage_specifiers(storage_specifiers), function_template(function_template), name(name)
             {}
 
+        tok::StorageSpecifierFlags storage_specifiers;
         FunctionTemplate* function_template;
         Identifier* name;
     };
 
-    struct Initializer : Node {
-        Initializer(util::Span span, Identifier* name, Function* function)
-            : Node(std::move(span)), name(name), function(function) 
-        {}
-
-        Identifier* name; // Identifier
-        Function* function; // NO DEPENDENT TYPES
-    };
-
     struct Finalizer : Node {
         Finalizer(util::Span span, Function* function)
-            : Node(std::move(span)), function(function) 
+            : Node(std::move(span)), function(function)
         {}
 
         Function* function; // NO DEPENDENT TYPES
     };
 
     struct Method : Node {
-        Method(util::Span span, token::TokenType access_specifier, Identifier* name, FunctionTemplate* function_template)
-            : Node(std::move(span)), access_specifier(access_specifier), name(name), function_template(function_template) 
+        Method(util::Span span, bool is_pub, Identifier* name, FunctionTemplate* function_template)
+            : Node(std::move(span)), is_pub(is_pub), name(name), function_template(function_template)
         {}
 
-        token::TokenType access_specifier;
+        bool is_pub;
         Identifier* name;
         FunctionTemplate* function_template;
     };
 
     struct Property : Node {
-        Property(util::Span span, token::TokenType access_specifier, Identifier* name, Typename* type)
-            : Node(std::move(span)), access_specifier(access_specifier), name(name), type(type) 
+        Property(util::Span span, bool is_pub, Identifier* name, Type* type)
+            : Node(std::move(span)), is_pub(is_pub), name(name), type(type)
         {}
 
-        token::TokenType access_specifier;
+        bool is_pub;
         Identifier* name;
-        Typename* type;
+        Type* type;
     };
 
     struct Struct : Node {
-        Struct(util::Span span, std::vector<Method*> methods, std::vector<Property*> properties, std::vector<Initializer*> initializers, Finalizer* finalizer)
-            : Node(std::move(span)), methods(std::move(methods)), properties(std::move(properties)), initializers(std::move(initializers)), finalizer(finalizer) 
+        Struct(util::Span span, std::vector<Method*>* methods, std::vector<Property*>* properties, Finalizer* finalizer)
+            : Node(std::move(span)), methods(methods), properties(properties), finalizer(finalizer)
         {}
 
-        std::vector<Method*> methods;
-        std::vector<Property*> properties;
-        std::vector<Initializer*> initializers;
+        std::vector<Method*>* methods;
+        std::vector<Property*>* properties;
+        // TODO: additional optional declarations need to be added like static variables, imports, etc.
+        
         Finalizer* finalizer; // Finalizer?
     };
 
     struct StructTemplate : Node {
-        StructTemplate(util::Span span, Struct* base, std::vector<TemplateParameter*> template_parameters)
-            : Node(std::move(span)), base(base), template_parameters(std::move(template_parameters)) 
+        StructTemplate(util::Span span, Struct* base, std::vector<TemplateParameter*>* template_parameters)
+            : Node(std::move(span)), base(base), template_parameters(template_parameters)
         {}
 
         Struct* base;
-        std::vector<TemplateParameter*> template_parameters;
+        std::vector<TemplateParameter*>* template_parameters;
     };
 
     struct StructDecl : Decl {
         StructDecl(util::Span span, StructTemplate* struct_template, Identifier* name)
-            : Decl(std::move(span), DeclType::STRUCT), struct_template(struct_template), name(name) 
+            : Decl(std::move(span), DeclKind::STRUCT), struct_template(struct_template), name(name)
         {}
 
         StructTemplate* struct_template;
         Identifier* name;
+        bool is_pub;
     };
 
-    // struct TypeAliasTemplate : Node {
-    //     TypeAliasTemplate(util::Span span, Type* type, std::vector<Type*> insts, std::vector<TemplateParameter*> template_parameters)
-    //         : Node(std::move(span)), type(type), insts(std::move(insts)), template_parameters(std::move(template_parameters)) {}
+    struct TypeAliasTemplate : Node {
+        TypeAliasTemplate(util::Span span, Type* type, std::vector<TemplateParameter*> template_parameters)
+            : Node(std::move(span)), type(type), template_parameters(std::move(template_parameters)) {}
 
-    //     Type* type;
-    //     std::vector<Type*> insts;
-    //     std::vector<TemplateParameter*> template_parameters;
-    // };
+        Type* type;
+        std::vector<TemplateParameter*> template_parameters;
+    };
 
-    // struct TypeAliasDecl : Item {
-    //     TypeAliasDecl(util::Span span, TypeAliasTemplate* type_alias_template, Identifier* name)
-    //         : Item(std::move(span)), type_alias_template(type_alias_template), name(name) {}
+    struct TypeAliasDecl : Decl {
+        TypeAliasDecl(util::Span span, TypeAliasTemplate* type_alias_template, Identifier* name)
+            : Decl(std::move(span), DeclKind::TYPE_ALIAS), type_alias_template(type_alias_template), name(name) {}
 
-    //     TypeAliasTemplate* type_alias_template;
-    //     Identifier* name;
-    // };
+        TypeAliasTemplate* type_alias_template;
+        Identifier* name;
+    };
 
     struct ModuleDecl : Decl {
-        ModuleDecl(util::Span span, Identifier* name, DeclPtrs decls)
-            : Decl(std::move(span), DeclType::MODULE), name(name), decls(std::move(decls)) 
+        ModuleDecl(util::Span span, Identifier* name, std::vector<Decl*>* decls, bool is_pub)
+            : Decl(std::move(span), DeclKind::MODULE), name(name), decls(decls), is_pub(is_pub)
         {}
         
         Identifier* name; // Identifier
-        DeclPtrs decls; // {Item}
+        std::vector<Decl*>* decls; // {Item}
+        bool is_pub;
 
         // ^^^ in the symbol table, a module declaration's decls are split into decls and references.
     };
@@ -522,18 +505,18 @@ namespace frontend::scan::ast {
 
     struct ReturnStmt : Stmt {
         ReturnStmt(util::Span span, Expr* value)
-            : Stmt(std::move(span), StmtType::RETURN), value(value) 
+            : Stmt(std::move(span), StmtKind::RETURN), value(value)
         {}
 
         Expr* value;
     };
 
     struct CompoundStmt : Stmt {
-        CompoundStmt(util::Span span, StmtPtrs stmts)
-            : Stmt(std::move(span), StmtType::COMPOUND), stmts(std::move(stmts)) 
+        CompoundStmt(util::Span span, std::vector<Stmt*>* stmts)
+            : Stmt(std::move(span), StmtKind::COMPOUND), stmts(stmts)
         {}
 
-        StmtPtrs stmts;
+        std::vector<Stmt*>* stmts;
     };
 
     //
@@ -557,12 +540,20 @@ namespace frontend::scan::ast {
             return emplace<T, T>(std::move(sym));
         }
 
+        // TODO: T should be enforced as a base of std::vector
+        template <class T>
+        inline void emplace_vector() {
+            // TODO:: VECTOR CONTENTS NEED TO BE ALLOCATED INTO THE ARENA
+            return emplace<std::vector<T>>();
+        }
+
         inline void clear() {
             arena.clear();
             init();
         }
 
     private:
+        // EXTERNAL CALL OF ::clear() IS UNSAFE
         util::Arena<> arena;
 
         inline void init() {

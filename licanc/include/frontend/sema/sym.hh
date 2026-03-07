@@ -68,7 +68,7 @@ namespace frontend::sema::sym {
 
     struct Decl : Sym {
         Decl(DeclType decl_type)
-            : decl_type(decl_type) 
+            : decl_type(decl_type)
         {}
 
         DeclType decl_type;
@@ -189,7 +189,7 @@ namespace frontend::sema::sym {
 
     struct PrimativeDecl : Decl {
         PrimativeDecl()
-            : Decl(DeclType::PRIMATIVE) 
+            : Decl(DeclType::PRIMATIVE)
         {}
 
         Primative* primative;

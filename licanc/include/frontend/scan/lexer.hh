@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "frontend/scan/token.hh"
+#include "frontend/scan/tok.hh"
 
 namespace frontend::scan::lexer {
     struct LexerContext {

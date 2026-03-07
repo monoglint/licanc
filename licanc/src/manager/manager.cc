@@ -396,7 +396,7 @@ void manager::CompilationEngine::compile_to_completion(FileId target_file_id) {
 
             case FileState::DONE:       
                 file_stack.pop_back();
-                std::cout << "Finished frontend for [" << file.path << "].\n"; 
+                std::cout << "Finished frontend for [" << file.path << "].\n";
                 std::cout << file.logger.to_string();         
                 break;
         }

@@ -4,7 +4,7 @@
 #include <expected>
 #include <optional>
 
-#include "frontend/scan/token.hh"
+#include "frontend/scan/tok.hh"
 #include "frontend/scan/ast.hh"
 #include "frontend/sema/sema.hh"
 #include "frontend/sema/resolved_type.hh"
@@ -49,7 +49,7 @@ namespace manager {
     };
 
     struct FrontendPassData {
-        frontend::scan::token::Tokens tokens;
+        frontend::scan::tok::Tokens tokens;
         frontend::scan::ast::AST ast;
         frontend::sema::sym::SymTable sym_table;
 
@@ -107,7 +107,7 @@ namespace manager {
             FILE_DOESNT_EXIST,
         };
 
-        using AddFileResult = std::expected<FileId, AddFileError>; 
+        using AddFileResult = std::expected<FileId, AddFileError>;
         using GetFileResult = std::optional<std::reference_wrapper<CompilationFile>>;
         using GetConstFileResult = std::optional<std::reference_wrapper<const CompilationFile>>;
         using FindFileResult = std::optional<FileId>;
@@ -141,7 +141,7 @@ namespace manager {
         bool has_errors() const;
 
     private:
-        using FileEntry = std::optional<CompilationFile>; 
+        using FileEntry = std::optional<CompilationFile>;
         std::deque<FileEntry> files;
     };
 

@@ -16,7 +16,7 @@ Total : 27 files,  272 codes, 25 comments, 106 blanks, all 403 lines
 | [licanc/include/frontend/scan/ast.hh](/licanc/include/frontend/scan/ast.hh) | C++ | 49 | 3 | 15 | 67 |
 | [licanc/include/frontend/scan/lexer.hh](/licanc/include/frontend/scan/lexer.hh) | C++ | 2 | 0 | 2 | 4 |
 | [licanc/include/frontend/scan/parser.hh](/licanc/include/frontend/scan/parser.hh) | C++ | 1 | 0 | 1 | 2 |
-| [licanc/include/frontend/scan/token.hh](/licanc/include/frontend/scan/token.hh) | C++ | 0 | 0 | 1 | 1 |
+| [licanc/include/frontend/scan/tok.hh](/licanc/include/frontend/scan/tok.hh) | C++ | 0 | 0 | 1 | 1 |
 | [licanc/include/frontend/sema/full\_passer.hh](/licanc/include/frontend/sema/full_passer.hh) | C++ | 2 | 0 | 2 | 4 |
 | [licanc/include/frontend/sema/sema.hh](/licanc/include/frontend/sema/sema.hh) | C++ | -1 | -1 | 1 | -1 |
 | [licanc/include/frontend/sema/sym.hh](/licanc/include/frontend/sema/sym.hh) | C++ | 28 | 8 | 16 | 52 |

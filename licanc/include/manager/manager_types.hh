@@ -14,7 +14,7 @@ DO NOT DOWNCAST THESE TYPES, THEY SHOULD REMAIN std::size_t
 
 namespace manager {
     // index of FrontendFile in FrontendUnit::files
-    using FileId = util::SafeId<struct FileIdTag>; 
+    using FileId = util::SafeId<struct FileIdTag>;
 
     // index of std::string in FrontendUnit::identifier_pool
     using IdentifierId = util::SafeId<struct IdentifierIdTag>;

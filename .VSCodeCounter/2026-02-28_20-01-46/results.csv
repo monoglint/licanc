@@ -8,7 +8,7 @@
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\ast.hh", "C++", 0, 293, 0, 0, 80, 98, 471
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\lexer.hh", "C++", 0, 9, 0, 0, 0, 6, 15
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\parser.hh", "C++", 0, 8, 0, 0, 0, 4, 12
-"c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\token.hh", "C++", 0, 14, 0, 0, 13, 10, 37
+"c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\scan\tok.hh", "C++", 0, 14, 0, 0, 13, 10, 37
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\full_passer.hh", "C++", 0, 9, 0, 0, 0, 6, 15
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\sema.hh", "C++", 0, 28, 0, 0, 0, 8, 36
 "c:\Users\jghig\projects\c\lican_loader\licanc\include\frontend\sema\semantic_analyzer.hh", "C++", 0, 6, 0, 0, 5, 4, 15
