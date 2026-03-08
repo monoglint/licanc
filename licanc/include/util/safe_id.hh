@@ -21,22 +21,22 @@ namespace util {
         using ValueType = T_VALUE;
         using TagType = T_TAG;
 
-        inline static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
-        inline static const SafeId<T_TAG, T_VALUE> INVALID_ID;
+        static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
+        static const SafeId<T_TAG, T_VALUE> INVALID_ID;
         
-        constexpr explicit inline operator T_VALUE() const {
+        constexpr explicit operator T_VALUE() const {
             return value;
         }
 
-        constexpr inline auto operator<=>(const SafeId<T_TAG, T_VALUE>&) const = default;
+        constexpr auto operator<=>(const SafeId<T_TAG, T_VALUE>&) const = default;
 
         [[nodiscard]]
-        constexpr inline bool is_valid() const {
+        constexpr bool is_valid() const {
             return value != INVALID_VALUE;
         }
 
         [[nodiscard]]
-        constexpr inline T_VALUE get() const {
+        constexpr T_VALUE get() const {
             return value;
         }
 

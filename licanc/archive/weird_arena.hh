@@ -56,7 +56,7 @@ namespace util {
         using GetConstVariantResult = std::optional<std::reference_wrapper<const T_VARIANT>>;
 
         [[nodiscard]]
-        inline GetVariantResult get_variant(T_ID node_id) {
+        GetVariantResult get_variant(T_ID node_id) {
             if (!does_index_exist(node_id))
                 return std::nullopt;
                 
@@ -64,7 +64,7 @@ namespace util {
         }
 
         [[nodiscard]]
-        inline GetConstVariantResult get_variant(T_ID node_id) const {
+        GetConstVariantResult get_variant(T_ID node_id) const {
             if (!does_index_exist(node_id))
                 return std::nullopt;
                 
@@ -74,7 +74,7 @@ namespace util {
         // Get node_id casted as T
         template <class T>
         [[nodiscard]]
-        inline GetResult<T> get(T_ID node_id) {
+        GetResult<T> get(T_ID node_id) {
             GetVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
@@ -89,7 +89,7 @@ namespace util {
         // Get node_id casted as T
         template <class T>
         [[nodiscard]]
-        inline GetResult<const T> get(T_ID node_id) const {
+        GetResult<const T> get(T_ID node_id) const {
             GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
@@ -102,17 +102,17 @@ namespace util {
         }
 
         [[nodiscard]]
-        inline std::size_t get_size() const {
+        std::size_t get_size() const {
             return raw.size();
         }
         
         [[nodiscard]]
-        inline bool does_index_exist(T_ID node_id) const {
+        bool does_index_exist(T_ID node_id) const {
             return node_id.get() < get_size();
         }
         
         // Returns the actively filled variant index for the given id
-        inline std::optional<std::size_t> index_of(T_ID node_id) const {
+        std::optional<std::size_t> index_of(T_ID node_id) const {
             GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
@@ -123,13 +123,13 @@ namespace util {
 
         // Returns the variant index for a given type
         template <class T>
-        consteval static inline const std::size_t get_index() {
+        consteval static const std::size_t get_index() {
             return variant::get_variant_index<T_VARIANT, T>();
         }
 
         template <class T>
         [[nodiscard]]
-        inline bool is(T_ID node_id) const {
+        bool is(T_ID node_id) const {
             GetConstVariantResult get_variant_result = get_variant(node_id);
 
             if (!get_variant_result.has_value())
@@ -139,28 +139,28 @@ namespace util {
         }
 
         template <class T, typename... T_ARGS>
-        inline T_ID emplace(T_ARGS&&... args) {
+        T_ID emplace(T_ARGS&&... args) {
             raw.emplace_back(std::in_place_type<T>,std::forward<T_ARGS>(args)...);
             return T_ID{raw.size() - 1};
         }
 
         template <class T, typename... T_ARGS>
-        inline T& emplace_get(T_ARGS&&... args) {
+        T& emplace_get(T_ARGS&&... args) {
             emplace<T>(std::forward<T_ARGS>(args)...);
             return std::get<T>(raw.back());
         }
 
         template <class T>
-        inline T_ID push(T node) {
+        T_ID push(T node) {
             raw.push_back(std::move(node));
             return T_ID{raw.size() - 1};
         }
 
-        inline std::deque<T_VARIANT>::iterator begin() {
+        std::deque<T_VARIANT>::iterator begin() {
             return raw.begin();
         }
 
-        inline std::deque<T_VARIANT>::iterator end() {
+        std::deque<T_VARIANT>::iterator end() {
             return raw.end();
         }
     protected:
@@ -180,7 +180,7 @@ namespace util {
         using GetConstBaseResult = std::optional<std::reference_wrapper<const T_BASE>>;
 
         [[nodiscard]]
-        inline GetBaseResult get_base(T_ID node_id) {
+        GetBaseResult get_base(T_ID node_id) {
             typename ArenaType::GetVariantResult get_variant_result = this->get_variant(node_id);
 
             if (!get_variant_result.has_value())
@@ -190,7 +190,7 @@ namespace util {
         }
 
         [[nodiscard]]
-        inline GetConstBaseResult get_base(T_ID node_id) const {
+        GetConstBaseResult get_base(T_ID node_id) const {
             typename ArenaType::GetConstVariantResult get_variant_result = this->get_variant(node_id);
 
             if (!get_variant_result.has_value())

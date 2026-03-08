@@ -5,20 +5,20 @@
 namespace frontend::scan::ast_visitor {
     template <class Derived>
     class DeclVisitor {
-        inline void call() {
+        void call() {
 
         }
         
     private:
-        inline Derived& get_derived() {
+        Derived& get_derived() {
             return static_cast<Derived*>(this);
         }
 
-        inline void visit_import(ast::Root* root) { }
-        inline void visit_global(ast::Root* root) { }
-        inline void visit_function(ast::Root* root) { }
-        inline void visit_struct(ast::Root* root) { }
-        inline void visit_module(ast::Root* root) { }
+        void visit_import(ast::Root* root) { }
+        void visit_global(ast::Root* root) { }
+        void visit_function(ast::Root* root) { }
+        void visit_struct(ast::Root* root) { }
+        void visit_module(ast::Root* root) { }
     };
 
     class VisitImportDecl : DeclVisitor<VisitImportDecl> {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <optional>
 #include <functional>
 #include <unordered_map>
@@ -12,21 +13,21 @@ namespace util {
         using GetResult = std::optional<std::reference_wrapper<T>>;
         using ConstGetResult = std::optional<std::reference_wrapper<const T>>;
 
-        inline GetResult get(T_ID index) {
+        GetResult get(T_ID index) {
             if (static_cast<std::size_t>(index) >= list.size())
                 return std::nullopt;
 
             return std::ref(list[static_cast<std::size_t>(index)]);
         }
 
-        inline ConstGetResult get(T_ID index) const {
+        ConstGetResult get(T_ID index) const {
             if (static_cast<std::size_t>(index) >= list.size())
                 return std::nullopt;
 
             return std::cref(list[static_cast<std::size_t>(index)]);
         }
 
-        inline T_ID intern(T value) {
+        T_ID intern(T value) {
             auto itr = reverse_list.find(value);
 
             if (itr == reverse_list.end()) {

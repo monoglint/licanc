@@ -6,12 +6,12 @@
 
 #include "frontend/scan/tok.hh"
 #include "frontend/scan/ast.hh"
-#include "frontend/sema/sema.hh"
 #include "frontend/sema/resolved_type.hh"
 
 #include "util/intern_pool.hh"
 #include "util/logger.hh"
 #include "manager/manager_types.hh"
+#include "util/panic.hh"
 
 namespace manager {
     enum class FileState {
@@ -49,15 +49,15 @@ namespace manager {
     };
 
     struct FrontendPassData {
-        frontend::scan::tok::Tokens tokens;
+        frontend::scan::tok::TokenStream token_stream;
         frontend::scan::ast::AST ast;
         frontend::sema::sym::SymTable sym_table;
 
-        inline void clear() { tokens.clear(); ast.clear(); sym_table.clear(); }
+        void clear() { token_stream.clear(); ast.clear(); sym_table.clear(); }
     };
 
     struct BackendPassData {
-        inline void clear() { }
+        void clear() { }
     };
 
     struct CompilerOutputData {
@@ -65,7 +65,7 @@ namespace manager {
         BackendPassData backend;
 
         // ALERT ALERT!!! MOST USEFUL FUNCTION IN THE ENTIRE COMPILER RIGHT HERE!!! ALERT!!
-        inline void clear() {
+        void clear() {
             frontend.clear();
             backend.clear();
         }
@@ -131,7 +131,7 @@ namespace manager {
         FindFileResult find_file(std::string path) const;
 
         [[nodiscard]]
-        inline std::size_t size() const { return files.size(); }
+        std::size_t size() const { return files.size(); }
 
         [[nodiscard]]
         std::vector<FileId> get_valid_files() const;
@@ -141,7 +141,39 @@ namespace manager {
         bool has_errors() const;
 
     private:
-        std::deque<std::optional<CompilationFile>> files;
+        class FileEntry {
+        public:
+            FileEntry(std::unique_ptr<CompilationFile>&& file_ptr)
+                : file(std::move(file_ptr)) {}
+
+            [[nodiscard]]
+            CompilationFile& get_file() {
+                util::panic_assert(is_alive(), "Attempted to retrieve a dead file.");
+
+                return *file;
+            }
+            
+            [[nodiscard]]
+            const CompilationFile& get_file() const {
+                util::panic_assert(is_alive(), "Attempted to retrieve a dead file.");
+
+                return *file;
+            }
+            
+            // unique pointers are used to prevent the need for copying and moving            
+            [[nodiscard]]
+            bool is_alive() const {
+                return file != nullptr;
+            }
+
+            void kill() {
+                file.reset();
+            }
+        private:
+            std::unique_ptr<CompilationFile> file;
+        };
+
+        std::deque<FileEntry> files;
     };
 
     class FileRefresher {        
@@ -179,7 +211,9 @@ namespace manager {
     public:
         CompilationEngine(EngineContext& engine_context)
             : engine_context(engine_context), file_refresher(file_manager)
-        {}
+        {
+            std::ignore = file_manager.add_file(engine_context.start_path);
+        }
 
         EngineContext engine_context;
 

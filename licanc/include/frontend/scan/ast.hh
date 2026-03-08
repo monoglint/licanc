@@ -538,7 +538,7 @@ namespace frontend::scan::ast {
         template <std::derived_from<Node> T>
         T* push(T node);
 
-        inline void clear() {
+        void clear() {
             arena.clear();
             init();
         }
@@ -547,7 +547,7 @@ namespace frontend::scan::ast {
         // EXTERNAL CALL OF ::clear() IS UNSAFE
         util::Arena<> arena;
 
-        inline void init() {
+        void init() {
             std::ignore = arena.try_emplace<Root>();
         }
     };

@@ -1,14 +1,12 @@
 #include "frontend/sema/sym.hh"
 
-#include "util/vector_hasher.hh"
-
 namespace frontend::sema {
     using ResolvedTypeDeclVariant = std::variant<sym::StructDecl*, sym::PrimativeDecl*>;
     struct ResolvedType {
         ResolvedTypeDeclVariant declaration;
         scan::ast::ResolvedTypeQualifier qualifier;
 
-        constexpr inline auto operator<=>(const ResolvedType& other) const = default;
+        constexpr auto operator<=>(const ResolvedType& other) const = default;
     };
 }
 

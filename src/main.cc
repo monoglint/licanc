@@ -39,7 +39,7 @@
         std::string start_subpath;
 
         if (argc == 1) {
-            project_path = "C:/Users/jghig/projects/c/lican_loader/hello_world";
+            project_path = "C:/Users/jghig/projects/cxx/lican_loader/hello_world";
             start_subpath = "main.li";
         }
         else if (argc == 3) {
@@ -49,7 +49,7 @@
 
         licanc::LicancConfig config {
             .project_path = project_path,
-            .start_path = project_path + start_subpath
+            .start_path = project_path + '/' + start_subpath
         };
 
         licanc::compile(config);

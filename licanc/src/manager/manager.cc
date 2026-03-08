@@ -154,8 +154,8 @@ bool manager::CompilationFile::refresh_source_code() {
 }
 
 manager::FileManager::AddFileResult manager::FileManager::add_file(std::string path) {
-    const bool file_exists = std::find_if(files.begin(), files.end(), [&path](const std::optional<CompilationFile>& file) -> bool {
-        return file.has_value() && file.value().path == path;
+    const bool file_exists = std::find_if(files.begin(), files.end(), [&path](const FileEntry& file) -> bool {
+        return file.is_alive() && file.get_file().path == path;
     }) != files.end();
     
     if (file_exists)
@@ -172,8 +172,7 @@ manager::FileManager::AddFileResult manager::FileManager::add_file(std::string p
         }
     }
 
-    std::optional<CompilationFile> item = std::make_optional<CompilationFile>(std::filesystem::absolute(path).string(), quick_read_file_result.value());
-    files.push_back(std::move(item));
+    files.emplace_back(std::make_unique<CompilationFile>(std::filesystem::absolute(path).string(), quick_read_file_result.value()));
 
     return FileId{files.size() - 1};
 }
@@ -184,8 +183,7 @@ manager::FileManager::DelistFileResult manager::FileManager::delist_file(FileId 
 
     // intentionally not throwing an error for if the file was already delisted because i don't really know why i should
     
-    // assignment to std::nullopt should free that space
-    files[file_id.get()] = std::nullopt;
+    files[file_id.get()].kill();
 
     return DelistFileResult::SUCCESS;
 }
@@ -196,10 +194,10 @@ manager::FileManager::GetFileResult manager::FileManager::get_file(FileId file_i
 
     std::size_t numeric_file_id = file_id.get();
 
-    if (!files[numeric_file_id].has_value())
+    if (!files[numeric_file_id].is_alive())
         return std::nullopt;
 
-    return files[numeric_file_id].value();
+    return files[numeric_file_id].get_file();
 }
 
 manager::FileManager::GetConstFileResult manager::FileManager::get_file(FileId file_id) const {
@@ -208,15 +206,15 @@ manager::FileManager::GetConstFileResult manager::FileManager::get_file(FileId f
 
     std::size_t numeric_file_id = file_id.get();
 
-    if (!files[numeric_file_id].has_value())
+    if (!files[numeric_file_id].is_alive())
         return std::nullopt;
 
-    return std::cref(files[numeric_file_id].value());
+    return std::cref(files[numeric_file_id].get_file());
 }
 
 manager::FileManager::FindFileResult manager::FileManager::find_file(std::string path) const {
     for (std::size_t file_id = 0; file_id < files.size(); file_id++) {
-        if (files[file_id].has_value() && files[file_id].value().path == path)
+        if (files[file_id].is_alive() && files[file_id].get_file().path == path)
             return FileId{file_id};
     }
 
@@ -226,8 +224,8 @@ manager::FileManager::FindFileResult manager::FileManager::find_file(std::string
 std::vector<manager::FileId> manager::FileManager::get_valid_files() const {
     std::vector<FileId> valid_files;
 
-    for (std::size_t file_id = 0; const std::optional<CompilationFile>& file_entry : files) {
-        if (file_entry.has_value())
+    for (std::size_t file_id = 0; const FileEntry& file_entry : files) {
+        if (file_entry.is_alive())
             valid_files.push_back(FileId{file_id});
     }
 
@@ -235,8 +233,8 @@ std::vector<manager::FileId> manager::FileManager::get_valid_files() const {
 }
 
 bool manager::FileManager::has_errors() const {
-    return std::find_if(files.begin(), files.end(), [](const std::optional<CompilationFile>& file) -> bool {
-        return file.has_value() && file.value().logger.has_errors();
+    return std::find_if(files.begin(), files.end(), [](const FileEntry& file_entry) -> bool {
+        return file_entry.is_alive() && file_entry.get_file().logger.has_errors();
     }) != files.end();
 }
 
