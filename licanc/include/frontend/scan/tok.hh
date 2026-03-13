@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "util/span.hh"
+#include "util/bitflags.hh"
 
 /*
 
@@ -48,14 +49,15 @@ namespace frontend::scan::tok {
         DOUBLE_EQUALS,
         LEFT_ARROW,
         RIGHT_ARROW,
-        LEFT_ARROW_EQUALS,
         RIGHT_ARROW_EQUALS,
     };
 
-    enum class StorageSpecifierFlags : uint8_t {
+    enum class _StorageSpecifierFlags : uint8_t {
         NONE        = 0,
         STATIC      = 1 << 0,
     };
+
+    using StorageSpecifierFlags = util::BitFlags<_StorageSpecifierFlags>;
 
     struct Token {
         util::Span span;

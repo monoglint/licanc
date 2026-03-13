@@ -43,22 +43,18 @@ based on what pass of the semantic analyzer was just performed
 
 #pragma once
 
-#include <deque>
 #include <unordered_map>
-#include <functional>
+#include <variant>
 
-#include "util/span.hh"
 #include "util/vector_hasher.hh"
-#include "util/safe_id.hh"
-#include "util/hash.hh"
+#include "manager/manager_types.hh"
 
 #include "frontend/scan/ast.hh"
-#include "manager/manager_types.hh"
 
 namespace frontend::sema::sym {
     struct Sym { };
 
-    enum class DeclType {
+    enum class DeclKind {
         FUNCTION,
         STRUCT,
         MODULE,
@@ -67,11 +63,11 @@ namespace frontend::sema::sym {
     };
 
     struct Decl : Sym {
-        Decl(DeclType decl_type)
-            : decl_type(decl_type)
+        Decl(DeclKind decl_kind)
+            : decl_kind(decl_kind)
         {}
 
-        DeclType decl_type;
+        DeclKind decl_kind;
     };
     
     struct TemplateArgument;
@@ -133,7 +129,7 @@ namespace frontend::sema::sym {
 
     struct FunctionDecl : Decl {
         FunctionDecl(std::vector<FunctionOverload*> overloads)
-            : Decl(DeclType::FUNCTION), overloads(std::move(overloads))
+            : Decl(DeclKind::FUNCTION), overloads(std::move(overloads))
         {}
             
         // default overload stored in index 0
@@ -177,7 +173,7 @@ namespace frontend::sema::sym {
 
     struct StructDecl : Decl {
         StructDecl()
-            : Decl(DeclType::STRUCT)
+            : Decl(DeclKind::STRUCT)
         {}
 
         /* 0 */ StructTemplate* struct_template;
@@ -189,7 +185,7 @@ namespace frontend::sema::sym {
 
     struct PrimativeDecl : Decl {
         PrimativeDecl()
-            : Decl(DeclType::PRIMATIVE)
+            : Decl(DeclKind::PRIMATIVE)
         {}
 
         Primative* primative;
@@ -202,7 +198,7 @@ namespace frontend::sema::sym {
 
     struct ModuleDecl : Decl {
         ModuleDecl(std::optional<ModuleDecl*> parent_module, Decls decls, std::vector<ImportMarker*> import_markers)
-            : Decl(DeclType::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
+            : Decl(DeclKind::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
         {}
 
         /* 0 */ std::optional<ModuleDecl*> parent_module;
@@ -212,7 +208,7 @@ namespace frontend::sema::sym {
 
     struct GlobalDecl : Decl {
         GlobalDecl()
-            : Decl(DeclType::GLOBAL) {}
+            : Decl(DeclKind::GLOBAL) {}
 
         /* _ */ manager::ResolvedTypeId global_type;
     };

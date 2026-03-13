@@ -5,14 +5,12 @@
 */
 
 #include <variant>
-#include <type_traits>
 
 #include "util/arena.hh"
 
 #include "frontend/scan/tok.hh"
 
 #include "util/span.hh"
-#include "util/safe_id.hh"
 
 #include "manager/manager_types.hh"
 
@@ -34,12 +32,14 @@ namespace frontend::scan::ast {
         TYPE_ALIAS,
     };
 
+    struct Visibility;
     struct Decl : Node {
-        Decl(util::Span span, DeclKind decl_type)
-            : Node(span), decl_type(decl_type)
+        Decl(util::Span span, DeclKind decl_kind, Visibility* visibility)
+            : Node(span), decl_kind(decl_kind), visibility(visibility)
         {}
 
-        DeclKind decl_type;
+        DeclKind decl_kind;
+        Visibility* visibility;
     };
 
     enum class StmtKind {
@@ -48,11 +48,11 @@ namespace frontend::scan::ast {
     };
         
     struct Stmt : Node {
-        Stmt(util::Span span, StmtKind stmt_type)
-            : Node(span), stmt_type(stmt_type)
+        Stmt(util::Span span, StmtKind stmt_kind)
+            : Node(span), stmt_kind(stmt_kind)
         {}
 
-        StmtKind stmt_type;
+        StmtKind stmt_kind;
     };
 
     enum class ExprKind {
@@ -71,11 +71,11 @@ namespace frontend::scan::ast {
     };
 
     struct Expr : Node {
-        Expr(util::Span span, ExprKind expr_type)
-            : Node(span), expr_type(expr_type)
+        Expr(util::Span span, ExprKind expr_kind)
+            : Node(span), expr_kind(expr_kind)
         {}
 
-        ExprKind expr_type;
+        ExprKind expr_kind;
     };
 
     enum class TypeKind {
@@ -106,6 +106,13 @@ namespace frontend::scan::ast {
         {}
 
         std::vector<Decl*> decls;
+    };
+
+    struct Visibility : Node {
+        Visibility(util::Span span)
+            : Node(std::move(span))
+        {}
+
     };
 
     // x
@@ -324,10 +331,9 @@ namespace frontend::scan::ast {
     */
 
     // import "math"
-    // note: always public, must be placed in a private namespace to be hidden
     struct ImportDecl : Decl {
-        ImportDecl(util::Span span, StringLiteral* file_path, StringLiteral* absolute_file_path, bool is_path_valid)
-            : Decl(std::move(span), DeclKind::IMPORT), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid)
+        ImportDecl(util::Span span, Visibility* visibility, StringLiteral* file_path, StringLiteral* absolute_file_path, bool is_path_valid)
+            : Decl(std::move(span), DeclKind::IMPORT, visibility), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid)
         {}
 
         StringLiteral* file_path;
@@ -338,8 +344,8 @@ namespace frontend::scan::ast {
 
     // 
     struct GlobalDecl : Decl {
-        GlobalDecl(util::Span span, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type, Expr* value)
-            : Decl(std::move(span), DeclKind::GLOBAL), storage_specifiers(storage_specifiers), name(name), type(type), value(value)
+        GlobalDecl(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type, Expr* value)
+            : Decl(std::move(span), DeclKind::GLOBAL, visibility), storage_specifiers(storage_specifiers), name(name), type(type), value(value)
         {}
 
         tok::StorageSpecifierFlags storage_specifiers;
@@ -405,8 +411,8 @@ namespace frontend::scan::ast {
     };
     
     struct FunctionDecl : Decl {
-        FunctionDecl(util::Span span, tok::StorageSpecifierFlags storage_specifiers, FunctionTemplate* function_template, Identifier* name)
-            : Decl(std::move(span), DeclKind::FUNCTION), storage_specifiers(storage_specifiers), function_template(function_template), name(name)
+        FunctionDecl(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, FunctionTemplate* function_template, Identifier* name)
+            : Decl(std::move(span), DeclKind::FUNCTION, visibility), storage_specifiers(storage_specifiers), function_template(function_template), name(name)
             {}
 
         tok::StorageSpecifierFlags storage_specifiers;
@@ -423,21 +429,23 @@ namespace frontend::scan::ast {
     };
 
     struct Method : Node {
-        Method(util::Span span, bool is_pub, Identifier* name, FunctionTemplate* function_template)
-            : Node(std::move(span)), is_pub(is_pub), name(name), function_template(function_template)
+        Method(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, FunctionTemplate* function_template)
+            : Node(std::move(span)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), function_template(function_template)
         {}
 
-        bool is_pub;
+        Visibility* visibility;
+        tok::StorageSpecifierFlags storage_specifiers;
         Identifier* name;
         FunctionTemplate* function_template;
     };
 
     struct Property : Node {
-        Property(util::Span span, bool is_pub, Identifier* name, Type* type)
-            : Node(std::move(span)), is_pub(is_pub), name(name), type(type)
+        Property(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type)
+            : Node(std::move(span)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), type(type)
         {}
 
-        bool is_pub;
+        Visibility* visibility;
+        tok::StorageSpecifierFlags storage_specifiers;
         Identifier* name;
         Type* type;
     };
@@ -449,6 +457,7 @@ namespace frontend::scan::ast {
 
         std::vector<Method*> methods;
         std::vector<Property*> properties;
+        std::vector<
         // TODO: additional optional declarations need to be added like static variables, imports, etc.
         
         Finalizer* finalizer; // Finalizer?
@@ -464,13 +473,12 @@ namespace frontend::scan::ast {
     };
 
     struct StructDecl : Decl {
-        StructDecl(util::Span span, StructTemplate* struct_template, Identifier* name)
-            : Decl(std::move(span), DeclKind::STRUCT), struct_template(struct_template), name(name)
+        StructDecl(util::Span span, Visibility* visibility, StructTemplate* struct_template, Identifier* name)
+            : Decl(std::move(span), DeclKind::STRUCT, visibility), struct_template(struct_template), name(name)
         {}
 
         StructTemplate* struct_template;
         Identifier* name;
-        bool is_pub;
     };
 
     struct TypeAliasTemplate : Node {
@@ -482,21 +490,20 @@ namespace frontend::scan::ast {
     };
 
     struct TypeAliasDecl : Decl {
-        TypeAliasDecl(util::Span span, TypeAliasTemplate* type_alias_template, Identifier* name)
-            : Decl(std::move(span), DeclKind::TYPE_ALIAS), type_alias_template(type_alias_template), name(name) {}
+        TypeAliasDecl(util::Span span, Visibility* visibility, TypeAliasTemplate* type_alias_template, Identifier* name)
+            : Decl(std::move(span), DeclKind::TYPE_ALIAS, visibility), type_alias_template(type_alias_template), name(name) {}
 
         TypeAliasTemplate* type_alias_template;
         Identifier* name;
     };
 
     struct ModuleDecl : Decl {
-        ModuleDecl(util::Span span, Identifier* name, std::vector<Decl*> decls, bool is_pub)
-            : Decl(std::move(span), DeclKind::MODULE), name(name), decls(std::move(decls)), is_pub(is_pub)
+        ModuleDecl(util::Span span, Visibility* visibility, Identifier* name, std::vector<Decl*> decls)
+            : Decl(std::move(span), DeclKind::MODULE, visibility), name(name), decls(std::move(decls))
         {}
         
-        Identifier* name; // Identifier
-        std::vector<Decl*> decls; // {Item}
-        bool is_pub;
+        Identifier* name;
+        std::vector<Decl*> decls;
 
         // ^^^ in the symbol table, a module declaration's decls are split into decls and references.
     };
