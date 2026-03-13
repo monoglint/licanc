@@ -425,7 +425,7 @@ namespace frontend::scan::ast {
             : Node(std::move(span)), function(function)
         {}
 
-        Function* function; // NO DEPENDENT TYPES
+        Function* function; // COMPLETELY CONCRETE
     };
 
     struct Method : Node {
@@ -457,10 +457,9 @@ namespace frontend::scan::ast {
 
         std::vector<Method*> methods;
         std::vector<Property*> properties;
-        std::vector<
         // TODO: additional optional declarations need to be added like static variables, imports, etc.
         
-        Finalizer* finalizer; // Finalizer?
+        Finalizer* finalizer; // WHEN TRAITS ADDED, DONT HAVE DESTRUCTORS HERE!!
     };
 
     struct StructTemplate : Node {
