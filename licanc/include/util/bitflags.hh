@@ -4,17 +4,12 @@ an enum options utility that allows additional functionality to be applied to sp
 
 specific example
 
-enum class testbitflag {
-    NONE = 0,
-    ONE = 1 << 0,
-    TWO = 1 << 1,
-    THREE = 1 << 2,
-};
+    enum class _StorageSpecifierFlags : uint8_t {
+        NONE        = 0,
+        STATIC      = 1 << 0,
+    };
 
-template<>
-struct EnumOptions<testbitflag> {
-    static constexpr bool IsBitFlag = true;
-};
+    using StorageSpecifierFlags = util::BitFlags<_StorageSpecifierFlags>;
 
 @monoglint
 11 march 2026
@@ -39,12 +34,26 @@ namespace util {
 
         ENUM value;
 
-        constexpr BitFlags<ENUM> operator|(const BitFlags<ENUM>& other) const noexcept {
+        constexpr BitFlags operator|(const BitFlags& other) const noexcept {
             return static_cast<ENUM>(static_cast<UnderlyingType>(value) | static_cast<UnderlyingType>(other.value));
         }
 
-        constexpr BitFlags<ENUM> operator&(const BitFlags<ENUM>& other) const noexcept {
+        constexpr BitFlags operator&(const BitFlags& other) const noexcept {
             return static_cast<ENUM>(static_cast<UnderlyingType>(value) & static_cast<UnderlyingType>(other.value));
+        }
+
+        constexpr BitFlags& operator&=(const BitFlags& other) noexcept {
+            *this = *this & other;
+            return *this;
+        }
+
+        constexpr BitFlags& operator=(const BitFlags& other) noexcept {
+            *this = *this & other;
+            return *this;
+        }
+
+        constexpr bool has_flag(BitFlags& other) const noexcept {
+            return (value & other.value) == other.value;
         }
     };
 }

@@ -1,14 +1,3 @@
-<img width="2560" height="2560" alt="Artboard 1@5x" src="https://github.com/user-attachments/assets/43d80169-7a1d-42d9-b2f1-dfeddc2b5efa" />
+<img width="256" height="256" alt="Lican" src="https://github.com/user-attachments/assets/43d80169-7a1d-42d9-b2f1-dfeddc2b5efa" />
 
-commit name format:
-"session x"
-
-    if the sessions isn't over yet-
-    " - commit x"
-
-    if the session is completed and additional patches were made-
-    " - patch x"
-
-"session 6 - patch 1"
-
-note: commits for session 5 and 6 do not follow this rule due to a mistake in general naming
+This is the main repository for Lican.
