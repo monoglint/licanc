@@ -49,7 +49,7 @@ based on what pass of the semantic analyzer was just performed
 #include "util/vector_hasher.hh"
 #include "manager/manager_types.hh"
 
-#include "frontend/scan/ast.hh"
+#include "frontend/ast/ast.hh"
 
 namespace frontend::sema::sym {
     struct Sym { };

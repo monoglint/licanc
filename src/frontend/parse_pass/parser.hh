@@ -1,6 +1,6 @@
 #pragma once
 
-#include "frontend/scan/ast.hh"
+#include "frontend/ast/ast.hh"
 #include "manager/manager.hh"
 
 namespace frontend::scan::parser {

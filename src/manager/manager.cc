@@ -85,7 +85,7 @@ namespace {
     */
     void handle_post_parse_file_imports(manager::CompilationEngine& engine, manager::FileId current_file_id, manager::CompilationFile& file, std::vector<manager::FileId>& file_stack) {
         // check if there is an include item anywhere in the ast.
-        for (frontend::scan::ast::ImportDecl* import_decl_node : file.compiler_output_data.frontend.ast.import_nodes) {
+        for (frontend::ast::ImportDecl* import_decl_node : file.compiler_output_data.frontend.ast.import_nodes) {
             if (!import_decl_node->is_path_valid)
                 continue;
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(licanc_loader VERSION 0.0.0 LANGUAGES CXX)
+project(licanc VERSION 0.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -7,14 +7,4 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_subdirectory(licanc)
-
-add_executable(licanc_loader
-    src/main.cc
-)
-
-target_link_libraries(licanc_loader PRIVATE licanc)
-
-set_target_properties(licanc_loader PROPERTIES
-    OUTPUT_NAME "licanc"
-)
+add_subdirectory(src)

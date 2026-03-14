@@ -1,8 +1,8 @@
 #pragma once
 
-#include "frontend/scan/ast.hh"
+#include "frontend/ast/ast.hh"
 
-namespace frontend::scan::ast_visitor {
+namespace frontend::ast::ast_visitor {
     template <class Derived>
     class DeclVisitor {
         void call() {

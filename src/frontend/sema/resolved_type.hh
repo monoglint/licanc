@@ -14,7 +14,7 @@ namespace std {
     template<>
     struct hash<frontend::sema::ResolvedType> {
         std::size_t operator()(const frontend::sema::ResolvedType& resolved_type) const noexcept {
-            std::size_t hash_val = std::hash<frontend::scan::ast::ResolvedTypeQualifier>{}(resolved_type.qualifier);
+            std::size_t hash_val = std::hash<frontend::ast::ResolvedTypeQualifier>{}(resolved_type.qualifier);
 
             util::combine_hashes(hash_val, std::hash<frontend::sema::ResolvedTypeDeclVariant>{}(resolved_type.declaration));
             

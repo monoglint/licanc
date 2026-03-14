@@ -2,7 +2,7 @@
 
 #include "util/panic.hh"
 
-#include "frontend/scan/ast.hh"
+#include "frontend/ast/ast.hh"
 
 #include "util/panic.hh"
 
