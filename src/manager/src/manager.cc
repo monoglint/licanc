@@ -7,9 +7,9 @@
 
 #include "util/panic.hh"
 
-#include "frontend/scan/lexer.hh"
-#include "frontend/scan/parser.hh"
-#include "frontend/sema/semantic_analyzer.hh"
+#include "frontend/lex_pass/lexer.hh"
+#include "frontend/parse_pass/parser.hh"
+#include "frontend/sema_pass/semantic_analyzer.hh"
 
 namespace {
     enum class QuickReadFileError {
@@ -114,8 +114,8 @@ namespace {
         manager::CompilationFile& file = engine.file_manager.get_file(file_id).value();
 
         // not implemented yet
-        frontend::scan::lexer::lex(frontend::scan::lexer::LexerContext{});
-        frontend::scan::parser::parse(frontend::scan::parser::ParserContext{
+        frontend::lex_pass::lexer::lex(frontend::lex_pass::lexer::LexerContext{});
+        frontend::parse_pass::parser::parse(frontend::parse_pass::parser::ParserContext{
             .ast = file.compiler_output_data.frontend.ast,
             .engine_context = engine.engine_context
         });

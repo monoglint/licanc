@@ -6,8 +6,6 @@ Takes all of the semantic analyzer workers and condenses them into one function 
 
 #pragma once
 
-#include <string>
-
 #include "manager/manager.hh"
 
 namespace frontend::sema::semantic_analyzer {

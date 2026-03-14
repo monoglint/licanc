@@ -1,6 +1,6 @@
 #pragma once
 
-namespace frontend::scan::lexer {
+namespace frontend::lex_pass::lexer {
     struct LexerContext {
 
     };

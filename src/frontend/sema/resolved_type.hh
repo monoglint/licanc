@@ -4,7 +4,7 @@ namespace frontend::sema {
     using ResolvedTypeDeclVariant = std::variant<sym::StructDecl*, sym::PrimativeDecl*>;
     struct ResolvedType {
         ResolvedTypeDeclVariant declaration;
-        scan::ast::ResolvedTypeQualifier qualifier;
+        ast::ResolvedTypeQualifier qualifier;
 
         constexpr auto operator<=>(const ResolvedType& other) const = default;
     };

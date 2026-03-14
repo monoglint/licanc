@@ -18,7 +18,7 @@ struct color3<T> {
 
 */
 
-namespace frontend::scan::tok {
+namespace frontend::tok {
     enum class TokenKind {
         NONE,
 

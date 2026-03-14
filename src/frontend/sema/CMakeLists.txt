@@ -1,6 +1,6 @@
-add_library(frontend_sema
+add_library(frontend_sema 
     sym.hh
-    sym.cc
+    src/sym.cc
 )
 
 target_include_directories(frontend_sema PUBLIC

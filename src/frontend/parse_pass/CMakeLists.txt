@@ -1,6 +1,6 @@
-add_library(frontend_parse_pass
+add_library(frontend_parse_pass 
     parser.hh
-    parser.cc
+    src/parser.cc
 )
 
 target_include_directories(frontend_parse_pass PUBLIC

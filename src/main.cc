@@ -17,7 +17,7 @@
 
     #include <iostream>
 
-    #include "licanc/include/licanc.hh"
+    #include "driver/licanc.hh"
 
     int main(int argc, char* argv[]) {
         // this is the first line of statement code i am pretty sure was written in this project. DO NOT DELETE

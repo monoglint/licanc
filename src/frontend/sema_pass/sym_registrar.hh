@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "frontend/sema/sym.hh"
 #include "manager/manager.hh"
 
@@ -18,7 +16,7 @@ namespace frontend::sema::sym_registrar {
         manager::SessionPools& session_pools;
         manager::FileManager& file_manager;
         sema::sym::SymTable& sym_table;
-        scan::ast::AST& ast;
+        ast::AST& ast;
     };
 
     void register_symbols(RegistrarContext context);

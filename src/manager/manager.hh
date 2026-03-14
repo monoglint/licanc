@@ -4,7 +4,7 @@
 #include <expected>
 #include <optional>
 
-#include "frontend/scan/tok.hh"
+#include "frontend/tok/tok.hh"
 #include "frontend/ast/ast.hh"
 #include "frontend/sema/resolved_type.hh"
 
@@ -43,7 +43,7 @@ namespace manager {
     };
 
     struct FrontendPassData {
-        frontend::scan::tok::TokenStream token_stream;
+        frontend::tok::TokenStream token_stream;
         frontend::ast::AST ast;
         frontend::sema::sym::SymTable sym_table;
 

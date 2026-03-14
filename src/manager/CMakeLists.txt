@@ -1,8 +1,8 @@
-add_library(manager
+add_library(manager 
     manager_types.hh
     manager.hh
 
-    manager.cc
+    src/manager.cc
 )
 
 target_include_directories(manager PUBLIC

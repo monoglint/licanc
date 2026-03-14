@@ -1,9 +1,5 @@
 #pragma once
 
-#include <string>
-
-#include "frontend/sema/sym.hh"
-
 namespace frontend::sema::full_passer {
     struct FullPasserContext {
 

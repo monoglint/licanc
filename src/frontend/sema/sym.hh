@@ -104,7 +104,7 @@ namespace frontend::sema::sym {
     };
 
     struct Function : Sym {
-        /* 0 */ scan::ast::Function* syntactic_function;
+        /* 0 */ ast::Function* syntactic_function;
         /* _ */ std::vector<manager::ResolvedTypeId> parameter_types; // {Type}
         /* _ */ manager::ResolvedTypeId return_type;
     };
@@ -152,7 +152,7 @@ namespace frontend::sema::sym {
     };
 
     struct Struct : Sym {
-        /* 0 */ scan::ast::Struct* syntactic_struct;
+        /* 0 */ ast::Struct* syntactic_struct;
         /* _ */ Decls properties; // {Property}
         /* _ */ Decls methods; // {Method}
 

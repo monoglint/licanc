@@ -2,8 +2,6 @@
 
 #include "util/panic.hh"
 
-#include "frontend/ast/ast.hh"
-
 #include "util/panic.hh"
 
 template <std::derived_from<frontend::sema::sym::Sym> T> 

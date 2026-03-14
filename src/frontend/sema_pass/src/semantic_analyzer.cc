@@ -1,7 +1,7 @@
-#include "frontend/sema/semantic_analyzer.hh"
+#include "frontend/sema_pass/semantic_analyzer.hh"
 
-#include "frontend/sema/sym_registrar.hh"
-#include "frontend/sema/full_passer.hh"
+#include "frontend/sema_pass/sym_registrar.hh"
+#include "frontend/sema_pass/full_passer.hh"
 
 #include "util/panic.hh"
 

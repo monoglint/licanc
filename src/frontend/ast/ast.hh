@@ -6,15 +6,14 @@
 
 #include <variant>
 
-#include "util/arena.hh"
-
-#include "frontend/scan/tok.hh"
+#include "frontend/tok/tok.hh"
 
 #include "util/span.hh"
+#include "util/arena.hh"
 
 #include "manager/manager_types.hh"
 
-namespace frontend::scan::ast {
+namespace frontend::ast {
     struct Node {
         Node(util::Span span)
             : span(std::move(span))

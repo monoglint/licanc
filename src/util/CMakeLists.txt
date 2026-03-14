@@ -1,4 +1,4 @@
-add_library(util
+add_library(util 
     ansi_format.hh
     arena.hh
     bitflags.hh
@@ -10,9 +10,9 @@ add_library(util
     span.hh
     vector_hasher.hh
 
-    logger.cc
-    panic.cc
-    span.cc
+    src/logger.cc
+    src/panic.cc
+    src/span.cc
 )
 
 target_include_directories(util PUBLIC

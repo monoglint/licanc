@@ -1,6 +1,6 @@
-add_library(frontend_lex_pass
+add_library(frontend_lex_pass 
     lexer.hh
-    lexer.cc
+    src/lexer.cc
 )
 
 target_include_directories(frontend_lex_pass PUBLIC
