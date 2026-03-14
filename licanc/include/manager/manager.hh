@@ -14,12 +14,6 @@
 #include "util/panic.hh"
 
 namespace manager {
-    enum class FileState {
-        SCAN_READY, 
-        SEMA_READY,
-        DONE, // this file has had changes to its source code and is ready to be recompiled if needed
-    };
-
     // temporary "cache" data that the file_refresher uses to target dirty files for recompilation
     struct FileDependencyData {
         // a list of files that need to be wiped if this one is during incremental compilation
@@ -70,11 +64,21 @@ namespace manager {
             backend.clear();
         }
     };
+
+    enum class FileState {
+        COMPILE_READY, 
+        SCANNED,
+        ANALYZED,
+        IR_GENERATED,
+        DONE,
+    };
     
     class CompilationFile {
     public:
         CompilationFile(std::string path, std::string source_code)
-            : path(std::move(path)), source_code(std::move(source_code)) {}
+            : path(std::move(path)), source_code(std::move(source_code)), state(FileState::COMPILE_READY) {}
+
+        // separate constructor needed for loading from cache
 
         // "inputs"
         std::string path;
@@ -84,9 +88,9 @@ namespace manager {
 
         util::Logger logger;
 
-        // scheduling and compilation
-        FileState state = FileState::SCAN_READY;
         FileDependencyData dependency_data;
+
+        FileState state;
 
         // check if the source code has been modified since the last update to this file
         // returns true if the source code has been changed since the last refresh
@@ -228,6 +232,6 @@ namespace manager {
         void recompile_dirty_files();
 
     private:
-        void compile_to_completion(FileId target_file_id);
+        void run_frontend(FileId target_file_id);
     };
 }

@@ -319,8 +319,8 @@ void manager::CompilationEngine::compile() {
     FileId file_id = get_file_result.value();
     CompilationFile& file = file_manager.get_file(file_id).value();
 
-    if (file.state == FileState::SCAN_READY) {
-        compile_to_completion(file_id);
+    if (file.state == FileState::COMPILE_READY) {
+        run_frontend(file_id);
         return;
     }
 
@@ -350,7 +350,7 @@ void manager::CompilationEngine::recompile_dirty_files() {
 
         // reset file state
         file.compiler_output_data.clear();
-        file.state = FileState::SCAN_READY;
+        file.state = FileState::COMPILE_READY;
 
         // yeah, this is happening. this function directly handles dependency data, and therefore can safely modify it.
         file.dependency_data.dependent_ids.clear();
@@ -359,7 +359,7 @@ void manager::CompilationEngine::recompile_dirty_files() {
         file.dependency_data.is_dirty = false;
 
         // state machine prevents reprocessing due to states
-        compile_to_completion(file_id);
+        run_frontend(file_id);
 
         file_refresher.dirty_files.erase(file_refresher.dirty_files.end() - 1);
 
@@ -375,7 +375,7 @@ void manager::CompilationEngine::recompile_dirty_files() {
     }
 }
 
-void manager::CompilationEngine::compile_to_completion(FileId target_file_id) {
+void manager::CompilationEngine::run_frontend(FileId target_file_id) {
     std::vector<manager::FileId> file_stack;
     file_stack.emplace_back(target_file_id);
 
@@ -384,20 +384,28 @@ void manager::CompilationEngine::compile_to_completion(FileId target_file_id) {
         CompilationFile& file = file_manager.get_file(file_id).value();
 
         switch (file.state) {
-            case FileState::SCAN_READY:
+            case FileState::COMPILE_READY:
                 parse_file(*this, file_id, file_stack);
-                file.state = FileState::SEMA_READY;
+                file.state = FileState::SCANNED;
                 break;
 
-            case FileState::SEMA_READY:
+            case FileState::SCANNED:
                 analyze_file(*this, file_id);
+                file.state = FileState::ANALYZED;
+                break;
+
+            case FileState::ANALYZED:       
+                file.state = FileState::IR_GENERATED;
+                break;
+
+            case FileState::IR_GENERATED:
                 file.state = FileState::DONE;
                 break;
 
-            case FileState::DONE:       
+            case FileState::DONE:
                 file_stack.pop_back();
                 std::cout << "Finished frontend for [" << file.path << "].\n";
-                std::cout << file.logger.to_string();         
+                std::cout << file.logger.to_string();
                 break;
         }
     }
