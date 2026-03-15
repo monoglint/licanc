@@ -10,5 +10,5 @@ target_sources(frontend_parse_pass
 )
 
 target_link_libraries(frontend_parse_pass
-    PUBLIC util
+    PRIVATE util frontend_ast
 )

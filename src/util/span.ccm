@@ -1,7 +1,7 @@
 export module util:span;
 
-import <cstddef>;
-import <string>
+#include <cstddef>
+#include <string>
 
 export namespace util {
     struct Point {

@@ -1,1 +1,4 @@
 export module frontend.sema;
+
+export import :resolved_type;
+export import :sym;

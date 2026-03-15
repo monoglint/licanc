@@ -1,6 +1,6 @@
 export module util:hash;
 
-import <cstddef>;
+#include <cstddef>
 
 export namespace util {
     inline void combine_hashes(std::size_t& seed, std::size_t new_hash) {

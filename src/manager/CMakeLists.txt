@@ -10,5 +10,5 @@ target_sources(manager
 )
 
 target_link_libraries(manager
-    PUBLIC util
+    PRIVATE util
 )

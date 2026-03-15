@@ -18,8 +18,8 @@ specific example
 
 export module util:bitflags;
 
-import <cstddef>;
-import <type_traits>;
+#include <cstddef>
+#include <type_traits>
 
 export namespace util {
     template <typename ENUM>

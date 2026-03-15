@@ -1,8 +1,8 @@
 export module manager;
 
-import <string>;
-import <expected>;
-import <optional>;
+#include <string>
+#include <expected>
+#include <optional>
 
 import frontend.tok;
 import frontend.ast;

@@ -13,5 +13,5 @@ target_sources(frontend_sema_pass
 )
 
 target_link_libraries(frontend_sema_pass
-    PUBLIC util
+    PRIVATE util frontend_sema manager
 )

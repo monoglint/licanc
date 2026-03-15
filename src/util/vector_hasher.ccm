@@ -1,9 +1,9 @@
 export module util:vector_hasher;
 
-import <vector>;
-import <functional>;
-
 import :hash;
+
+#include <vector>
+#include <functional>
 
 /*
 

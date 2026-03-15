@@ -1,5 +1,7 @@
 export module frontend.ast:ast_visitor;
 
+import :ast_nodes;
+
 export namespace frontend::ast {
     template <class Derived>
     class DeclVisitor {

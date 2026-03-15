@@ -1,6 +1,6 @@
 module frontend.parse_pass;
 
-import <string>;
+#include <string>
 
 namespace {
     std::string standardize_import_path(std::string path) {

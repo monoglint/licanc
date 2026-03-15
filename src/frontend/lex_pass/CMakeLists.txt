@@ -10,5 +10,5 @@ target_sources(frontend_lex_pass
 )
 
 target_link_libraries(frontend_lex_pass
-    PUBLIC util
+    PRIVATE util
 )

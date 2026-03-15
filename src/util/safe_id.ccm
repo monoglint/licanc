@@ -1,9 +1,9 @@
 export module util:safe_id;
 
-import <cstddef>;
-import <limits>;
-import <type_traits>;
-import <functional>;
+#include <cstddef>
+#include <limits>
+#include <type_traits>
+#include <functional>
 
 export namespace util {
     template <class T_TAG, typename T_VALUE = std::size_t>

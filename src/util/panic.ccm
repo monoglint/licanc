@@ -1,9 +1,9 @@
 export module util:panic;
 
-import <string>;
-import <stdexcept>;
-
 import :ansi_format;
+
+#include <string>
+#include <stdexcept>
 
 export namespace util {
     struct PanicAssertion : public std::runtime_error {

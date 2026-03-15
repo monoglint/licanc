@@ -1,10 +1,10 @@
-export module util:logger
-
-import <string>;
-import <vector>
+export module util:logger;
 
 import :span;
 import :ansi_format;
+
+#include <string>
+#include <vector>
 
 export namespace util {
     enum class LogType {

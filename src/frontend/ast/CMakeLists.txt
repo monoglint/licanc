@@ -5,6 +5,7 @@ target_sources(frontend_ast
         FILE_SET cxx_modules TYPE CXX_MODULES
         FILES
             ast.ccm
+            ast_nodes.ccm
             ast_reader.ccm
             ast_visitor.ccm
             ast_writer.ccm
@@ -13,5 +14,5 @@ target_sources(frontend_ast
 )
 
 target_link_libraries(frontend_ast
-    PUBLIC util
+    PRIVATE util
 )

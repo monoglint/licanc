@@ -15,8 +15,8 @@
 
 #if MODE == 0
 
-    import <string>;
-    import <iostream>;
+#include <string>
+#include <iostream>
     import driver;
 
     int main(int argc, char* argv[]) {

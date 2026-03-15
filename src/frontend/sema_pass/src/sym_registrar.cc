@@ -18,7 +18,7 @@ import util;
 //     }
 // }
 
-void frontend::sema::run_symbol_registrar(SymRegistrarContext context) {
+void frontend::sema_pass::run_symbol_registrar(SymRegistrarContext context) {
     util::panic("The symbol register is not implemented.");
     // walk(context, context.ast.root_ptr);
 }

@@ -1,11 +1,11 @@
 export module util:intern_pool;
 
-import <deque>;
-import <optional>;
-import <functional>;
-import <unordered_map>;
-
 import :safe_id;
+
+#include <deque>
+#include <optional>
+#include <functional>
+#include <unordered_map>
 
 export namespace util {
     template <typename T, util::c_is_safe_id T_ID, typename T_HASH = std::hash<T>>

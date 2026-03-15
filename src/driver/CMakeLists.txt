@@ -10,5 +10,5 @@ target_sources(driver
 )
 
 target_link_libraries(driver
-    PUBLIC util
+    PRIVATE util
 )

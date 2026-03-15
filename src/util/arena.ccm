@@ -1,10 +1,10 @@
 export module util:arena;
 
-import <cstddef>;
-import <memory>
-import <deque>
-import <vector>
-import <optional>
+#include <cstddef>
+#include <memory>
+#include <deque>
+#include <vector>
+#include <optional>
 
 // notes for future improvements:
 // - vector of destructors could maybe be backed into the arena itself (7 march 2026)

@@ -43,13 +43,21 @@ based on what pass of the semantic analyzer was just performed
 
 export module frontend.sema:sym;
 
-import <unordered_map>;
-import <variant>;
+#include <unordered_map>
+#include <variant>
 
 import util;
 import ast;
 
 import manager_types;
+
+
+template <std::derived_from<frontend::sema::sym::Sym> T> 
+T* post_sym_table_insert(std::optional<T*> ptr) {
+    util::panic_assert(ptr.has_value(), "Failed to emplace symbol into arena pool.");
+    
+    return ptr.value();
+}
 
 export namespace frontend::sema {
     struct Sym { };
@@ -220,10 +228,18 @@ export namespace frontend::sema {
         syms::Root* root_ptr; // initialized in semantic_analyzer.cc
         
         template <std::derived_from<syms::Sym> T, typename... ARGS>
-        T* emplace(ARGS... args);
+        T* emplace(ARGS... args) {
+            std::optional<T*> ptr = arena.try_emplace<T, ARGS...>(std::forward(args)...);
+
+            return post_sym_table_insert(ptr);
+        }
 
         template <std::derived_from<syms::Sym> T>
-        T* push(T sym);
+        T* push(T sym) {
+            std::optional<T*> ptr = arena.try_push<T>(std::move(sym));
+
+            return post_sym_table_insert(ptr);
+        }
 
         void clear() {
             arena.clear();

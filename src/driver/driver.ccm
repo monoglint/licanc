@@ -6,8 +6,8 @@ primary interface header
 
 export module driver;
 
-import <string>;
-import <vector>;
+#include <string>
+#include <vector>
 
 export namespace driver {
     // all contents of config is checked in validate_licanc_config

@@ -9,5 +9,5 @@ target_sources(manager_types
 )
 
 target_link_libraries(manager_types
-    PUBLIC util
+    PRIVATE util
 )
