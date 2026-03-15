@@ -1,0 +1,14 @@
+/*
+
+Takes all of the semantic analyzer workers and condenses them into one function that can be called by the manager.
+
+*/
+
+export module frontend.sema_pass:semantic_analyzer;
+
+// import manager;
+import manager_types;
+
+export namespace frontend::sema_pass {
+   // void run_semantic_analyzer(manager::CompilationEngine& engine, manager_types::FileId file_id);
+}

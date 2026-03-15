@@ -1,0 +1,68 @@
+module;
+
+#include <vector>
+
+export module frontend.tok;
+
+import util;
+
+/*
+
+struct color3<T> {
+    #rgb(r: fixed u8, g: fixed u8, b: fixed u8)
+
+    r: fixed T
+    g: fixed T
+    b: fixed T
+}
+
+*/
+
+export namespace frontend::tok {
+    enum class TokenKind {
+        NONE,
+
+        IMPORT,
+        
+        COPY, // copy - generates copy initializer
+        MOVE, // move - generates move initializer
+
+        OPERATOR,
+    };
+
+    enum class OperatorKind {
+        PLUS,
+        MINUS,
+        ASTERISK,
+        SLASH,
+        PERCENT,
+
+        DOUBLE_PLUS,
+        DOUBLE_MINUS,
+        
+        DOUBLE_AMPERSAND,
+        DOUBLE_PIPE,
+        
+        BANG,
+
+        BANG_EQUALS,
+        DOUBLE_EQUALS,
+        LEFT_ARROW,
+        RIGHT_ARROW,
+        RIGHT_ARROW_EQUALS,
+    };
+
+    enum class _StorageSpecifierFlags : uint8_t {
+        NONE        = 0,
+        STATIC      = 1 << 0,
+    };
+
+    using StorageSpecifierFlags = util::BitFlags<_StorageSpecifierFlags>;
+
+    struct Token {
+        util::Span span;
+
+    };
+
+    using TokenStream = std::vector<Token>;
+}

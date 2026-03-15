@@ -1,0 +1,27 @@
+module;
+
+#include <cstddef>
+#include <string>
+
+export module util:span;
+
+export namespace util {
+    struct Point {
+        std::size_t char_pos = 0;
+        std::size_t line = 0;
+        std::size_t column = 0;
+
+        std::string to_string() const {
+            return "[Line " + std::to_string(line) + " Col " + std::to_string(column) + "]";
+        }
+    };
+
+    struct Span {
+        Point start = Point();
+        Point end = Point();
+
+        std::string to_string() const {
+            return '[' + start.to_string() + " " + end.to_string() + ']';
+        }
+    };
+}

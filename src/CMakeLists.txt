@@ -1,5 +1,0 @@
-add_subdirectory(driver)
-add_subdirectory(frontend)
-add_subdirectory(manager)
-add_subdirectory(manager_types)
-add_subdirectory(util)
