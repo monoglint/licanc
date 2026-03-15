@@ -1,0 +1,23 @@
+export module frontend.sema_pass:sym_registrar;
+
+import sema;
+import manager;
+
+/*
+
+the symbol registrar should not fill out struct or function bodies
+
+*/
+
+export namespace frontend::sema_pass {
+    struct SymRegistrarContext {
+        manager::FileId file_id;
+        util::Logger& logger;
+        manager::SessionPools& session_pools;
+        manager::FileManager& file_manager;
+        sema::sym::SymTable& sym_table;
+        ast::AST& ast;
+    };
+
+    void run_sym_registrar(SymRegistrarContext context);
+}

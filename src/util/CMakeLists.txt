@@ -1,20 +1,18 @@
-add_library(util 
-    ansi_format.hh
-    arena.hh
-    bitflags.hh
-    hash.hh
-    intern_pool.hh
-    logger.hh
-    panic.hh
-    safe_id.hh
-    span.hh
-    vector_hasher.hh
+add_library(util)
 
-    src/logger.cc
-    src/panic.cc
-    src/span.cc
-)
-
-target_include_directories(util PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_sources(util
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            util.ccm
+            ansi_format.ccm
+            arena.ccm
+            bitflags.ccm
+            hash.ccm
+            intern_pool.ccm
+            logger.ccm
+            panic.ccm
+            safe_id.ccm
+            span.ccm
+            vector_hasher.ccm
 )

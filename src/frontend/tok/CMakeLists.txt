@@ -1,9 +1,12 @@
-add_library(frontend_tok 
-    tok.hh
-)
+add_library(frontend_tok)
 
-target_include_directories(frontend_tok PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_sources(frontend_tok
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            tok.ccm
+    PRIVATE
+
 )
 
 target_link_libraries(frontend_tok

@@ -1,8 +1,14 @@
-add_library(driver
-    licanc.hh
-    src/licanc.cc
+add_library(driver)
+
+target_sources(driver
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            driver.ccm
+    PRIVATE
+        src/driver.cc
 )
 
-target_include_directories(driver PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_link_libraries(driver
+    PUBLIC util
 )

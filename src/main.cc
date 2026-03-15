@@ -15,9 +15,9 @@
 
 #if MODE == 0
 
-    #include <iostream>
-
-    #include "driver/licanc.hh"
+    import <string>;
+    import <iostream>;
+    import driver;
 
     int main(int argc, char* argv[]) {
         // this is the first line of statement code i am pretty sure was written in this project. DO NOT DELETE

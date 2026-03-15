@@ -5,9 +5,9 @@ ALL SYMBOL REFERENCES NEED TO HOLD FOR A LATER PASS OF THE AST
 
 */
 
-#include "frontend/sema_pass/sym_registrar.hh"
+module frontend.sema_pass;
 
-#include "util/panic.hh"
+import util;
 
 // namespace {
 //     void walk(RegistrarContext& context, ast::Root* node) {
@@ -18,7 +18,7 @@ ALL SYMBOL REFERENCES NEED TO HOLD FOR A LATER PASS OF THE AST
 //     }
 // }
 
-void frontend::sema::sym_registrar::register_symbols(RegistrarContext context) {
+void frontend::sema::run_symbol_registrar(SymRegistrarContext context) {
     util::panic("The symbol register is not implemented.");
     // walk(context, context.ast.root_ptr);
 }

@@ -1,5 +1,5 @@
-#include "frontend/lex_pass/lexer.hh"
+module frontend.lex_pass;
 
-void frontend::lex_pass::lexer::lex(LexerContext context) {
+void frontend::lex_pass::run_lexer(LexerContext context) {
     
 }

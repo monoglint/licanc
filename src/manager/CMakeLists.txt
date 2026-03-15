@@ -1,10 +1,14 @@
-add_library(manager 
-    manager_types.hh
-    manager.hh
+add_library(manager)
 
-    src/manager.cc
+target_sources(manager
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            manager.ccm
+    PRIVATE
+        src/manager.cc
 )
 
-target_include_directories(manager PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_link_libraries(manager
+    PUBLIC util
 )

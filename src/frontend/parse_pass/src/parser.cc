@@ -1,6 +1,6 @@
-#include "frontend/parse_pass/parser.hh"
+module frontend.parse_pass;
 
-#include <filesystem>
+import <string>;
 
 namespace {
     std::string standardize_import_path(std::string path) {
@@ -8,7 +8,7 @@ namespace {
     }
 }
 
-void frontend::parse_pass::parser::parse(ParserContext context) {
+void frontend::parse_pass::parser::run_parser(ParserContext context) {
 
 }
 

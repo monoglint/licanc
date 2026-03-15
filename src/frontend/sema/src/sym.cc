@@ -1,8 +1,6 @@
-#include "frontend/sema/sym.hh"
+module frontend.sema:sym;
 
-#include "util/panic.hh"
-
-#include "util/panic.hh"
+import util;
 
 template <std::derived_from<frontend::sema::sym::Sym> T> 
 T* post_insert(std::optional<T*> ptr) {

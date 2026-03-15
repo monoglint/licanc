@@ -1,14 +1,15 @@
-add_library(frontend_ast 
-    ast_reader.hh
-    ast_visitor.hh
-    ast_writer.hh
+add_library(frontend_ast)
 
-    ast.hh
-    src/ast.cc
-)
-
-target_include_directories(frontend_ast PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_sources(frontend_ast
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            ast.ccm
+            ast_reader.ccm
+            ast_visitor.ccm
+            ast_writer.ccm
+    PRIVATE
+        src/ast.cc
 )
 
 target_link_libraries(frontend_ast

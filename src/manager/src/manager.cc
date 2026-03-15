@@ -1,15 +1,15 @@
-#include "manager/manager.hh"
+module manager;
 
-#include <fstream>
-#include <filesystem>
-#include <expected>
-#include <iostream>
+import <fstream>;
+import <filesystem>
+import <expected>
+import <iostream>
 
-#include "util/panic.hh"
+import util;
 
-#include "frontend/lex_pass/lexer.hh"
-#include "frontend/parse_pass/parser.hh"
-#include "frontend/sema_pass/semantic_analyzer.hh"
+import frontend.lex_pass;
+import frontend.parse_pass;
+import frontend.sema_pass;
 
 namespace {
     enum class QuickReadFileError {

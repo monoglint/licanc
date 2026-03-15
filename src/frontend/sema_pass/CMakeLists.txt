@@ -1,15 +1,15 @@
-add_library(frontend_sema_pass 
-    full_passer.hh
-    semantic_analyzer.hh
-    sym_registrar.hh
+add_library(frontend_sema_pass)
 
-    src/full_passer.cc
-    src/semantic_analyzer.cc
-    src/sym_registrar.cc
-)
-
-target_include_directories(frontend_sema_pass PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_sources(frontend_sema_pass
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            sema_pass.ccm
+            semantic_analyzer.ccm
+            sym_registrar.ccm
+    PRIVATE
+        src/semantic_analyzer.cc
+        src/sym_registrar.cc
 )
 
 target_link_libraries(frontend_sema_pass

@@ -1,11 +1,12 @@
-#include "frontend/sema_pass/semantic_analyzer.hh"
+module frontend.sema_pass;
 
-#include "frontend/sema_pass/sym_registrar.hh"
-#include "frontend/sema_pass/full_passer.hh"
+import :sym_registrar;
+import :full_passer;
 
-#include "util/panic.hh"
+import util;
 
-void frontend::sema::semantic_analyzer::analyze(manager::CompilationEngine& engine, manager::FileId file_id) {
+
+void frontend::sema::semantic_analyzer::run_semantic_analyzer(manager::CompilationEngine& engine, manager::FileId file_id) {
     manager::FileManager::GetFileResult get_file_result = engine.file_manager.get_file(file_id);
     
     util::panic_assert(

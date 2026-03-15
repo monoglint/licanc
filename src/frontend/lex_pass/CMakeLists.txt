@@ -1,10 +1,12 @@
-add_library(frontend_lex_pass 
-    lexer.hh
-    src/lexer.cc
-)
+add_library(frontend_lex_pass)
 
-target_include_directories(frontend_lex_pass PUBLIC
-    ${PROJECT_SOURCE_DIR}/src
+target_sources(frontend_lex_pass
+    PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES
+        FILES
+            lexer.ccm
+    PRIVATE
+        src/lexer.cc
 )
 
 target_link_libraries(frontend_lex_pass

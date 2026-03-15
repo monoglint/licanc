@@ -1,0 +1,24 @@
+export module frontend.sema:resolved_type;
+
+export namespace frontend::sema {
+    using ResolvedTypeDeclVariant = std::variant<sym::StructDecl*, sym::PrimativeDecl*>;
+    struct ResolvedType {
+        ResolvedTypeDeclVariant declaration;
+        ast::ResolvedTypeQualifier qualifier;
+
+        constexpr auto operator<=>(const ResolvedType& other) const = default;
+    };
+}
+
+export namespace std {
+    template<>
+    struct hash<frontend::sema::ResolvedType> {
+        std::size_t operator()(const frontend::sema::ResolvedType& resolved_type) const noexcept {
+            std::size_t hash_val = std::hash<frontend::ast::ResolvedTypeQualifier>{}(resolved_type.qualifier);
+
+            util::combine_hashes(hash_val, std::hash<frontend::sema::ResolvedTypeDeclVariant>{}(resolved_type.declaration));
+            
+            return hash_val;
+        }
+    };
+}

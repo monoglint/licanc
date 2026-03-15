@@ -1,6 +1,6 @@
-#include "frontend/ast/ast.hh"
+module frontend.ast;
 
-#include "util/panic.hh"
+import util;
 
 template <std::derived_from<frontend::ast::Node> T> 
 T* post_insert(std::vector<frontend::ast::ImportDecl*>& import_nodes, std::optional<T*> ptr) {
