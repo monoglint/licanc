@@ -1,19 +1,20 @@
-add_subdirectory(build_system)
+add_subdirectory(driver)
 add_subdirectory(frontend)
-add_subdirectory(manager)
-add_subdirectory(manager_types)
+add_subdirectory(driver_base)
 add_subdirectory(util)
 
-add_library(licanc_library INTERFACE
-    build_system
+add_library(licanc_library INTERFACE)
+
+target_link_libraries(licanc_library INTERFACE
+    driver
     frontend
-    manager
-    manager_types
+    driver_base
     util
 )
 
-add_executable(licanc
-    main.cc
-)
+add_executable(licanc main.cc)
 
 target_link_libraries(licanc PRIVATE licanc_library)
+
+get_target_property(LIBS_LIST licanc LINK_LIBRARIES)
+message(STATUS "Libraries linked to licanc: ${LIBS_LIST}")

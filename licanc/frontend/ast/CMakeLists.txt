@@ -11,5 +11,8 @@ target_sources(frontend_ast
 )
 
 target_link_libraries(frontend_ast
-    PRIVATE util frontend_tok manager_types
+    PRIVATE 
+        util 
+        frontend_tok
+        driver_base
 )

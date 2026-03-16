@@ -6,8 +6,11 @@ target_sources(frontend_sema
             sema.ccm
             sym.ccm
             resolved_type.ccm
+            ctexpr.ccm
 )
 
 target_link_libraries(frontend_sema
-    PRIVATE util frontend_ast
+    PRIVATE 
+        util
+        frontend_ast
 )

@@ -209,8 +209,8 @@ export namespace manager {
     };
 
     struct EngineContext {
-        const std::string& project_path;
-        const std::string& start_path;
+        const std::string project_path;
+        const std::string start_path;
     };
 
     class CompilationEngine {

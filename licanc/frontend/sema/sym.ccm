@@ -49,10 +49,12 @@ module;
 
 export module frontend.sema:sym;
 
+import :ctexpr;
+
 import util;
 import frontend.ast;
 
-import manager_types;
+import driver_base;
 
 export namespace frontend::sema {
     struct Sym { };
@@ -78,7 +80,7 @@ export namespace frontend::sema {
     template <class T_INST>
     using Insts = std::unordered_map<std::vector<TemplateArgument*>, T_INST, util::VectorHasher<TemplateArgument*>>;
 
-    using Decls = std::unordered_map<manager_types::IdentifierId, Decl*>;
+    using Decls = std::unordered_map<driver_base::IdentifierIndex, Decl*>;
 
     // SYMBOLS v vvv vv vv
     
@@ -92,7 +94,7 @@ export namespace frontend::sema {
     };
 
     struct ValueTemplateParameter : Sym {
-        /* _ */ manager_types::ConstexprId constexpr_id;
+        /* _ */ ctexpr::CTExprId ctexpr_id;
     };
 
     using TemplateParameterVariant = std::variant<TypeNameTemplateParameter*, ValueTemplateParameter*>;
@@ -101,15 +103,15 @@ export namespace frontend::sema {
     };
 
     //                                                                   not definite yet, just here for implementation
-    using TemplateArgumentValueVariant = std::variant<manager_types::ResolvedTypeId, manager_types::ConstexprId>;
+    using TemplateArgumentValueVariant = std::variant<ResolvedTypeIndex, ctexpr::CTExprId>;
     struct TemplateArgument : Sym {
         /* _ */ TemplateArgumentValueVariant argument_value;
     };
 
     struct Function : Sym {
         /* 0 */ ast::Function* syntactic_function;
-        /* _ */ std::vector<manager_types::ResolvedTypeId> parameter_types; // {Type}
-        /* _ */ manager_types::ResolvedTypeId return_type;
+        /* _ */ std::vector<ResolvedTypeIndex> parameter_types; // {Type}
+        /* _ */ ResolvedTypeIndex return_type;
     };
 
     struct FunctionInst {
@@ -126,7 +128,7 @@ export namespace frontend::sema {
     };
 
     struct FunctionOverload : Sym {
-        /* _ */ std::vector<manager_types::ResolvedTypeId> parameter_types;
+        /* _ */ std::vector<ResolvedTypeIndex> parameter_types;
         /* _ */ FunctionTemplate* function_template; // FunctionTemplate
     };
 
@@ -145,7 +147,7 @@ export namespace frontend::sema {
     };
 
     struct Property : Sym {
-        /* _ */ manager_types::ResolvedTypeId property_type;
+        /* _ */ ResolvedTypeIndex property_type;
         /* _ */ AccessSpecifier access_specifier;
     };
 
@@ -213,7 +215,7 @@ export namespace frontend::sema {
         GlobalDecl()
             : Decl(DeclKind::GLOBAL) {}
 
-        /* _ */ manager_types::ResolvedTypeId global_type;
+        /* _ */ ResolvedTypeIndex global_type;
     };
 
 }
@@ -225,12 +227,12 @@ T* post_sym_table_insert(std::optional<T*> ptr) {
     return ptr.value();
 }
 
-export namespace frontend::sema {
+export namespace frontend::sema { 
     class SymTable {
     public:
         SymTable() { init(); }
 
-        Root* root_ptr; // initialized in semantic_analyzer.cc
+        Root* root_ptr;
         
         template <std::derived_from<Sym> T, typename... ARGS>
         T* emplace(ARGS... args) {

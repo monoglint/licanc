@@ -6,9 +6,10 @@ module;
 
 export module frontend.ast:ast_nodes;
 
+import driver_base;
+
 import frontend.tok;
 import util;
-import manager_types;
 
 export namespace frontend::ast {
     struct Node {
@@ -20,7 +21,6 @@ export namespace frontend::ast {
     };
 
     enum class DeclKind {
-        IMPORT,
         GLOBAL,
         FUNCTION,
         STRUCT,
@@ -113,21 +113,20 @@ export namespace frontend::ast {
 
     // x
     struct Identifier : Expr {
-        Identifier(util::Span span, manager_types::IdentifierId identifier_id)
-            : Expr(std::move(span), ExprKind::IDENTIFIER), identifier_id(identifier_id)
+        Identifier(util::Span span, driver_base::IdentifierIndex identifier_index)
+            : Expr(std::move(span), ExprKind::IDENTIFIER), identifier_index(identifier_index)
         {}
         
-        // reference to within manager::FrontendUnit
-        manager_types::IdentifierId identifier_id;
+        driver_base::IdentifierIndex identifier_index;
     };
 
     // "hello world"
     struct StringLiteral : Expr {
-        StringLiteral(util::Span span, manager_types::StringLiteralId string_literal_id)
-            : Expr(std::move(span), ExprKind::STRING_LITERAL), string_literal_id(string_literal_id)
+        StringLiteral(util::Span span, driver_base::StringLiteralIndex string_literal_index)
+            : Expr(std::move(span), ExprKind::STRING_LITERAL), string_literal_index(string_literal_index)
         {}
 
-        manager_types::StringLiteralId string_literal_id;
+        driver_base::StringLiteralIndex string_literal_index;
     };
 
     // struct NumberLiteral : Node {
@@ -326,18 +325,6 @@ export namespace frontend::ast {
     
     */
 
-    // import "math"
-    struct ImportDecl : Decl {
-        ImportDecl(util::Span span, Visibility* visibility, StringLiteral* file_path, StringLiteral* absolute_file_path, bool is_path_valid)
-            : Decl(std::move(span), DeclKind::IMPORT, visibility), file_path(file_path), absolute_file_path(absolute_file_path), is_path_valid(is_path_valid)
-        {}
-
-        StringLiteral* file_path;
-        StringLiteral* absolute_file_path;
-        bool is_path_valid;
-        /* manager.cc */ manager_types::FileId resolved_file_id; // proper dependency connection is made here
-    };
-
     // 
     struct GlobalDecl : Decl {
         GlobalDecl(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type, Expr* value)
@@ -525,20 +512,18 @@ export namespace frontend::ast {
     //
     //
 
+    // refactor note: "imports" is not needed because glint is now in charge of true dependencies
     class AST {
     public:
         AST() { init(); }
 
-        // if an import node is allocated into the arena, its important to add it to the "imports" vector
-
         Root* root_ptr;
-        std::vector<ImportDecl*> import_nodes;
         
         template <std::derived_from<Node> T, typename... ARGS>
-        T* emplace(ARGS... args);
+        T* emplace(ARGS... args); // todo: impl and match with sym
 
         template <std::derived_from<Node> T>
-        T* push(T node);
+        T* push(T node); // todo: impl and match with sym
 
         void clear() {
             arena.clear();

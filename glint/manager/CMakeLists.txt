@@ -9,5 +9,5 @@ target_sources(manager
 )
 
 target_link_libraries(manager
-    PRIVATE util frontend
+    PRIVATE util frontend manager_types
 )

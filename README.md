@@ -7,3 +7,5 @@ This is the main repository for Lican.
     - The primary Lican compiler.
 - glint
     - The primary build system for the Lican compiler.
+- livm
+    - The primary virtual machine that runs Lican IR

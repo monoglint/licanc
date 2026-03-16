@@ -1,0 +1,59 @@
+module;
+
+#include <string>
+
+export module driver;
+
+import frontend.tok;
+import frontend.ast;
+import frontend.sema;
+
+import driver_base;
+
+export namespace driver {
+    struct ConfigFlags {
+        const produce_bytecode;
+    };
+
+    // primary interface struct
+    struct Config {
+        const std::string source_file_path;
+        const ConfigFlags flags;
+    };
+
+    //
+    //
+    //
+
+    struct LoadedPackage {
+        /*
+
+        Usage note: When creating contexts accessing loaded state, do not pass through the entire loaded state itself...
+            UNLESS you are the semantic analyzer and are grabbing the loaded state of a separate package 
+        
+        */
+        std::string source_code;
+
+        frontend::tok::TokenStream token_stream;
+        frontend::ast::AST ast;
+        frontend::sema::SymTable sym_table;
+
+        driver_base::IdentifierPool identifier_pool;
+        driver_base::StringLiteralPool string_literal_pool;
+        sema::ResolvedTypePool resolved_type_pool;
+    };
+
+    // primary compiler state struct
+    struct CompilerState {
+        // todo: add a pool for cached packages that the semantic analyzer uses
+        //  OR, store those temporarily loaded packages in the semantic analyzer itself.
+
+        LoadedPackage loaded_package;
+        Config config;
+    };
+    
+    // todo: decide if this function should return a binary string or a path to 
+    // an already generated .lipack (non-decided-file-extension, could be something else later) file
+    // add [[nodiscard]] when a return value is set.
+    void compile(Config config);
+};

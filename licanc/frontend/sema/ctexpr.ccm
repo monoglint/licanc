@@ -1,0 +1,12 @@
+module;
+
+export module frontend.sema:ctexpr;
+
+import util;
+
+export namespace frontend::sema {
+    struct CTExpr {};
+
+    using CTExprIndex = util::SafeId<struct CTExprIndexTag>;
+    using CTExprPool = util::InternPool<CTExpr, CTExprIndex>;
+};

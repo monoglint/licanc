@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-import build_system;
+import driver;
 
 int main(int argc, char* argv[]) {
     // this is the first line of statement code i am pretty sure was written in this project. DO NOT DELETE
@@ -18,25 +18,9 @@ int main(int argc, char* argv[]) {
     //                                                      \                   |          /
     //                                                       `----------------------------`
     
-
-    std::string project_path;
-    std::string start_subpath;
-
-    if (argc == 1) {
-        project_path = "C:/Users/jghig/Documents/TempEmpty/main";
-        start_subpath = "main.li";
-    }
-    else if (argc == 3) {
-        project_path = argv[1];
-        start_subpath = argv[2];
-    }
-
-    build_system::LicancConfig config {
-        .project_path = project_path,
-        .start_path = project_path + '/' + start_subpath
-    };
-
-    build_system::compile(config);
+    driver::compile({
+        "C:/Users/jghig/Documents/TempEmpty/main.li"
+    });
     
     return 0;
 }

@@ -4,6 +4,8 @@ module;
 #include <filesystem>
 #include <expected>
 #include <iostream>
+#include <algorithm>
+#include <string>
 
 module manager;
 
@@ -115,23 +117,22 @@ namespace {
     void parse_file(manager::CompilationEngine& engine, manager_types::FileId file_id, std::vector<manager_types::FileId>& file_stack) {
         manager::CompilationFile& file = engine.file_manager.get_file(file_id).value();
 
-        // not implemented yet
-        frontend::lex_pass::lexer::lex(frontend::lex_pass::lexer::LexerContext{});
-        frontend::parse_pass::parser::parse(frontend::parse_pass::parser::ParserContext{
-            .ast = file.compiler_output_data.frontend.ast,
-            .engine_context = engine.engine_context
-        });
+        // frontend::lex_pass::lex(frontend::lex_pass::LexerContext{});
+        // frontend::parse_pass::parser::parse(frontend::parse_pass::parser::ParserContext{
+        //     .ast = file.compiler_output_data.frontend.ast,
+        //     .engine_context = engine.engine_context
+        // });
 
         handle_post_parse_file_imports(engine, file_id, file, file_stack);
     }
 
     void analyze_file(manager::CompilationEngine& engine, manager_types::FileId file_id) {
-        frontend::sema::semantic_analyzer::analyze(engine, file_id);
+        // frontend::sema::semantic_analyzer::analyze(engine, file_id);
     }
 }
 
-void manager::FileDependencyData::remove_dirty_dependency(FileId now_clean_dependency_id) {
-    std::erase_if(dirty_dependency_ids, [&](const FileId dirty_dependency_id) -> bool {
+void manager::FileDependencyData::remove_dirty_dependency(manager_types::FileId now_clean_dependency_id) {
+    std::erase_if(dirty_dependency_ids, [&](const manager_types::FileId dirty_dependency_id) -> bool {
         return dirty_dependency_id == now_clean_dependency_id;
     });
 }
@@ -176,10 +177,10 @@ manager::FileManager::AddFileResult manager::FileManager::add_file(std::string p
 
     files.emplace_back(std::make_unique<CompilationFile>(std::filesystem::absolute(path).string(), quick_read_file_result.value()));
 
-    return FileId{files.size() - 1};
+    return manager_types::FileId{files.size() - 1};
 }
 
-manager::FileManager::DelistFileResult manager::FileManager::delist_file(FileId file_id) {
+manager::FileManager::DelistFileResult manager::FileManager::delist_file(manager_types::FileId file_id) {
     if (file_id.get() >= files.size())
         return DelistFileResult::FILE_DOESNT_EXIST;
 
@@ -190,7 +191,7 @@ manager::FileManager::DelistFileResult manager::FileManager::delist_file(FileId 
     return DelistFileResult::SUCCESS;
 }
 
-manager::FileManager::GetFileResult manager::FileManager::get_file(FileId file_id) {
+manager::FileManager::GetFileResult manager::FileManager::get_file(manager_types::FileId file_id) {
     if (file_id.get() >= files.size())
         return std::nullopt;
 
@@ -202,7 +203,7 @@ manager::FileManager::GetFileResult manager::FileManager::get_file(FileId file_i
     return files[numeric_file_id].get_file();
 }
 
-manager::FileManager::GetConstFileResult manager::FileManager::get_file(FileId file_id) const {
+manager::FileManager::GetConstFileResult manager::FileManager::get_file(manager_types::FileId file_id) const {
     if (file_id.get() >= files.size())
         return std::nullopt;
 
@@ -217,18 +218,18 @@ manager::FileManager::GetConstFileResult manager::FileManager::get_file(FileId f
 manager::FileManager::FindFileResult manager::FileManager::find_file(std::string path) const {
     for (std::size_t file_id = 0; file_id < files.size(); file_id++) {
         if (files[file_id].is_alive() && files[file_id].get_file().path == path)
-            return FileId{file_id};
+            return manager_types::FileId{file_id};
     }
 
     return std::nullopt;
 }
 
 std::vector<manager_types::FileId> manager::FileManager::get_valid_files() const {
-    std::vector<FileId> valid_files;
+    std::vector<manager_types::FileId> valid_files;
 
     for (std::size_t file_id = 0; const FileEntry& file_entry : files) {
         if (file_entry.is_alive())
-            valid_files.push_back(FileId{file_id});
+            valid_files.push_back(manager_types::FileId{file_id});
     }
 
     return valid_files;
@@ -250,7 +251,7 @@ void manager::FileRefresher::recurse_mark_dirty(manager_types::FileId start) {
     file_stack.push_back(start);
 
     while (!file_stack.empty()) {
-        FileId file_id = file_stack.back();
+        manager_types::FileId file_id = file_stack.back();
         FileManager::GetFileResult get_file_result = file_manager.get_file(file_id).value();
 
         CompilationFile& file = get_file_result.value(); // checked later in the loop and refresh_files()
@@ -263,7 +264,7 @@ void manager::FileRefresher::recurse_mark_dirty(manager_types::FileId start) {
         file.dependency_data.is_dirty = true;
         dirty_files.push_back(file_id);
 
-        for (FileId dependent_id : file.dependency_data.dependent_ids) {
+        for (manager_types::FileId dependent_id : file.dependency_data.dependent_ids) {
             FileManager::GetFileResult get_dependent_file_result = file_manager.get_file(dependent_id);
 
             if (!get_dependent_file_result.has_value())
@@ -277,13 +278,13 @@ void manager::FileRefresher::recurse_mark_dirty(manager_types::FileId start) {
     }
 }
 
-manager::FileManager::DelistFileResult manager::FileRefresher::delist_file(FileId file_id) {
+manager::FileManager::DelistFileResult manager::FileRefresher::delist_file(manager_types::FileId file_id) {
     FileManager::GetFileResult get_file_result = file_manager.get_file(file_id);
 
     if (!get_file_result.has_value())
         return FileManager::DelistFileResult::FILE_DOESNT_EXIST;
 
-    for (FileId dependent_id : get_file_result.value().get().dependency_data.dependent_ids) {
+    for (manager_types::FileId dependent_id : get_file_result.value().get().dependency_data.dependent_ids) {
         recurse_mark_dirty(dependent_id);
     }
 
@@ -291,7 +292,7 @@ manager::FileManager::DelistFileResult manager::FileRefresher::delist_file(FileI
 }
 
 void manager::FileRefresher::refresh_files() {
-    for (FileId file_id : file_manager.get_valid_files()) {
+    for (manager_types::FileId file_id : file_manager.get_valid_files()) {
         FileManager::GetFileResult get_file_result = file_manager.get_file(file_id);
         CompilationFile& file = get_file_result.value();
 
@@ -318,7 +319,7 @@ void manager::CompilationEngine::compile() {
         return;
     }
 
-    FileId file_id = get_file_result.value();
+    manager_types::FileId file_id = get_file_result.value();
     CompilationFile& file = file_manager.get_file(file_id).value();
 
     if (file.state == FileState::COMPILE_READY) {
@@ -333,7 +334,7 @@ void manager::CompilationEngine::compile() {
 }
 
 void manager::CompilationEngine::recompile_dirty_files() {
-    file_refresher.dirty_files.erase(std::remove_if(file_refresher.dirty_files.begin(), file_refresher.dirty_files.end(), [&](FileId dirty_file_id) {
+    file_refresher.dirty_files.erase(std::remove_if(file_refresher.dirty_files.begin(), file_refresher.dirty_files.end(), [&](manager_types::FileId dirty_file_id) {
         const CompilationFile& dirty_file = file_manager.get_file(dirty_file_id).value(); // checked earlier in recurse_mark_dirty
         const bool is_file_dependent = dirty_file.dependency_data.dirty_dependency_ids.size() > 0;
 
@@ -341,11 +342,11 @@ void manager::CompilationEngine::recompile_dirty_files() {
     }));
 
     while (file_refresher.dirty_files.size() > 0) {
-        FileId file_id = file_refresher.dirty_files.back();
+        manager_types::FileId file_id = file_refresher.dirty_files.back();
         CompilationFile& file = file_manager.get_file(file_id).value();
 
         // grab list of dependents before it gets deleted
-        std::vector<FileId> dependent_ids = file.dependency_data.dependent_ids;
+        std::vector<manager_types::FileId> dependent_ids = file.dependency_data.dependent_ids;
 
         // ensure something really wrong isnt happening
         util::panic_assert(file.dependency_data.dirty_dependency_ids.size() == 0, "");
@@ -367,7 +368,7 @@ void manager::CompilationEngine::recompile_dirty_files() {
 
         // a dependent file of a dirty file is always going to be dirty
         // enforced by recurse_mark_dirty
-        for (FileId dependent_file_id : dependent_ids) {
+        for (manager_types::FileId dependent_file_id : dependent_ids) {
             CompilationFile& dependent_file = file_manager.get_file(dependent_file_id).value();
             dependent_file.dependency_data.remove_dirty_dependency(file_id);
 
@@ -377,7 +378,7 @@ void manager::CompilationEngine::recompile_dirty_files() {
     }
 }
 
-void manager::CompilationEngine::run_frontend(FileId target_file_id) {
+void manager::CompilationEngine::run_frontend(manager_types::FileId target_file_id) {
     std::vector<manager_types::FileId> file_stack;
     file_stack.emplace_back(target_file_id);
 

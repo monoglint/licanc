@@ -4,12 +4,6 @@ module;
 
 module frontend.parse_pass;
 
-namespace {
-    std::string standardize_import_path(std::string path) {
-        
-    }
-}
-
 void frontend::parse_pass::run_parser(ParserContext context) {
 
 }

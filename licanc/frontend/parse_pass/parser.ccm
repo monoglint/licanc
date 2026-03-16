@@ -4,8 +4,7 @@ import frontend.ast;
 
 export namespace frontend::parse_pass {
     struct ParserContext {
-        ast::AST& ast;
-        // manager::EngineContext& engine_context;
+        
     };
 
     void run_parser(ParserContext context);

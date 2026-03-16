@@ -4,16 +4,21 @@ module;
 
 export module frontend.sema:resolved_type;
 
+import util;
 import :sym;
 
 export namespace frontend::sema {
     using ResolvedTypeDeclVariant = std::variant<StructDecl*, PrimativeDecl*>;
+    
     struct ResolvedType {
         ResolvedTypeDeclVariant declaration;
         ast::ResolvedTypeQualifier qualifier;
 
         constexpr auto operator<=>(const ResolvedType& other) const = default;
     };
+
+    using ResolvedTypeIndex = util::SafeId<struct ResolvedTypeIdTag>;
+    using ResolvedTypePool = util::InternPool<ResolvedType, ResolvedTypeIndex>;
 }
 
 export namespace std {
