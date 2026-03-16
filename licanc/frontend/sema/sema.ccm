@@ -1,4 +1,5 @@
 export module frontend.sema;
 
+export import :ct_expr;
 export import :resolved_type;
 export import :sym;

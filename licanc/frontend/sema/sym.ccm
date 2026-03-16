@@ -49,7 +49,8 @@ module;
 
 export module frontend.sema:sym;
 
-import :ctexpr;
+import :ct_expr;
+import :resolved_type;
 
 import util;
 import frontend.ast;
@@ -87,135 +88,6 @@ export namespace frontend::sema {
     struct ModuleDecl;
     struct Root : Sym { // index 0
         /* 0 */ ModuleDecl* global_module;
-    };
-
-    struct TypeNameTemplateParameter : Sym {
-
-    };
-
-    struct ValueTemplateParameter : Sym {
-        /* _ */ ctexpr::CTExprId ctexpr_id;
-    };
-
-    using TemplateParameterVariant = std::variant<TypeNameTemplateParameter*, ValueTemplateParameter*>;
-    struct TemplateParameter : Sym {
-        /* _ */ TemplateParameterVariant value;
-    };
-
-    //                                                                   not definite yet, just here for implementation
-    using TemplateArgumentValueVariant = std::variant<ResolvedTypeIndex, ctexpr::CTExprId>;
-    struct TemplateArgument : Sym {
-        /* _ */ TemplateArgumentValueVariant argument_value;
-    };
-
-    struct Function : Sym {
-        /* 0 */ ast::Function* syntactic_function;
-        /* _ */ std::vector<ResolvedTypeIndex> parameter_types; // {Type}
-        /* _ */ ResolvedTypeIndex return_type;
-    };
-
-    struct FunctionInst {
-        /* _ */ Function* concrete_function;
-    };
-    
-    struct FunctionTemplate : Sym {
-        //  base is not 100% concrete unless len(specializations) is 0 
-        //  /
-        // v
-        /* 0 */ Function* base; // Function
-        /* _ */ std::vector<TemplateParameter*> template_parameters; // {TemplateParameter}
-        /* _ */ Insts<FunctionInst*> instantiations; // <_, Function> 
-    };
-
-    struct FunctionOverload : Sym {
-        /* _ */ std::vector<ResolvedTypeIndex> parameter_types;
-        /* _ */ FunctionTemplate* function_template; // FunctionTemplate
-    };
-
-    struct FunctionDecl : Decl {
-        FunctionDecl(std::vector<FunctionOverload*> overloads)
-            : Decl(DeclKind::FUNCTION), overloads(std::move(overloads))
-        {}
-            
-        // default overload stored in index 0
-        /* index 0: 0 */ std::vector<FunctionOverload*> overloads;
-    };
-
-    enum class AccessSpecifier {
-        PUBLIC,
-        PRIVATE,
-    };
-
-    struct Property : Sym {
-        /* _ */ ResolvedTypeIndex property_type;
-        /* _ */ AccessSpecifier access_specifier;
-    };
-
-    struct Method : Sym {
-        /* _ */ FunctionTemplate* function_template; // FunctionTemplate
-        /* _ */ AccessSpecifier access_specifier;
-    };
-
-    struct Struct : Sym {
-        /* 0 */ ast::Struct* syntactic_struct;
-        /* _ */ Decls properties; // {Property}
-        /* _ */ Decls methods; // {Method}
-
-        // implementation should be fixed here. you can technically access different initializer types by name because a copy constructor
-        // will always be called copy, but just be careful. 
-        /* _ */ Decls initializers; // {Initializer}
-    };
-
-    struct StructInst {
-        Struct* concrete_struct;
-    };
-
-    struct StructTemplate : Sym {
-        /* 0 */ Struct* base; // Struct
-        /* _ */ Insts<StructInst*> instantiations;
-        /* _ */ std::vector<TemplateParameter*> template_parameters;
-    };
-
-    struct StructDecl : Decl {
-        StructDecl()
-            : Decl(DeclKind::STRUCT)
-        {}
-
-        /* 0 */ StructTemplate* struct_template;
-    };
-
-    struct Primative : Decl {
-        /* 0 */ std::size_t size;
-    };
-
-    struct PrimativeDecl : Decl {
-        PrimativeDecl()
-            : Decl(DeclKind::PRIMATIVE)
-        {}
-
-        Primative* primative;
-    };
-
-    struct ImportMarker : Sym {
-        // a pointer to the global module of another already semantically analyzed file
-        ModuleDecl* target_module;
-    };
-
-    struct ModuleDecl : Decl {
-        ModuleDecl(std::optional<ModuleDecl*> parent_module, Decls decls, std::vector<ImportMarker*> import_markers)
-            : Decl(DeclKind::MODULE), parent_module(std::move(parent_module)), decls(std::move(decls)), import_markers(std::move(import_markers))
-        {}
-
-        /* 0 */ std::optional<ModuleDecl*> parent_module;
-        /* 0 */ Decls decls;
-        /* 0 */ std::vector<ImportMarker*> import_markers;
-    };
-
-    struct GlobalDecl : Decl {
-        GlobalDecl()
-            : Decl(DeclKind::GLOBAL) {}
-
-        /* _ */ ResolvedTypeIndex global_type;
     };
 
 }
