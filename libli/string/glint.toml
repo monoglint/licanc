@@ -1,0 +1,7 @@
+[package]
+name = "string"
+version = "v1.0.0"
+type = "library"
+
+[config]
+dependencies = []

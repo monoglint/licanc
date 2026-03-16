@@ -7,9 +7,8 @@ export module frontend.sema:resolved_type;
 import util;
 
 export namespace frontend::sema {
-    using ResolvedTypeDeclVariant = std::variant<StructDecl*, PrimativeDecl*>;
-    
     struct ResolvedType {
+        using TypeDeclVariant = std::variant<StructDecl*, PrimativeDecl*>;
         ResolvedTypeDeclVariant declaration;
         ast::ResolvedTypeQualifier qualifier;
 

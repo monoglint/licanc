@@ -61,11 +61,8 @@ export namespace frontend::sema {
     struct Sym { };
 
     enum class DeclKind {
-        FUNCTION,
         STRUCT,
-        MODULE,
-        GLOBAL,
-        PRIMATIVE,
+        PRIMITIVE,
     };
 
     struct Decl : Sym {
@@ -88,6 +85,18 @@ export namespace frontend::sema {
     struct ModuleDecl;
     struct Root : Sym { // index 0
         /* 0 */ ModuleDecl* global_module;
+    };
+
+    struct ModuleDecl : Decl {
+
+    };
+
+    struct StructDecl : Decl {
+
+    };
+
+    struct PrimitiveDecl : Decl {
+
     };
 
 }

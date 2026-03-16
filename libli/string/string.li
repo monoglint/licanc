@@ -1,0 +1,23 @@
+struct String {
+    pub #Copy
+    pub #Ops:Add
+    
+    pub from_ptr(ptr: &u8): String {
+
+    }	
+    
+    Copy::copy(other: @String): String {
+        return String {
+            // impl
+        }
+    }
+
+    # todo: make optionally pub or priv for different overloads?
+    Ops:Add::add<String>(other: @string): String {
+        return String {
+            
+        }
+    }
+
+    ptr: &u8
+}
