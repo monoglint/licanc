@@ -4,6 +4,10 @@ module;
 
 module driver;
 
+import frontend.lex_pass;
+import frontend.parse_pass;
+import frontend.sema_pass;
+
 namespace {
     std::string load_file(std::string file_path) {
         return "empty";
@@ -18,4 +22,8 @@ void driver::compile(Config config) {
         },
         .config = config,   
     };
+
+    frontend::lex_pass::run_lexer({});
+    frontend::parse_pass::run_parser({});
+    frontend::sema_pass::run_semantic_analyzer({});
 }

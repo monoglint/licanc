@@ -7,5 +7,9 @@ Takes all of the semantic analyzer workers and condenses them into one function 
 export module frontend.sema_pass:semantic_analyzer;
 
 export namespace frontend::sema_pass {
-   // void run_semantic_analyzer();
+    struct SemanticAnalyzerContext {
+
+    };
+
+    void run_semantic_analyzer(SemanticAnalyzerContext context);
 }
