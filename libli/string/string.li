@@ -20,4 +20,8 @@ struct String {
     }
 
     ptr: &u8
+
+    pub view_ptr(&self): &u8 {
+        return ptr
+    }
 }

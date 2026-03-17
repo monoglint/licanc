@@ -5,6 +5,7 @@ target_sources(frontend_ast
         FILE_SET CXX_MODULES FILES
             ast.ccm
             ast_nodes.ccm
+            ast_class.ccm
             ast_reader.ccm
             ast_visitor.ccm
             ast_writer.ccm

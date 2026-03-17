@@ -4,7 +4,9 @@ target_sources(frontend_sema
     PUBLIC
         FILE_SET CXX_MODULES FILES
             sema.ccm
-            sym.ccm
+            syms.ccm
+            syms_fwd.ccm
+            sym_table_class.ccm
             resolved_type.ccm
             ct_expr.ccm
 )

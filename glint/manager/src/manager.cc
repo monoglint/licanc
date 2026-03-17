@@ -89,7 +89,7 @@ namespace {
     */
     void handle_post_parse_file_imports(manager::CompilationEngine& engine, manager_types::FileId current_file_id, manager::CompilationFile& file, std::vector<manager_types::FileId>& file_stack) {
         // check if there is an include item anywhere in the ast.
-        for (frontend::ast::ImportDecl* import_decl_node : file.compiler_output_data.frontend.ast.import_nodes) {
+        for (frontend::ast::ImportDecl* import_decl_node : file.compiler_output_data.frontend.parse.import_nodes) {
             if (!import_decl_node->is_path_valid)
                 continue;
 
@@ -119,7 +119,7 @@ namespace {
 
         // frontend::lex_pass::lex(frontend::lex_pass::LexerContext{});
         // frontend::parse_pass::parser::parse(frontend::parse_pass::parser::ParserContext{
-        //     .ast = file.compiler_output_data.frontend.ast,
+        //     .ast = file.compiler_output_data.frontend.parse,
         //     .engine_context = engine.engine_context
         // });
 

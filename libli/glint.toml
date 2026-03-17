@@ -1,0 +1,6 @@
+[group]
+name = "libli"
+version = "v1.0.0"
+
+[variables]
+LIBLI_ROOT = "{SRC_FILE_PATH}"

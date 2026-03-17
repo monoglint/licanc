@@ -1,3 +1,15 @@
-module io {
+imports {
+    "libli/string"
+}
 
+[[aggregate]]
+struct StreamWriter {
+    write(content: @std::String) {
+        __platform_independent_putstr(content.)
+    }
+
+    writeln(content: @std::String) {
+        write(content + '\n')
+    }
+   
 }

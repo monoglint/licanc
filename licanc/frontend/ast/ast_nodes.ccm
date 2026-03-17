@@ -80,7 +80,6 @@ export namespace frontend::ast {
         QUALIFIED,
         REFERENCED,
         POINTERED,
-        ARRAYED,
     };
 
     struct Type : Node {
@@ -160,24 +159,26 @@ export namespace frontend::ast {
     };
 
     struct ScopeResolutionExpr;
-    using ScopeReferenceVariant = std::variant<Identifier*, ScopeResolutionExpr*>;
     // a::b() || a()
     struct ScopeReferenceExpr : Expr {
-        ScopeReferenceExpr(util::Span span, ScopeReferenceVariant reference)
+        using ReferenceVariant = std::variant<Identifier*, ScopeResolutionExpr*>;
+
+        ScopeReferenceExpr(util::Span span, ReferenceVariant reference)
             : Expr(std::move(span), ExprKind::SCOPE_REFERENCE), reference(std::move(reference))
         {}
 
-        ScopeReferenceVariant reference;
+        ReferenceVariant reference;
     };
 
     struct MemberAccessExpr;
-    using MemberReferenceVariant = std::variant<Identifier*, MemberAccessExpr*>;
     struct MemberReferenceExpr : Expr {
-        MemberReferenceExpr(util::Span span, MemberReferenceVariant reference)
+        using ReferenceVariant = std::variant<Identifier*, MemberAccessExpr*>;
+
+        MemberReferenceExpr(util::Span span, ReferenceVariant reference)
             : Expr(std::move(span), ExprKind::MEMBER_REFERENCE), reference(std::move(reference))
         {}
 
-        MemberReferenceVariant reference;
+        ReferenceVariant reference;
     };
 
     // math::pi
@@ -265,10 +266,6 @@ export namespace frontend::ast {
     };
 
     enum class TypeQualifier {
-        CONST
-    };
-
-    enum class ResolvedTypeQualifier {
         MUT
     };
 
@@ -295,14 +292,6 @@ export namespace frontend::ast {
         {}
 
         Type* base; // only limitation: no references
-    };
-
-    struct ArrayedType : Type {
-        ArrayedType(util::Span span, Type* base)
-            : Type(std::move(span), TypeKind::ARRAYED), base(base)
-        {}
-
-        Type* base;
     };
 
     /*
@@ -337,7 +326,7 @@ export namespace frontend::ast {
         Expr* value;
     };
 
-    struct TypeNameTemplateParameter : Node {
+    struct TypeTemplateParameter : Node {
         Identifier* name;
     };
 
@@ -346,23 +335,39 @@ export namespace frontend::ast {
         Type* type;
     };
 
-    using TemplateParameterVariant = std::variant<TypeNameTemplateParameter*, ValueTemplateParameter*>;
     struct TemplateParameter : Node {
-        TemplateParameter(util::Span span, TemplateParameterVariant value)
+        using ValueVariant = std::variant<TypeTemplateParameter*, ValueTemplateParameter*>;
+
+        TemplateParameter(util::Span span, ValueVariant value)
             : Node(std::move(span)), value(std::move(value))
         {}
 
-        TemplateParameterVariant value;
+        ValueVariant value;
     };
 
-    using TemplateArgumentValueVariant = std::variant<Type*, Expr*>;
+    struct TypeTemplateArgument : Node {
+        TypeTemplateArgument(util::Span span, Type* value)
+            : Node(std::move(span)), value(value)
+        {}
+
+        Type* value; // proven as compile-time constant by semantic analyzer
+    };
+
+    struct ValueTemplateArgument : Node {
+        ValueTemplateArgument(util::Span span, Expr* value)
+            : Node(std::move(span)), value(value)
+        {}
+        
+        Expr* value;
+    };
+
     struct TemplateArgument : Node {
-        TemplateArgument(util::Span span, TemplateArgumentValueVariant value)
+        using ValueVariant = std::variant<TypeTemplateArgument*, ValueTemplateArgument*>;
+        TemplateArgument(util::Span span, ValueVariant value)
             : Node(std::move(span)), value(std::move(value))
         {}
 
-        // note: if value is a Expr, then the value of the template argument must be proven to be a compile time constant
-        TemplateArgumentValueVariant value;
+        ValueVariant value;
     };
 
     struct FunctionParameter : Node {
@@ -506,36 +511,5 @@ export namespace frontend::ast {
         {}
 
         std::vector<Stmt*> stmts;
-    };
-
-    //
-    //
-    //
-
-    // refactor note: "imports" is not needed because glint is now in charge of true dependencies
-    class AST {
-    public:
-        AST() { init(); }
-
-        Root* root_ptr;
-        
-        template <std::derived_from<Node> T, typename... ARGS>
-        T* emplace(ARGS... args); // todo: impl and match with sym
-
-        template <std::derived_from<Node> T>
-        T* push(T node); // todo: impl and match with sym
-
-        void clear() {
-            arena.clear();
-            init();
-        }
-
-    private:
-        // EXTERNAL CALL OF ::clear() IS UNSAFE
-        util::Arena<> arena;
-
-        void init() {
-            std::ignore = arena.try_emplace<Root>();
-        }
     };
 }

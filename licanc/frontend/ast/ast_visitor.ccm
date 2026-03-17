@@ -22,6 +22,6 @@ export namespace frontend::ast {
     };
 
     class VisitImportDecl : DeclVisitor<VisitImportDecl> {
-        virtual void VisitRoot();
+        void VisitRoot();
     };
 }

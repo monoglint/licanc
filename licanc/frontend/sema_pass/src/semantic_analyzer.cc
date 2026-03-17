@@ -23,6 +23,6 @@ import util;
 //         .session_pools = engine.session_pools,
 //         .file_manager = engine.file_manager,
 //         .sym_table = file.compiler_output_data.frontend.sym_table, 
-//         .ast = file.compiler_output_data.frontend.ast
+//         .ast = file.compiler_output_data.frontend.parse
 //     });
 // }

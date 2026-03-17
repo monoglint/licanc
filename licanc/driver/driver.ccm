@@ -12,7 +12,7 @@ import driver_base;
 
 export namespace driver {
     struct ConfigFlags {
-        const produce_bytecode;
+        const bool produce_bytecode; // example
     };
 
     // primary interface struct
@@ -32,7 +32,7 @@ export namespace driver {
             UNLESS you are the semantic analyzer and are grabbing the loaded state of a separate package 
         
         */
-        std::string source_code;
+        const std::string source_code;
 
         frontend::tok::TokenStream token_stream;
         frontend::ast::AST ast;
@@ -40,7 +40,7 @@ export namespace driver {
 
         driver_base::IdentifierPool identifier_pool;
         driver_base::StringLiteralPool string_literal_pool;
-        sema::ResolvedTypePool resolved_type_pool;
+        frontend::sema::ResolvedTypePool resolved_type_pool;
     };
 
     // primary compiler state struct
