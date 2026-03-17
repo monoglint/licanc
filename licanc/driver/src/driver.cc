@@ -1,6 +1,7 @@
 module;
 
 #include <string>
+#include <iostream>
 
 module driver;
 
@@ -22,6 +23,8 @@ void driver::compile(Config config) {
         },
         .config = config,   
     };
+
+    std::cout << "Running passes\n";
 
     frontend::lex_pass::run_lexer({});
     frontend::parse_pass::run_parser({});
