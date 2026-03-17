@@ -1,0 +1,6 @@
+[package]
+type = "checkpoint"
+name = "libli"
+description = ""
+version = "v1.0.0"
+lican-version = 1

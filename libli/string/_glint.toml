@@ -1,0 +1,6 @@
+[package]
+type = "library"
+name = "string"
+description = ""
+version = "v1.0.0"
+lican-version = 1

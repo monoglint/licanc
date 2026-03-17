@@ -1,0 +1,9 @@
+[package]
+type = "library"
+name = "io"
+description = ""
+version = "v1.0.0"
+lican-version = 1
+
+[dependencies]
+"libli/string"
