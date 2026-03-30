@@ -4,10 +4,11 @@ target_sources(frontend_ast
     PUBLIC
         FILE_SET CXX_MODULES FILES
             ast.ixx
+            ast_builder.ixx
             ast_nodes.ixx
             ast_class.ixx
-            ast_reader.ixx
-            ast_visitor.ixx
+            ast_deserializer.ixx
+            ast_serializer.ixx
             ast_writer.ixx
 )
 

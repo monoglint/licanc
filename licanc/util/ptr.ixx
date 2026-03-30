@@ -1,3 +1,11 @@
+/*
+
+util:ptr
+
+This utility contains wrappers for raw pointers to provide semantic clarity or safety.
+
+*/
+
 module;
 
 #include <cassert>
@@ -8,7 +16,7 @@ export module util:ptr;
 import :panic;
 
 export namespace util {
-    // A pointer that is guaranteed to not point to nullptr.
+    // A raw pointer that is guaranteed to not point to nullptr.
     template <typename T>
     class FirmPtr {
     public:
@@ -27,7 +35,7 @@ export namespace util {
         T* ptr;
     };
 
-    // A 
+    // A raw pointer that may or may not be nullptr. Has protection from arithmetic.
     template <typename T>
     class OptPtr {
     public:
@@ -39,6 +47,7 @@ export namespace util {
             : ptr(nullptr)
         {}
 
+        [[nodiscard]]
         bool has_value() const {
             return ptr != nullptr;
         }

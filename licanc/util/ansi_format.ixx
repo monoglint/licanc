@@ -4,6 +4,9 @@ util:ansi_format
 
 This utility carries many useful constants for adding ANSI encoding to strings being printed to the console.
 
+@monoglint
+30 Mar 2026
+
 */
 
 export module util:ansi_format;
