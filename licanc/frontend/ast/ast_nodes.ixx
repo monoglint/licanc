@@ -2,7 +2,6 @@ module;
 
 #include <variant>
 #include <vector>
-#include <optional>
 
 export module frontend.ast:ast_nodes;
 
@@ -30,12 +29,12 @@ export namespace frontend::ast {
 
     struct Visibility;
     struct Decl : Node {
-        Decl(util::Span span, DeclKind decl_kind, Visibility* visibility)
+        Decl(util::Span span, DeclKind decl_kind, util::FirmPtr<Visibility> visibility)
             : Node(span), decl_kind(decl_kind), visibility(visibility)
         {}
 
         DeclKind decl_kind;
-        Visibility* visibility;
+        util::FirmPtr<Visibility> visibility;
     };
 
     enum class StmtKind {
@@ -78,8 +77,6 @@ export namespace frontend::ast {
         NAMED,
         TEMPLATE_INSTANTIATED,
         QUALIFIED,
-        REFERENCED,
-        POINTERED,
     };
 
     struct Type : Node {
@@ -90,24 +87,25 @@ export namespace frontend::ast {
         TypeKind type_kind;
     };
 
-    //            ||||||
-    //            ||||||
-    // real nodes vvvvvv
     //
     //
-    struct Root : Node {
-        Root()
-            : Node({})
-        {}
-
-        std::vector<Decl*> decls;
-    };
+    //
 
     struct Visibility : Node {
         Visibility(util::Span span)
             : Node(std::move(span))
         {}
 
+        // the target declaration and any symbols inside of it will have access.
+        util::OptPtr<Decl> accessor;
+    };
+
+    struct Root : Node {
+        Root()
+            : Node({})
+        {}
+
+        std::vector<util::FirmPtr<Decl>> decls;
     };
 
     // x
@@ -139,29 +137,29 @@ export namespace frontend::ast {
 
     // -5
     struct UnaryExpr : Expr {
-        UnaryExpr(util::Span span, Expr* operand, tok::OperatorKind opr)
+        UnaryExpr(util::Span span, util::FirmPtr<Expr> operand, tok::OperatorKind opr)
             : Expr(std::move(span), ExprKind::UNARY), operand(operand), opr(opr)
         {}
 
-        Expr* operand;
+        util::FirmPtr<Expr> operand;
         tok::OperatorKind opr;
     };
 
     // 5 + 2
     struct BinaryExpr : Expr {
-        BinaryExpr(util::Span span, Expr* operand0, Expr* operand1, tok::OperatorKind opr)
+        BinaryExpr(util::Span span, util::FirmPtr<Expr> operand0, util::FirmPtr<Expr> operand1, tok::OperatorKind opr)
             : Expr(std::move(span), ExprKind::BINARY), operand0(operand0), operand1(operand1), opr(opr)
         {}
 
-        Expr* operand0;
-        Expr* operand1;
+        util::FirmPtr<Expr> operand0;
+        util::FirmPtr<Expr> operand1;
         tok::OperatorKind opr;
     };
 
     struct ScopeResolutionExpr;
     // a::b() || a()
     struct ScopeReferenceExpr : Expr {
-        using ReferenceVariant = std::variant<Identifier*, ScopeResolutionExpr*>;
+        using ReferenceVariant = std::variant<util::FirmPtr<Identifier>, util::FirmPtr<ScopeResolutionExpr>>;
 
         ScopeReferenceExpr(util::Span span, ReferenceVariant reference)
             : Expr(std::move(span), ExprKind::SCOPE_REFERENCE), reference(std::move(reference))
@@ -172,7 +170,7 @@ export namespace frontend::ast {
 
     struct MemberAccessExpr;
     struct MemberReferenceExpr : Expr {
-        using ReferenceVariant = std::variant<Identifier*, MemberAccessExpr*>;
+        using ReferenceVariant = std::variant<util::FirmPtr<Identifier>, util::FirmPtr<MemberAccessExpr>>;
 
         MemberReferenceExpr(util::Span span, ReferenceVariant reference)
             : Expr(std::move(span), ExprKind::MEMBER_REFERENCE), reference(std::move(reference))
@@ -183,33 +181,33 @@ export namespace frontend::ast {
 
     // math::pi
     struct ScopeResolutionExpr : Expr {
-        ScopeResolutionExpr(util::Span span, ScopeReferenceExpr* operand0, Identifier* operand1)
+        ScopeResolutionExpr(util::Span span, util::FirmPtr<ScopeReferenceExpr> operand0, util::FirmPtr<Identifier> operand1)
             : Expr(std::move(span), ExprKind::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1)
         {}
 
-        ScopeReferenceExpr* operand0;
-        Identifier* operand1;
+        util::FirmPtr<ScopeReferenceExpr> operand0;
+        util::FirmPtr<Identifier> operand1;
     };
     
     // object.position.x
     struct MemberAccessExpr : Expr {
-        MemberAccessExpr(util::Span span, MemberReferenceExpr* operand0, Identifier* operand1)
+        MemberAccessExpr(util::Span span, util::FirmPtr<MemberReferenceExpr> operand0, util::FirmPtr<Identifier> operand1)
             : Expr(std::move(span), ExprKind::MEMBER_ACCESS), operand0(operand0), operand1(operand1)
         {}
 
-        MemberReferenceExpr* operand0;
-        Identifier* operand1;
+        util::FirmPtr<MemberReferenceExpr> operand0;
+        util::FirmPtr<Identifier> operand1;
     };
 
     // if a > b { } else { } <--- not actual compound statement, braces are parser resolved syntactic sugar
     struct TernaryExpr : Expr {
-        TernaryExpr(util::Span span, Expr* condition, Expr* consequent, Expr* alternate)
+        TernaryExpr(util::Span span, util::FirmPtr<Expr> condition, util::FirmPtr<Expr> consequent, util::FirmPtr<Expr> alternate)
             : Expr(std::move(span), ExprKind::TERNARY), condition(condition), consequent(consequent), alternate(alternate)
         {}
 
-        Expr* condition;
-        Expr* consequent;
-        Expr* alternate;
+        util::FirmPtr<Expr> condition;
+        util::FirmPtr<Expr> consequent;
+        util::FirmPtr<Expr> alternate;
     };
 
     /*
@@ -220,48 +218,48 @@ export namespace frontend::ast {
     */
 
     struct CallExpr : Expr {
-        CallExpr(util::Span span, ScopeReferenceExpr* callee, std::vector<Expr*> arguments)
+        CallExpr(util::Span span, util::FirmPtr<ScopeReferenceExpr> callee, std::vector<util::FirmPtr<Expr>> arguments)
             : Expr(std::move(span), ExprKind::CALL), callee(callee), arguments(std::move(arguments))
         {}
 
-        ScopeReferenceExpr* callee; // ScopeReference
-        std::vector<Expr*> arguments; // {Expr}
+        util::FirmPtr<ScopeReferenceExpr> callee; // ScopeReference
+        std::vector<util::FirmPtr<Expr>> arguments; // {Expr}
     };
 
     struct HeapExpr : Expr {
-        HeapExpr(util::Span span, CallExpr* inst, std::optional<Expr*> address)
+        HeapExpr(util::Span span, util::FirmPtr<CallExpr> inst, util::OptPtr<Expr> address)
             : Expr(std::move(span), ExprKind::HEAP), inst(inst), address(std::move(address))
         {}
 
-        CallExpr* inst;
-        std::optional<Expr*> address; // must semantically deduce to a pointer
+        util::FirmPtr<CallExpr> inst;
+        util::OptPtr<Expr> address; // must semantically deduce to a pointer
     };
 
     struct TemplateArgument;
     struct TemplateInstExpr : Expr {
-        TemplateInstExpr(util::Span span, ScopeReferenceExpr* target, std::vector<TemplateArgument*> template_arguments)
+        TemplateInstExpr(util::Span span, util::FirmPtr<ScopeReferenceExpr> target, std::vector<TemplateArgument*> template_arguments)
             : Expr(std::move(span), ExprKind::TEMPLATE_inst), target(target), template_arguments(std::move(template_arguments))
         {}
         
-        ScopeReferenceExpr* target;
+        util::FirmPtr<ScopeReferenceExpr> target;
         std::vector<TemplateArgument*> template_arguments;
     };
 
     struct NamedType : Type {
-        NamedType(util::Span span, ScopeReferenceExpr* base)
+        NamedType(util::Span span, util::FirmPtr<ScopeReferenceExpr> base)
             : Type(std::move(span), TypeKind::NAMED), base(base)
         {}
 
-        ScopeReferenceExpr* base;
+        util::FirmPtr<ScopeReferenceExpr> base;
     };
 
     struct TemplateArgument;
     struct TemplateInstantiatedType : Type {
-        TemplateInstantiatedType(util::Span span, NamedType* base, std::vector<TemplateArgument*> arguments)
+        TemplateInstantiatedType(util::Span span, util::FirmPtr<NamedType> base, std::vector<TemplateArgument*> arguments)
             : Type(std::move(span), TypeKind::TEMPLATE_INSTANTIATED), base(base), arguments(std::move(arguments))
         {}
 
-        NamedType* base;
+        util::FirmPtr<NamedType> base;
         std::vector<TemplateArgument*> arguments;
     };
 
@@ -270,69 +268,32 @@ export namespace frontend::ast {
     };
 
     struct QualifiedType : Type {
-        QualifiedType(util::Span span, Type* base, TypeQualifier qualifier)
+        QualifiedType(util::Span span, util::FirmPtr<Type> base, TypeQualifier qualifier)
             : Type(std::move(span), TypeKind::QUALIFIED), base(base), qualifier(qualifier)
         {}
 
-        Type* base;
+        util::FirmPtr<Type> base;
         TypeQualifier qualifier;
     };
 
-    struct ReferencedType : Type {
-        ReferencedType(util::Span span, Type* base)
-            : Type(std::move(span), TypeKind::REFERENCED), base(base)
-        {}
-
-        Type* base;
-    };
-
-    struct PointeredType : Type {
-        PointeredType(util::Span span, Type* base)
-            : Type(std::move(span), TypeKind::POINTERED), base(base)
-        {}
-
-        Type* base; // only limitation: no references
-    };
-
-    /*
-
-    ; file: "color.li"
-    struct color {
-        r: u8 = 0
-        g: u8 = 0
-        b: u8 = 0
-    }
-
-    ; file: "main.li"
-    import "io.li" ; if io has its own module, then that module will be dumped into the global module here
-    
-    module art {
-        import "color.li" ; imports can be oranized into local modules
-    }
-
-    art..color()
-    
-    */
-
-    // 
     struct GlobalDecl : Decl {
-        GlobalDecl(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type, Expr* value)
+        GlobalDecl(util::Span span, util::FirmPtr<Visibility> visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type, util::FirmPtr<Expr> value)
             : Decl(std::move(span), DeclKind::GLOBAL, visibility), storage_specifiers(storage_specifiers), name(name), type(type), value(value)
         {}
 
         tok::StorageSpecifierFlags storage_specifiers;
-        Identifier* name;
-        Type* type;
-        Expr* value;
+        util::FirmPtr<Identifier> name;
+        util::FirmPtr<Type> type;
+        util::FirmPtr<Expr> value;
     };
 
     struct TypeTemplateParameter : Node {
-        Identifier* name;
+        util::FirmPtr<Identifier> name;
     };
 
     struct ValueTemplateParameter : Node {
-        Identifier* name;
-        Type* type;
+        util::FirmPtr<Identifier> name;
+        util::FirmPtr<Type> type;
     };
 
     struct TemplateParameter : Node {
@@ -346,19 +307,19 @@ export namespace frontend::ast {
     };
 
     struct TypeTemplateArgument : Node {
-        TypeTemplateArgument(util::Span span, Type* value)
+        TypeTemplateArgument(util::Span span, util::FirmPtr<Type> value)
             : Node(std::move(span)), value(value)
         {}
 
-        Type* value; // proven as compile-time constant by semantic analyzer
+        util::FirmPtr<Type> value; // proven as compile-time constant by semantic analyzer
     };
 
     struct ValueTemplateArgument : Node {
-        ValueTemplateArgument(util::Span span, Expr* value)
+        ValueTemplateArgument(util::Span span, util::FirmPtr<Expr> value)
             : Node(std::move(span)), value(value)
         {}
         
-        Expr* value;
+        util::FirmPtr<Expr> value;
     };
 
     struct TemplateArgument : Node {
@@ -371,41 +332,41 @@ export namespace frontend::ast {
     };
 
     struct FunctionParameter : Node {
-        FunctionParameter(util::Span span, Identifier* name, Type* type)
+        FunctionParameter(util::Span span, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type)
             : Node(std::move(span)), name(name), type(type)
         {}
 
-        Identifier* name;
-        Type* type;
+        util::FirmPtr<Identifier> name;
+        util::FirmPtr<Type> type;
     };
     
     struct Function : Node {
-        Function(util::Span span, std::vector<FunctionParameter*> parameters, Stmt* body, Type* return_type)
+        Function(util::Span span, std::vector<FunctionParameter*> parameters, util::FirmPtr<Stmt> body, util::FirmPtr<Type> return_type)
             : Node(std::move(span)), parameters(std::move(parameters)), body(body), return_type(return_type)
         {}
 
         std::vector<FunctionParameter*> parameters;
-        Stmt* body;
-        Type* return_type;
+        util::FirmPtr<Stmt> body;
+        util::FirmPtr<Type> return_type;
     };
 
     struct FunctionTemplate : Node {
-        FunctionTemplate(util::Span span, Function* base, std::vector<TemplateParameter*> template_parameters)
+        FunctionTemplate(util::Span span, util::FirmPtr<Function> base, std::vector<TemplateParameter*> template_parameters)
             : Node(std::move(span)), base(base), template_parameters(std::move(template_parameters))
         {}
 
-        Function* base;
+        util::FirmPtr<Function> base;
         std::vector<TemplateParameter*> template_parameters; // {TemplateParameter}
     };
     
     struct FunctionDecl : Decl {
-        FunctionDecl(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, FunctionTemplate* function_template, Identifier* name)
+        FunctionDecl(util::Span span, util::FirmPtr<Visibility> visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<FunctionTemplate> function_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(span), DeclKind::FUNCTION, visibility), storage_specifiers(storage_specifiers), function_template(function_template), name(name)
             {}
 
         tok::StorageSpecifierFlags storage_specifiers;
-        FunctionTemplate* function_template;
-        Identifier* name;
+        util::FirmPtr<FunctionTemplate> function_template;
+        util::FirmPtr<Identifier> name;
     };
 
     struct Finalizer : Node {
@@ -417,25 +378,25 @@ export namespace frontend::ast {
     };
 
     struct Method : Node {
-        Method(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, FunctionTemplate* function_template)
+        Method(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, FunctionTemplate* function_template)
             : Node(std::move(span)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), function_template(function_template)
         {}
 
         Visibility* visibility;
         tok::StorageSpecifierFlags storage_specifiers;
-        Identifier* name;
+        util::FirmPtr<Identifier> name;
         FunctionTemplate* function_template;
     };
 
     struct Property : Node {
-        Property(util::Span span, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, Identifier* name, Type* type)
+        Property(util::Span span, util::FirmPtr<Visibility> visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type)
             : Node(std::move(span)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), type(type)
         {}
 
-        Visibility* visibility;
+        util::FirmPtr<Visibility> visibility;
         tok::StorageSpecifierFlags storage_specifiers;
-        Identifier* name;
-        Type* type;
+        util::FirmPtr<Identifier> name;
+        util::FirmPtr<Type> type;
     };
 
     struct Struct : Node {
@@ -460,37 +421,37 @@ export namespace frontend::ast {
     };
 
     struct StructDecl : Decl {
-        StructDecl(util::Span span, Visibility* visibility, StructTemplate* struct_template, Identifier* name)
+        StructDecl(util::Span span, util::FirmPtr<Visibility> visibility, util::FirmPtr<StructTemplate> struct_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(span), DeclKind::STRUCT, visibility), struct_template(struct_template), name(name)
         {}
 
-        StructTemplate* struct_template;
-        Identifier* name;
+        util::FirmPtr<StructTemplate> struct_template;
+        util::FirmPtr<Identifier> name;
     };
 
     struct TypeAliasTemplate : Node {
-        TypeAliasTemplate(util::Span span, Type* type, std::vector<TemplateParameter*> template_parameters)
+        TypeAliasTemplate(util::Span span, util::FirmPtr<Type> type, std::vector<util::FirmPtr<TemplateParameter>> template_parameters)
             : Node(std::move(span)), type(type), template_parameters(std::move(template_parameters)) {}
 
-        Type* type;
-        std::vector<TemplateParameter*> template_parameters;
+        util::FirmPtr<Type> type;
+        std::vector<util::FirmPtr<TemplateParameter>> template_parameters;
     };
 
     struct TypeAliasDecl : Decl {
-        TypeAliasDecl(util::Span span, Visibility* visibility, TypeAliasTemplate* type_alias_template, Identifier* name)
+        TypeAliasDecl(util::Span span, util::FirmPtr<Visibility> visibility, util::FirmPtr<TypeAliasTemplate> type_alias_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(span), DeclKind::TYPE_ALIAS, visibility), type_alias_template(type_alias_template), name(name) {}
 
-        TypeAliasTemplate* type_alias_template;
-        Identifier* name;
+        util::FirmPtr<TypeAliasTemplate> type_alias_template;
+        util::FirmPtr<Identifier> name;
     };
 
     struct ModuleDecl : Decl {
-        ModuleDecl(util::Span span, Visibility* visibility, Identifier* name, std::vector<Decl*> decls)
+        ModuleDecl(util::Span span, util::FirmPtr<Visibility> visibility, util::FirmPtr<Identifier> name, std::vector<util::FirmPtr<Decl>> decls)
             : Decl(std::move(span), DeclKind::MODULE, visibility), name(name), decls(std::move(decls))
         {}
         
-        Identifier* name;
-        std::vector<Decl*> decls;
+        util::FirmPtr<Identifier> name;
+        std::vector<util::FirmPtr<Decl>> decls;
 
         // ^^^ in the symbol table, a module declaration's decls are split into decls and references.
     };
@@ -498,11 +459,11 @@ export namespace frontend::ast {
     // -- STATEMENTS
 
     struct ReturnStmt : Stmt {
-        ReturnStmt(util::Span span, Expr* value)
+        ReturnStmt(util::Span span, util::FirmPtr<Expr> value)
             : Stmt(std::move(span), StmtKind::RETURN), value(value)
         {}
 
-        Expr* value;
+        util::FirmPtr<Expr> value;
     };
 
     struct CompoundStmt : Stmt {

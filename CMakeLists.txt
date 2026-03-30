@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 4.2.3 FATAL_ERROR)
 
-set(CMAKE_CXX_COMPILER "C:/msys64/clang64/bin/clang++.exe")
-set(CMAKE_CXX_FLAGS "-stdlib=libc++")
+set(CMAKE_CXX_FLAGS "")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23)

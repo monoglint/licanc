@@ -10,6 +10,10 @@ import frontend.sema;
 
 import driver_base;
 
+std::string load_file(std::string file_path) {
+    return "empty";
+}
+
 export namespace driver {
     struct ConfigFlags {
         const bool produce_bytecode; // example
@@ -26,13 +30,7 @@ export namespace driver {
     //
 
     struct LoadedPackage {
-        /*
-
-        Usage note: When creating contexts accessing loaded state, do not pass through the entire loaded state itself...
-            UNLESS you are the semantic analyzer and are grabbing the loaded state of a separate package 
-        
-        */
-        const std::string source_code;
+        std::string source_code;
 
         frontend::tok::TokenStream token_stream;
         frontend::ast::AST ast;
@@ -45,15 +43,16 @@ export namespace driver {
 
     // primary compiler state struct
     struct CompilerState {
-        // todo: add a pool for cached packages that the semantic analyzer uses
-        //  OR, store those temporarily loaded packages in the semantic analyzer itself.
+        CompilerState(Config config)
 
-        LoadedPackage loaded_package;
+            : config(config),
+            loaded_package{
+                .source_code = load_file(config.source_file_path)
+            }
+
+        {}
+
         Config config;
+        LoadedPackage loaded_package;
     };
-    
-    // todo: decide if this function should return a binary string or a path to 
-    // an already generated .lipack (non-decided-file-extension, could be something else later) file
-    // add [[nodiscard]] when a return value is set.
-    void compile(Config config);
 };

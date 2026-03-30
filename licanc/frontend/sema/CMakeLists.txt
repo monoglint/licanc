@@ -3,12 +3,12 @@ add_library(frontend_sema)
 target_sources(frontend_sema
     PUBLIC
         FILE_SET CXX_MODULES FILES
-            sema.ccm
-            syms.ccm
-            syms_fwd.ccm
-            sym_table_class.ccm
-            resolved_type.ccm
-            ct_expr.ccm
+            sema.ixx
+            syms.ixx
+            syms_fwd.ixx
+            sym_table_class.ixx
+            resolved_type.ixx
+            ct_expr.ixx
 )
 
 target_link_libraries(frontend_sema

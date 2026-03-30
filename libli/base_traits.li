@@ -1,0 +1,9 @@
+pub module std {
+    pub trait Copy[T] {
+        pub copy(const other: @T): T
+    }
+
+    pub trait Drop {
+        pub drop(mut &self)
+    }
+}

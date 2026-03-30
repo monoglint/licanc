@@ -3,9 +3,9 @@ add_library(manager)
 target_sources(manager
     PUBLIC
         FILE_SET CXX_MODULES FILES
-            manager.ccm
+            manager.ixx
     PRIVATE
-        src/manager.cc
+        src/manager.cxx
 )
 
 target_link_libraries(manager

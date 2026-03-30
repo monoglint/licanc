@@ -18,9 +18,11 @@ int main(int argc, char* argv[]) {
     //                                                      \                   |          /
     //                                                       `----------------------------`
     
-    driver::compile({
+    driver::Config config = {
         "C:/Users/jghig/Documents/TempEmpty/main.li"
-    });
+    };
+
+    driver::CompilerState state(config);
     
     return 0;
 }

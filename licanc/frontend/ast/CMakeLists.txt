@@ -3,12 +3,12 @@ add_library(frontend_ast)
 target_sources(frontend_ast
     PUBLIC
         FILE_SET CXX_MODULES FILES
-            ast.ccm
-            ast_nodes.ccm
-            ast_class.ccm
-            ast_reader.ccm
-            ast_visitor.ccm
-            ast_writer.ccm
+            ast.ixx
+            ast_nodes.ixx
+            ast_class.ixx
+            ast_reader.ixx
+            ast_visitor.ixx
+            ast_writer.ixx
 )
 
 target_link_libraries(frontend_ast

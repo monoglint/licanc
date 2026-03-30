@@ -3,9 +3,9 @@ add_library(frontend_parse_pass)
 target_sources(frontend_parse_pass
     PUBLIC
         FILE_SET CXX_MODULES FILES
-            parser.ccm
+            parser.ixx
     PRIVATE
-        src/parser.cc
+        src/parser.cxx
 )
 
 target_link_libraries(frontend_parse_pass

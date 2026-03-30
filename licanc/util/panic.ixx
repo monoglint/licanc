@@ -16,8 +16,9 @@ export namespace util {
     };
 
     [[noreturn]]
-    void panic(std::string message, bool exit = false) {
-        std::string title = "Licanc has encountered a fatal error!";
+    void panic(std::string message, bool throw_exception = false) {
+        std::string title = throw_exception ? "Licanc encountered an error!" : "Licanc has encountered a fatal error!";
+
         std::string separator = std::string("\n") + util::ansi_format::LIGHT_GRAY + std::string(title.size(), '=') + util::ansi_format::RESET + '\n';
 
         std::cerr << '\n' << util::ansi_format::RED << util::ansi_format::BOLD << util::ansi_format::UNDERLINE << title << '\n' << util::ansi_format::RESET;
@@ -31,14 +32,14 @@ export namespace util {
         std::cerr << separator << '\n';
         std::cerr << "Please report an issue on the repository and provide this error log.\n";
         
-        if (exit)
-            std::exit(1);
-        else
+        if (throw_exception)
             throw PanicAssertion(message);
+
+        std::exit(1); 
     }
 
-    void panic_assert(bool condition, std::string message, bool exit = false) {
+    void panic_assert(bool condition, std::string message, bool throw_exception = false) {
         if (!condition)
-            panic(message, exit);
+            panic(message, throw_exception);
     }
 }

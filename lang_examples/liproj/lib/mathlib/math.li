@@ -1,0 +1,3 @@
+portal "libli/size.li" 
+
+struct ArrayTest

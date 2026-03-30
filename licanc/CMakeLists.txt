@@ -12,7 +12,7 @@ target_link_libraries(licanc_library INTERFACE
     util
 )
 
-add_executable(licanc main.cc)
+add_executable(licanc main.cxx)
 
 target_link_libraries(licanc PRIVATE licanc_library)
 

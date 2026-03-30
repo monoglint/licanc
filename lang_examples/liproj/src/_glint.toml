@@ -1,0 +1,2 @@
+[priv]
+import_directories = ["{libli}", "{root}/lib]

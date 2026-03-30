@@ -1,0 +1,4 @@
+pub module std {
+    pub type usize = 64
+    pub type isize = i64
+}

@@ -3,9 +3,9 @@ add_library(driver)
 target_sources(driver
     PUBLIC
         FILE_SET CXX_MODULES FILES
-            driver.ccm
+            driver.ixx
     PRIVATE
-        src/driver.cc
+
 )
 
 target_link_libraries(driver

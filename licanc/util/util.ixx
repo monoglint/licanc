@@ -7,6 +7,7 @@ export import :hash;
 export import :intern_pool;
 export import :logger;
 export import :panic;
+export import :ptr;
 export import :safe_id;
 export import :span;
 export import :vector_hasher;
