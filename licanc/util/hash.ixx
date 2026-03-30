@@ -9,6 +9,7 @@ export namespace util {
         seed ^= new_hash + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 
+    [[nodiscard]]
     inline std::size_t make_combined_hash(std::size_t seed, std::size_t new_hash) {
         return seed ^ (new_hash + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }

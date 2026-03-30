@@ -1,3 +1,14 @@
+/*
+
+util:span
+
+This is not as much of a utility as the other structs, but it provides the compiler with a clear, globally-accessible type which grants it a location here.
+
+@monoglint
+30 March 2026
+
+*/
+
 module;
 
 #include <cstddef>

@@ -1,3 +1,16 @@
+/*
+
+util:panic
+
+This module provides a readable log to users of a program when an unreachable or unexpected result occurs in code that can not be recovered.
+A good example would be instantiating a non-optional pointer with nullptr, which would indicate a problem with the program's source code, and should not be recovered from.
+
+There is, however, an exception option which allows recovery depending on the situation.
+
+@monoglint
+30 March 2026
+
+*/
 module;
 
 #include <string>

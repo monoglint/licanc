@@ -1,14 +1,13 @@
 module;
 
 #include <concepts>
-#include <optional>
 
 export module frontend.ast:ast_class;
 
 import :ast_nodes;
 
 template <std::derived_from<frontend::ast::Node> T> 
-T* post_ast_insert(std::optional<T*> ptr) {
+T* post_ast_insert(util::OptPtr<T> ptr) {
     util::panic_assert(ptr.has_value(), "Failed to emplace node into arena pool.");
     
     return ptr.value();
@@ -23,14 +22,14 @@ export namespace frontend::ast {
         
         template <std::derived_from<Node> T, typename... ARGS>
         T* emplace(ARGS... args) {
-            std::optional<T*> ptr = arena.try_emplace<T, ARGS...>(std::forward(args)...);
+            util::OptPtr<T> ptr = arena.try_emplace<T, ARGS...>(std::forward(args)...);
 
             return post_ast_insert(ptr);
         }
 
         template <std::derived_from<Node> T>
         T* push(T node) {
-            std::optional<T*> ptr = arena.try_push<T>(std::move(node));
+            util::OptPtr<T> ptr = arena.try_push<T>(std::move(node));
 
             return post_ast_insert(ptr);
         }

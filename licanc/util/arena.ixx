@@ -1,3 +1,14 @@
+/*
+
+util:arena
+
+This utility provides a bump-allocator-arena that is destructor-safe.
+
+@monoglint
+30 March 2026
+
+*/
+
 module;
 
 #include <cstddef>

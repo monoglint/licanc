@@ -1,3 +1,11 @@
+/*
+
+util:ansi_format
+
+This utility carries many useful constants for adding ANSI encoding to strings being printed to the console.
+
+*/
+
 export module util:ansi_format;
 
 export namespace util::ansi_format {

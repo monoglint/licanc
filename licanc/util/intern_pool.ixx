@@ -1,3 +1,14 @@
+/*
+
+util:intern_pool
+
+This utility provides an easy-to-use intern pool for any data type.
+
+@monoglint
+30 March 2026
+
+*/
+
 module;
 
 #include <deque>

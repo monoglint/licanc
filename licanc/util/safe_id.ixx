@@ -1,3 +1,13 @@
+/*
+
+util:safe_id
+
+This utility provides a type-safe hashable ID class that can be used for any context that requires the categorization of number-based ids.
+
+@monoglint
+30 March 2026
+
+*/
 module;
 
 #include <cstddef>
@@ -8,9 +18,11 @@ module;
 export module util:safe_id;
 
 export namespace util {
+    // Implicit construction results in an invalid value by default.
     template <class T_TAG, typename T_VALUE = std::size_t>
     requires std::is_integral_v<T_VALUE>
-    struct SafeId {
+    class SafeId {
+    public:
         explicit SafeId(T_VALUE value)
             : value(value)
         {}
@@ -23,14 +35,17 @@ export namespace util {
         using ValueType = T_VALUE;
         using TagType = T_TAG;
 
+        // A constant that the safe id's value should be set to to represent invalidity.
         static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
-        static const SafeId<T_TAG, T_VALUE> INVALID_ID;
+
+        // Used as a QOL constant.
+        static constexpr SafeId INVALID_ID = SafeId(INVALID_VALUE);
         
         constexpr explicit operator T_VALUE() const {
             return value;
         }
 
-        constexpr auto operator<=>(const SafeId<T_TAG, T_VALUE>&) const = default;
+        constexpr auto operator<=>(const SafeId&) const = default;
 
         [[nodiscard]]
         constexpr bool is_valid() const {

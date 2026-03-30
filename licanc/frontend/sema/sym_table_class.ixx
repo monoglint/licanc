@@ -1,14 +1,15 @@
 module;
 
 #include <concepts>
-#include <optional>
 
 export module frontend.sema:sym_table_class;
 
 import :syms;
 
+import util;
+
 template <std::derived_from<frontend::sema::Sym> T> 
-T* post_sym_table_insert(std::optional<T*> ptr) {
+T* post_sym_table_insert(util::OptPtr<T> ptr) {
     util::panic_assert(ptr.has_value(), "Failed to emplace symbol into arena pool.");
     
     return ptr.value();
@@ -23,14 +24,14 @@ export namespace frontend::sema {
         
         template <std::derived_from<Sym> T, typename... ARGS>
         T* emplace(ARGS... args) {
-            std::optional<T*> ptr = arena.try_emplace<T, ARGS...>(std::forward(args)...);
+            util::OptPtr<T> ptr = arena.try_emplace<T, ARGS...>(std::forward(args)...);
 
             return post_sym_table_insert(ptr);
         }
 
         template <std::derived_from<Sym> T>
         T* push(T sym) {
-            std::optional<T*> ptr = arena.try_push<T>(std::move(sym));
+           util::OptPtr<T> ptr = arena.try_push<T>(std::move(sym));
 
             return post_sym_table_insert(ptr);
         }

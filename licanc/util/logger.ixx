@@ -1,3 +1,14 @@
+/*
+
+util:logger
+
+This utility provides a logger class that can accumulate messages, warnings, and errors, and bulk-print them all when requested.
+
+@monoglint
+30 March 2026
+
+*/
+
 module;
 
 #include <string>

@@ -1,3 +1,14 @@
+/*
+
+util:vector_hasher
+
+A vector hashing algorithm created by HolKann, modified by stackoverflow users, and further adapted by monoglint for templates.
+
+@monoglint
+30 March 2026
+
+*/
+
 module;
 
 #include <vector>

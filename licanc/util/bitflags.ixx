@@ -1,5 +1,7 @@
 /*
 
+util:bitflags
+
 an enum options utility that allows additional functionality to be applied to specific enums
 
 specific example
