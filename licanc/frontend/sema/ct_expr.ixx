@@ -7,6 +7,6 @@ import util;
 export namespace frontend::sema {
     struct CTExpr {};
 
-    using CTExprIndex = util::SafeId<struct CTExprIndexTag>;
+    using CTExprIndex = util::SafeId<class CTExprIndexTag>;
     using CTExprPool = util::InternPool<CTExpr, CTExprIndex>;
 };

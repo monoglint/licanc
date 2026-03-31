@@ -39,7 +39,7 @@ export namespace util {
         static constexpr T_VALUE INVALID_VALUE = std::numeric_limits<T_VALUE>::max();
 
         // Used as a QOL constant.
-        static constexpr SafeId INVALID_ID = SafeId(INVALID_VALUE);
+        static const SafeId INVALID_ID;
         
         constexpr explicit operator T_VALUE() const {
             return value;

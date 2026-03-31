@@ -20,7 +20,7 @@ export namespace frontend::sema {
         constexpr auto operator<=>(const ResolvedType& other) const = default;
     };
 
-    using ResolvedTypeIndex = util::SafeId<struct ResolvedTypeIdTag>;
+    using ResolvedTypeIndex = util::SafeId<class ResolvedTypeIdTag>;
     using ResolvedTypePool = util::InternPool<ResolvedType, ResolvedTypeIndex>;
 }
 
