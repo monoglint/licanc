@@ -41,7 +41,7 @@ export namespace frontend::sema {
     template <class T_INST>
     using Insts = std::unordered_map<std::vector<TemplateArgument*>, T_INST, util::VectorHasher<TemplateArgument*>>;
 
-    using Decls = std::unordered_map<driver_base::IdentifierIndex, Decl*>;
+    using Decls = std::unordered_map<driver_base::IdentifierId, Decl*>;
 
     // SYMBOLS v vvv vv vv
     

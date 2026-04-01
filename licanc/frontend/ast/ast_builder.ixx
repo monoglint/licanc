@@ -33,12 +33,27 @@ A violation of these rules deems an AST as malformed.
 
 */
 
+module;
+
+#include <concepts>
+
 export module frontend.ast:ast_builder;
 
 import :ast_nodes;
+import :ast_class;
 
 export namespace frontend::ast {
     class ASTBuilder {
+        ASTBuilder(AST& tree)
+            : tree(tree)
+        {}
 
+        AST& tree;
+
+        template <typename T>
+        requires std::derived_from<T, Node>
+        T push(T node) {
+            
+        }
     };
 }

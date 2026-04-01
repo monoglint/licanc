@@ -7,6 +7,7 @@ target_sources(frontend_ast
             ast_class.ixx
             ast_deserializer.ixx
             ast_nodes.ixx
+            ast_printer.ixx
             ast_serializer.ixx
             ast_visitor.ixx
             ast.ixx

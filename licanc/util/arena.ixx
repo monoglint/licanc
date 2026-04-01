@@ -9,15 +9,22 @@ This utility provides a bump-allocator-arena that is destructor-safe.
 
 */
 
+/*
+
+util::ptr support status: external API only
+
+*/
+
 module;
 
 #include <cstddef>
 #include <memory>
 #include <deque>
 #include <vector>
-#include <optional>
 
 export module util:arena;
+
+import :ptr;
 
 // notes for future improvements:
 // - vector of destructors could maybe be backed into the arena itself (7 march 2026)
@@ -89,11 +96,11 @@ export namespace util {
 
         template <typename T, typename... ARGS>
         [[nodiscard]]
-        std::optional<T*> try_emplace(ARGS&&... args) {
+        OptPtr<T> try_emplace(ARGS&&... args) {
             void* ptr = attempt_allocation<sizeof(T), alignof(T)>();
 
             if (!ptr)
-                return std::nullopt;
+                return nullptr;
 
             T* casted_ptr = static_cast<T*>(ptr);
             new (casted_ptr) T(std::forward<ARGS>(args)...); // NOTE: CAN THROW BAD ALLOC
@@ -104,11 +111,11 @@ export namespace util {
 
         template <typename T>
         [[nodiscard]]
-        std::optional<T*> try_push(T obj) {
+        OptPtr<T> try_push(T obj) {
             void* ptr = attempt_allocation<sizeof(T), alignof(T)>();
 
             if (!ptr)
-                return std::nullopt;
+                return nullptr;
 
             T* casted_ptr = static_cast<T*>(ptr);
             new (casted_ptr) T(std::move(obj)); // NOTE: CAN THROW BADALLOC
@@ -117,15 +124,13 @@ export namespace util {
             return casted_ptr;
         }
 
+        // intentional use of c-style raw pointers due to low level interface
         template <std::size_t SIZE, std::size_t ALIGN>
         [[nodiscard]]
-        std::optional<void*> try_allocate() {
+        void* try_allocate() {
             void* ptr = attempt_allocation<SIZE, ALIGN>();
 
-            if (ptr)
-                return ptr;
-
-            return std::nullopt;
+            return ptr; // can be nullptr, represents failure
         }
  
         void clear() {
@@ -139,6 +144,7 @@ export namespace util {
             chunks.resize(1);
             chunks[0].reset_offset();
         }
+
     private:
         struct DestructorWrapper {
             void(*callback)(void*);

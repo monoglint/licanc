@@ -1,3 +1,37 @@
+/*
+
+This parition contains all of Lican's AST nodes.
+
+@monoglint
+Last updated: 31 March 2026
+
+*/
+
+/*
+
+Examples:
+
+=== 1 === - 31 March 2026
+
+    var my_car = vehicles::Car[Deisel]
+
+    TemplateInstExpr
+        target: ScopeResolutionExpr
+            operand0:
+                DeclReferenceExpr
+                    reference: Identifier: "vehicles"
+            operand1:
+                Identifier: "Car"
+        template_args:
+            TypeTemplateArg
+                value: NamedType: "Deisel"
+
+
+    notes:
+        - ScopeResolution can potentially have operand0 be either TemplateInstExpr or a DeclReferenceExpr.
+            I did not want to couple template instantiation inside of DeclReferenceExpr which is why the variant is needed.
+*/
+
 module;
 
 #include <variant>
@@ -14,8 +48,8 @@ export namespace frontend::ast {
     using NodeId = util::SafeId<class NodeIdTag>;
 
     struct NodeInitParams {
-        NodeInitParams(NodeInitParams init_params, NodeId id)
-            : span(std::move(init_params.span)), id(std::move(id))
+        NodeInitParams(util::Span span, NodeId id)
+            : span(std::move(span)), id(std::move(id))
         {}
 
         util::Span span;
@@ -79,7 +113,7 @@ export namespace frontend::ast {
         STRING_LITERAL,
         UNARY,
         BINARY,
-        SCOPE_REFERENCE,
+        DECL_REFERENCE,
         MEMBER_REFERENCE,
         SCOPE_RESOLUTION,
         MEMBER_ACCESS,
@@ -124,7 +158,7 @@ export namespace frontend::ast {
     //
     //
 
-    struct Visibility : Node {
+    struct Visibility final : Node {
         Visibility(NodeInitParams init_params)
             : Node(std::move(init_params))
         {}
@@ -133,7 +167,7 @@ export namespace frontend::ast {
         util::OptPtr<Decl> accessor;
     };
 
-    struct Root : Node {
+    struct Root final : Node {
         Root(NodeInitParams init_params)
             : Node(std::move(init_params))
         {}
@@ -142,21 +176,21 @@ export namespace frontend::ast {
     };
 
     // x
-    struct Identifier : Expr {
-        Identifier(ExprInitParams init_params, driver_base::IdentifierIndex identifier_index)
-            : Expr(std::move(init_params), ExprKind::IDENTIFIER), identifier_index(identifier_index)
+    struct Identifier final : Expr {
+        Identifier(ExprInitParams init_params, driver_base::IdentifierId identifier_id)
+            : Expr(std::move(init_params), ExprKind::IDENTIFIER), identifier_id(identifier_id)
         {}
         
-        driver_base::IdentifierIndex identifier_index;
+        driver_base::IdentifierId identifier_id;
     };
 
     // "hello world"
-    struct StringLiteral : Expr {
-        StringLiteral(ExprInitParams init_params, driver_base::StringLiteralIndex string_literal_index)
-            : Expr(std::move(init_params), ExprKind::STRING_LITERAL), string_literal_index(string_literal_index)
+    struct StringLiteral final : Expr {
+        StringLiteral(ExprInitParams init_params, driver_base::StringLiteralId string_literal_id)
+            : Expr(std::move(init_params), ExprKind::STRING_LITERAL), string_literal_id(string_literal_id)
         {}
 
-        driver_base::StringLiteralIndex string_literal_index;
+        driver_base::StringLiteralId string_literal_id;
     };
 
     // struct NumberLiteral : Node {
@@ -169,7 +203,7 @@ export namespace frontend::ast {
     // ^^^^^^^^ update how number literals are stored during scan time before re-enabling this
 
     // -5
-    struct UnaryExpr : Expr {
+    struct UnaryExpr final : Expr {
         UnaryExpr(ExprInitParams init_params, util::FirmPtr<Expr> operand, tok::OperatorKind opr)
             : Expr(std::move(init_params), ExprKind::UNARY), operand(operand), opr(opr)
         {}
@@ -179,7 +213,7 @@ export namespace frontend::ast {
     };
 
     // 5 + 2
-    struct BinaryExpr : Expr {
+    struct BinaryExpr final : Expr {
         BinaryExpr(ExprInitParams init_params, util::FirmPtr<Expr> operand0, util::FirmPtr<Expr> operand1, tok::OperatorKind opr)
             : Expr(std::move(init_params), ExprKind::BINARY), operand0(operand0), operand1(operand1), opr(opr)
         {}
@@ -190,19 +224,20 @@ export namespace frontend::ast {
     };
 
     struct ScopeResolutionExpr;
-    // a::b() || a()
-    struct ScopeReferenceExpr : Expr {
+    struct TemplateInstExpr;
+
+    struct DeclReferenceExpr final : Expr {
         using ReferenceVariant = std::variant<util::FirmPtr<Identifier>, util::FirmPtr<ScopeResolutionExpr>>;
 
-        ScopeReferenceExpr(ExprInitParams init_params, ReferenceVariant reference)
-            : Expr(std::move(init_params), ExprKind::SCOPE_REFERENCE), reference(std::move(reference))
+        DeclReferenceExpr(ExprInitParams init_params, ReferenceVariant reference)
+            : Expr(std::move(init_params), ExprKind::DECL_REFERENCE), reference(std::move(reference))
         {}
 
         ReferenceVariant reference;
     };
 
     struct MemberAccessExpr;
-    struct MemberReferenceExpr : Expr {
+    struct MemberReferenceExpr final : Expr {
         using ReferenceVariant = std::variant<util::FirmPtr<Identifier>, util::FirmPtr<MemberAccessExpr>>;
 
         MemberReferenceExpr(ExprInitParams init_params, ReferenceVariant reference)
@@ -213,17 +248,19 @@ export namespace frontend::ast {
     };
 
     // math::pi
-    struct ScopeResolutionExpr : Expr {
-        ScopeResolutionExpr(ExprInitParams init_params, util::FirmPtr<ScopeReferenceExpr> operand0, util::FirmPtr<Identifier> operand1)
+    struct ScopeResolutionExpr final : Expr {
+        using Operand0Variant = std::variant<util::FirmPtr<DeclReferenceExpr>, util::FirmPtr<TemplateInstExpr>>;
+
+        ScopeResolutionExpr(ExprInitParams init_params, Operand0Variant operand0, util::FirmPtr<Identifier> operand1)
             : Expr(std::move(init_params), ExprKind::SCOPE_RESOLUTION), operand0(operand0), operand1(operand1)
         {}
 
-        util::FirmPtr<ScopeReferenceExpr> operand0;
+        Operand0Variant operand0;
         util::FirmPtr<Identifier> operand1;
     };
     
     // object.position.x
-    struct MemberAccessExpr : Expr {
+    struct MemberAccessExpr final : Expr {
         MemberAccessExpr(ExprInitParams init_params, util::FirmPtr<MemberReferenceExpr> operand0, util::FirmPtr<Identifier> operand1)
             : Expr(std::move(init_params), ExprKind::MEMBER_ACCESS), operand0(operand0), operand1(operand1)
         {}
@@ -233,7 +270,7 @@ export namespace frontend::ast {
     };
 
     // if a > b { } else { } <--- not actual compound statement, braces are parser resolved syntactic sugar
-    struct TernaryExpr : Expr {
+    struct TernaryExpr final : Expr {
         TernaryExpr(ExprInitParams init_params, util::FirmPtr<Expr> condition, util::FirmPtr<Expr> consequent, util::FirmPtr<Expr> alternate)
             : Expr(std::move(init_params), ExprKind::TERNARY), condition(condition), consequent(consequent), alternate(alternate)
         {}
@@ -243,23 +280,16 @@ export namespace frontend::ast {
         util::FirmPtr<Expr> alternate;
     };
 
-    /*
-    
-    templated initializer in templated struct scenario
-    util..reference_wrapper<int>..new<float>()
-
-    */
-
-    struct CallExpr : Expr {
-        CallExpr(ExprInitParams init_params, util::FirmPtr<ScopeReferenceExpr> callee, std::vector<util::FirmPtr<Expr>> arguments)
-            : Expr(std::move(init_params), ExprKind::CALL), callee(callee), arguments(std::move(arguments))
+    struct CallExpr final : Expr {
+        CallExpr(ExprInitParams init_params, util::FirmPtr<DeclReferenceExpr> callee, std::vector<util::FirmPtr<Expr>> args)
+            : Expr(std::move(init_params), ExprKind::CALL), callee(callee), args(std::move(args))
         {}
 
-        util::FirmPtr<ScopeReferenceExpr> callee; // ScopeReference
-        std::vector<util::FirmPtr<Expr>> arguments; // {Expr}
+        util::FirmPtr<DeclReferenceExpr> callee; // DeclReference
+        std::vector<util::FirmPtr<Expr>> args; // {Expr}
     };
 
-    struct HeapExpr : Expr {
+    struct HeapExpr final : Expr {
         HeapExpr(ExprInitParams init_params, util::FirmPtr<CallExpr> inst, util::OptPtr<Expr> address)
             : Expr(std::move(init_params), ExprKind::HEAP), inst(inst), address(std::move(address))
         {}
@@ -268,41 +298,41 @@ export namespace frontend::ast {
         util::OptPtr<Expr> address; // must semantically deduce to a pointer
     };
 
-    struct TemplateArgument;
+    struct TemplateArg;
 
     // use case: accessing a static member of a struct
-    struct TemplateInstExpr : Expr {
-        TemplateInstExpr(ExprInitParams init_params, util::FirmPtr<ScopeReferenceExpr> target, std::vector<TemplateArgument*> template_arguments)
-            : Expr(std::move(init_params), ExprKind::TEMPLATE_inst), target(target), template_arguments(std::move(template_arguments))
+    struct TemplateInstExpr final : Expr {
+        TemplateInstExpr(ExprInitParams init_params, util::FirmPtr<DeclReferenceExpr> target, std::vector<util::FirmPtr<TemplateArg>> template_args)
+            : Expr(std::move(init_params), ExprKind::TEMPLATE_inst), target(target), template_args(std::move(template_args))
         {}
         
-        util::FirmPtr<ScopeReferenceExpr> target;
-        std::vector<TemplateArgument*> template_arguments;
+        util::FirmPtr<DeclReferenceExpr> target;
+        std::vector<util::FirmPtr<TemplateArg>> template_args;
     };
 
-    struct NamedType : Type {
-        NamedType(NodeInitParams init_params, util::FirmPtr<ScopeReferenceExpr> base)
+    struct NamedType final : Type {
+        NamedType(NodeInitParams init_params, util::FirmPtr<DeclReferenceExpr> base)
             : Type(std::move(init_params), TypeKind::NAMED), base(base)
         {}
 
-        util::FirmPtr<ScopeReferenceExpr> base;
+        util::FirmPtr<DeclReferenceExpr> base;
     };
 
-    struct TemplateArgument;
-    struct TemplateInstantiatedType : Type {
-        TemplateInstantiatedType(NodeInitParams init_params, util::FirmPtr<NamedType> base, std::vector<TemplateArgument*> arguments)
-            : Type(std::move(init_params), TypeKind::TEMPLATE_INSTANTIATED), base(base), arguments(std::move(arguments))
+    struct TemplateArg;
+    struct TemplateInstantiatedType final : Type {
+        TemplateInstantiatedType(NodeInitParams init_params, util::FirmPtr<NamedType> base, std::vector<util::FirmPtr<TemplateArg>> args)
+            : Type(std::move(init_params), TypeKind::TEMPLATE_INSTANTIATED), base(base), args(std::move(args))
         {}
 
         util::FirmPtr<NamedType> base;
-        std::vector<TemplateArgument*> arguments;
+        std::vector<util::FirmPtr<TemplateArg>> args;
     };
 
     enum class TypeQualifier {
         MUT
     };
 
-    struct QualifiedType : Type {
+    struct QualifiedType final : Type {
         QualifiedType(NodeInitParams init_params, util::FirmPtr<Type> base, TypeQualifier qualifier)
             : Type(std::move(init_params), TypeKind::QUALIFIED), base(base), qualifier(qualifier)
         {}
@@ -311,7 +341,7 @@ export namespace frontend::ast {
         TypeQualifier qualifier;
     };
 
-    struct GlobalDecl : Decl {
+    struct GlobalDecl final : Decl {
         GlobalDecl(DeclInitParams init_params, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type, util::FirmPtr<Expr> value)
             : Decl(std::move(init_params), DeclKind::GLOBAL), storage_specifiers(storage_specifiers), name(name), type(type), value(value)
         {}
@@ -322,52 +352,52 @@ export namespace frontend::ast {
         util::FirmPtr<Expr> value;
     };
 
-    struct TypeTemplateParameter : Node {
+    struct TypeTemplateParam final : Node {
         util::FirmPtr<Identifier> name;
     };
 
-    struct ValueTemplateParameter : Node {
+    struct ValueTemplateParam final : Node {
         util::FirmPtr<Identifier> name;
         util::FirmPtr<Type> type;
     };
 
-    struct TemplateParameter : Node {
-        using ValueVariant = std::variant<TypeTemplateParameter*, ValueTemplateParameter*>;
+    struct TemplateParam final : Node {
+        using ValueVariant = std::variant<util::FirmPtr<TypeTemplateParam>, util::FirmPtr<ValueTemplateParam>>;
 
-        TemplateParameter(NodeInitParams init_params, ValueVariant value)
+        TemplateParam(NodeInitParams init_params, ValueVariant value)
             : Node(std::move(init_params)), value(std::move(value))
         {}
 
         ValueVariant value;
     };
 
-    struct TypeTemplateArgument : Node {
-        TypeTemplateArgument(NodeInitParams init_params, util::FirmPtr<Type> value)
+    struct TypeTemplateArg final : Node {
+        TypeTemplateArg(NodeInitParams init_params, util::FirmPtr<Type> value)
             : Node(std::move(init_params)), value(value)
         {}
 
         util::FirmPtr<Type> value; // proven as compile-time constant by semantic analyzer
     };
 
-    struct ValueTemplateArgument : Node {
-        ValueTemplateArgument(NodeInitParams init_params, util::FirmPtr<Expr> value)
+    struct ValueTemplateArg final : Node {
+        ValueTemplateArg(NodeInitParams init_params, util::FirmPtr<Expr> value)
             : Node(std::move(init_params)), value(value)
         {}
         
         util::FirmPtr<Expr> value;
     };
 
-    struct TemplateArgument : Node {
-        using ValueVariant = std::variant<TypeTemplateArgument*, ValueTemplateArgument*>;
-        TemplateArgument(NodeInitParams init_params, ValueVariant value)
+    struct TemplateArg final : Node {
+        using ValueVariant = std::variant<util::FirmPtr<TypeTemplateArg>, util::FirmPtr<ValueTemplateArg>>;
+        TemplateArg(NodeInitParams init_params, ValueVariant value)
             : Node(std::move(init_params)), value(std::move(value))
         {}
 
         ValueVariant value;
     };
 
-    struct FunctionParameter : Node {
-        FunctionParameter(NodeInitParams init_params, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type)
+    struct FunctionParam final : Node {
+        FunctionParam(NodeInitParams init_params, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type)
             : Node(std::move(init_params)), name(name), type(type)
         {}
 
@@ -375,26 +405,26 @@ export namespace frontend::ast {
         util::FirmPtr<Type> type;
     };
     
-    struct Function : Node {
-        Function(NodeInitParams init_params, std::vector<FunctionParameter*> parameters, util::FirmPtr<Stmt> body, util::FirmPtr<Type> return_type)
-            : Node(std::move(init_params)), parameters(std::move(parameters)), body(body), return_type(return_type)
+    struct Function final : Node {
+        Function(NodeInitParams init_params, std::vector<util::FirmPtr<FunctionParam>> func_params, util::FirmPtr<Stmt> body, util::FirmPtr<Type> return_type)
+            : Node(std::move(init_params)), func_params(std::move(func_params)), body(body), return_type(return_type)
         {}
 
-        std::vector<FunctionParameter*> parameters;
+        std::vector<util::FirmPtr<FunctionParam>> func_params;
         util::FirmPtr<Stmt> body;
         util::FirmPtr<Type> return_type;
     };
 
-    struct FunctionTemplate : Node {
-        FunctionTemplate(NodeInitParams init_params, util::FirmPtr<Function> base, std::vector<TemplateParameter*> template_parameters)
-            : Node(std::move(init_params)), base(base), template_parameters(std::move(template_parameters))
+    struct FunctionTemplate final : Node {
+        FunctionTemplate(NodeInitParams init_params, util::FirmPtr<Function> base, std::vector<util::FirmPtr<TemplateParam>> template_params)
+            : Node(std::move(init_params)), base(base), template_params(std::move(template_params))
         {}
 
         util::FirmPtr<Function> base;
-        std::vector<TemplateParameter*> template_parameters; // {TemplateParameter}
+        std::vector<util::FirmPtr<TemplateParam>> template_params; // {TemplateParam}
     };
     
-    struct FunctionDecl : Decl {
+    struct FunctionDecl final : Decl {
         FunctionDecl(DeclInitParams init_params, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<FunctionTemplate> function_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(init_params), DeclKind::FUNCTION), storage_specifiers(storage_specifiers), function_template(function_template), name(name)
             {}
@@ -404,7 +434,7 @@ export namespace frontend::ast {
         util::FirmPtr<Identifier> name;
     };
 
-    struct Finalizer : Node {
+    struct Finalizer final : Node {
         Finalizer(NodeInitParams init_params, Function* function)
             : Node(std::move(init_params)), function(function)
         {}
@@ -412,7 +442,7 @@ export namespace frontend::ast {
         Function* function; // COMPLETELY CONCRETE
     };
 
-    struct Method : Node {
+    struct Method final : Node {
         Method(NodeInitParams init_params, Visibility* visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, FunctionTemplate* function_template)
             : Node(std::move(init_params)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), function_template(function_template)
         {}
@@ -423,7 +453,7 @@ export namespace frontend::ast {
         FunctionTemplate* function_template;
     };
 
-    struct Property : Node {
+    struct Property final : Node {
         Property(NodeInitParams init_params, util::FirmPtr<Visibility> visibility, tok::StorageSpecifierFlags storage_specifiers, util::FirmPtr<Identifier> name, util::FirmPtr<Type> type)
             : Node(std::move(init_params)), visibility(visibility), storage_specifiers(storage_specifiers), name(name), type(type)
         {}
@@ -434,28 +464,26 @@ export namespace frontend::ast {
         util::FirmPtr<Type> type;
     };
 
-    struct Struct : Node {
-        Struct(NodeInitParams init_params, std::vector<Method*> methods, std::vector<Property*> properties, Finalizer* finalizer)
-            : Node(std::move(init_params)), methods(std::move(methods)), properties(std::move(properties)), finalizer(finalizer)
+    struct Struct final : Node {
+        Struct(NodeInitParams init_params, std::vector<util::FirmPtr<Method>> methods, std::vector<util::FirmPtr<Property>> properties, std::vector<util::FirmPtr<Decl>> decls)
+            : Node(std::move(init_params)), methods(std::move(methods)), properties(std::move(properties)), decls(std::move(decls))
         {}
 
-        std::vector<Method*> methods;
-        std::vector<Property*> properties;
-        // TODO: additional optional declarations need to be added like static variables, imports, etc.
-        
-        Finalizer* finalizer; // WHEN TRAITS ADDED, DONT HAVE DESTRUCTORS HERE!!
+        std::vector<util::FirmPtr<Method>> methods;
+        std::vector<util::FirmPtr<Property>> properties;
+        std::vector<util::FirmPtr<Decl>> decls;
     };
 
-    struct StructTemplate : Node {
-        StructTemplate(NodeInitParams init_params, Struct* base, std::vector<TemplateParameter*> template_parameters)
-            : Node(std::move(init_params)), base(base), template_parameters(std::move(template_parameters))
+    struct StructTemplate final : Node {
+        StructTemplate(NodeInitParams init_params, util::FirmPtr<Struct> base, std::vector<util::FirmPtr<TemplateParam>> template_params)
+            : Node(std::move(init_params)), base(base), template_params(std::move(template_params))
         {}
 
-        Struct* base;
-        std::vector<TemplateParameter*> template_parameters;
+        util::FirmPtr<Struct> base;
+        std::vector<util::FirmPtr<TemplateParam>> template_params;
     };
 
-    struct StructDecl : Decl {
+    struct StructDecl final : Decl {
         StructDecl(DeclInitParams init_params, util::FirmPtr<StructTemplate> struct_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(init_params), DeclKind::STRUCT), struct_template(struct_template), name(name)
         {}
@@ -464,15 +492,15 @@ export namespace frontend::ast {
         util::FirmPtr<Identifier> name;
     };
 
-    struct TypeAliasTemplate : Node {
-        TypeAliasTemplate(NodeInitParams init_params, util::FirmPtr<Type> type, std::vector<util::FirmPtr<TemplateParameter>> template_parameters)
-            : Node(std::move(init_params)), type(type), template_parameters(std::move(template_parameters)) {}
+    struct TypeAliasTemplate final : Node {
+        TypeAliasTemplate(NodeInitParams init_params, util::FirmPtr<Type> type, std::vector<util::FirmPtr<TemplateParam>> template_params)
+            : Node(std::move(init_params)), type(type), template_params(std::move(template_params)) {}
 
         util::FirmPtr<Type> type;
-        std::vector<util::FirmPtr<TemplateParameter>> template_parameters;
+        std::vector<util::FirmPtr<TemplateParam>> template_params;
     };
 
-    struct TypeAliasDecl : Decl {
+    struct TypeAliasDecl final : Decl {
         TypeAliasDecl(DeclInitParams init_params, util::FirmPtr<TypeAliasTemplate> type_alias_template, util::FirmPtr<Identifier> name)
             : Decl(std::move(init_params), DeclKind::TYPE_ALIAS), type_alias_template(type_alias_template), name(name) {}
 
@@ -480,7 +508,7 @@ export namespace frontend::ast {
         util::FirmPtr<Identifier> name;
     };
 
-    struct ModuleDecl : Decl {
+    struct ModuleDecl final : Decl {
         ModuleDecl(DeclInitParams init_params, util::FirmPtr<Identifier> name, std::vector<util::FirmPtr<Decl>> decls)
             : Decl(std::move(init_params), DeclKind::MODULE), name(name), decls(std::move(decls))
         {}
@@ -493,7 +521,7 @@ export namespace frontend::ast {
 
     // -- STATEMENTS
 
-    struct ReturnStmt : Stmt {
+    struct ReturnStmt final : Stmt {
         ReturnStmt(NodeInitParams init_params, util::FirmPtr<Expr> value)
             : Stmt(std::move(init_params), StmtKind::RETURN), value(value)
         {}
@@ -501,11 +529,11 @@ export namespace frontend::ast {
         util::FirmPtr<Expr> value;
     };
 
-    struct CompoundStmt : Stmt {
-        CompoundStmt(NodeInitParams init_params, std::vector<Stmt*> stmts)
+    struct CompoundStmt final : Stmt {
+        CompoundStmt(NodeInitParams init_params, std::vector<util::FirmPtr<Stmt>> stmts)
             : Stmt(std::move(init_params), StmtKind::COMPOUND), stmts(std::move(stmts))
         {}
 
-        std::vector<Stmt*> stmts;
+        std::vector<util::FirmPtr<Stmt>> stmts;
     };
 }
