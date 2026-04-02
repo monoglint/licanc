@@ -7,18 +7,17 @@ this file holds all of the struct decls and definitions for symbols
 module;
 
 #include <unordered_map>
-#include <variant>
 #include <vector>
 
 export module frontend.sema:syms;
+
+import frontend.ast;
 
 import :ct_expr;
 import :resolved_type;
 import :syms_fwd;
 
 import util;
-
-import driver_base;
 
 export namespace frontend::sema {
     struct Sym { };
@@ -39,9 +38,9 @@ export namespace frontend::sema {
     struct TemplateArgument;
 
     template <class T_INST>
-    using Insts = std::unordered_map<std::vector<TemplateArgument*>, T_INST, util::VectorHasher<TemplateArgument*>>;
+    using Insts = std::unordered_map<std::vector<util::FirmPtr<TemplateArgument>>, T_INST, util::VectorHasher<util::FirmPtr<TemplateArgument>>>;
 
-    using Decls = std::unordered_map<driver_base::IdentifierId, Decl*>;
+    using Decls = std::unordered_map<ast::IdentifierId, util::FirmPtr<Decl>>;
 
     // SYMBOLS v vvv vv vv
     

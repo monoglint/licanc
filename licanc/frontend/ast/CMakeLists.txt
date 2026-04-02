@@ -7,6 +7,7 @@ target_sources(frontend_ast
             ast_class.ixx
             ast_deserializer.ixx
             ast_nodes.ixx
+            ast_pools.ixx
             ast_printer.ixx
             ast_serializer.ixx
             ast_visitor.ixx
@@ -17,5 +18,4 @@ target_link_libraries(frontend_ast
     PRIVATE 
         util 
         frontend_tok
-        driver_base
 )

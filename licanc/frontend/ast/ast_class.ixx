@@ -28,9 +28,11 @@ export namespace frontend::ast {
             return post_ast_insert(ptr);
         }
 
-        // external access to ::init()
-        void clear() {
-            init();
+        void init() {
+            arena.clear();
+            node_count = 0;
+
+            (void)arena.try_emplace<Root>(NodeInitParams(util::Span(), NodeId(0)));
         }
 
         [[nodiscard]]
@@ -44,12 +46,6 @@ export namespace frontend::ast {
 
         // this variable is used to generate the numeric id for the next appended AST node
         std::size_t node_count = 0;
-
-        void init() {
-            arena.clear();
-            node_count = 0;
-            (void)arena.try_emplace<Root>(NodeInitParams(util::Span(), NodeId(0)));
-        }
 
         template <std::derived_from<frontend::ast::Node> T> 
         T* post_ast_insert(util::OptPtr<T> ptr) {

@@ -1,14 +1,12 @@
-add_subdirectory(driver)
+add_subdirectory(package)
 add_subdirectory(frontend)
-add_subdirectory(driver_base)
 add_subdirectory(util)
 
 add_library(licanc_library INTERFACE)
 
 target_link_libraries(licanc_library INTERFACE
-    driver
+    package
     frontend
-    driver_base
     util
 )
 

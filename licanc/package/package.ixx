@@ -2,19 +2,17 @@ module;
 
 #include <string>
 
-export module driver;
+export module package;
 
 import frontend.tok;
 import frontend.ast;
 import frontend.sema;
 
-import driver_base;
-
 std::string load_file(std::string file_path) {
     return "empty";
 }
 
-export namespace driver {
+export namespace package {
     struct ConfigFlags {
         const bool produce_bytecode; // example
     };
@@ -30,15 +28,22 @@ export namespace driver {
     //
 
     struct LoadedPackage {
+        struct PackagePools {
+            frontend::ast::IdentifierPool identifier_pool;
+            frontend::ast::StringLiteralPool string_literal_pool;
+            frontend::sema::ResolvedTypePool resolved_type_pool;
+        };
+
+        struct PackageOutput {
+            frontend::tok::TokenStream token_stream;
+            frontend::ast::AST ast;
+            frontend::sema::SymTable sym_table;
+        };
+
         std::string source_code;
 
-        frontend::tok::TokenStream token_stream;
-        frontend::ast::AST ast;
-        frontend::sema::SymTable sym_table;
-
-        driver_base::IdentifierPool identifier_pool;
-        driver_base::StringLiteralPool string_literal_pool;
-        frontend::sema::ResolvedTypePool resolved_type_pool;
+        PackageOutput output;
+        PackagePools pools;
     };
 
     // primary compiler state struct

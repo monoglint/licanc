@@ -39,7 +39,7 @@ module;
 
 export module frontend.ast:ast_nodes;
 
-import driver_base;
+import :ast_pools;
 
 import frontend.tok;
 import util;
@@ -177,20 +177,20 @@ export namespace frontend::ast {
 
     // x
     struct Identifier final : Expr {
-        Identifier(ExprInitParams init_params, driver_base::IdentifierId identifier_id)
+        Identifier(ExprInitParams init_params, IdentifierId identifier_id)
             : Expr(std::move(init_params), ExprKind::IDENTIFIER), identifier_id(identifier_id)
         {}
         
-        driver_base::IdentifierId identifier_id;
+        IdentifierId identifier_id;
     };
 
     // "hello world"
     struct StringLiteral final : Expr {
-        StringLiteral(ExprInitParams init_params, driver_base::StringLiteralId string_literal_id)
+        StringLiteral(ExprInitParams init_params, StringLiteralId string_literal_id)
             : Expr(std::move(init_params), ExprKind::STRING_LITERAL), string_literal_id(string_literal_id)
         {}
 
-        driver_base::StringLiteralId string_literal_id;
+        StringLiteralId string_literal_id;
     };
 
     // struct NumberLiteral : Node {

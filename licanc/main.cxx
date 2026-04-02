@@ -1,7 +1,7 @@
 #include <string>
 #include <iostream>
 
-import driver;
+import package;
 
 int main(int argc, char* argv[]) {
     // this is the first line of statement code i am pretty sure was written in this project. DO NOT DELETE
@@ -18,11 +18,11 @@ int main(int argc, char* argv[]) {
     //                                                      \                   |          /
     //                                                       `----------------------------`
     
-    driver::Config config = {
+    package::Config config = {
         "C:/Users/jghig/Documents/TempEmpty/main.li"
     };
 
-    driver::CompilerState state(config);
+    package::CompilerState state(config);
     
     return 0;
 }
